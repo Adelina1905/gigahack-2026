@@ -6,7 +6,7 @@ function Playground() {
 
   return (
     <main className="h-screen bg-background">
-      <div className="mx-auto h-full max-w-3xl">
+      <div className="mx-auto h-full max-w-2xl">
         <ChatWindow
           messages={messages}
           isTyping={isTyping}

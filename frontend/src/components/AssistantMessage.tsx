@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ChatMessage } from "../types/chat";
+import SourceList from "./sources/SourceList";
 
 interface AssistantMessageProps {
   message?: ChatMessage;
@@ -43,7 +44,14 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
 
       <div className="flex max-w-[75%] flex-col gap-1">
         <div className="whitespace-pre-wrap break-words rounded-2xl rounded-tl-sm border border-border bg-background px-4 py-2.5 text-base text-text">
-          {isTyping || !message ? <TypingDots /> : message.content}
+          {isTyping || !message ? (
+            <TypingDots />
+          ) : (
+            <>
+              {message.content}
+              {message.sources && <SourceList sources={message.sources} />}
+            </>
+          )}
         </div>
 
         {message && !isTyping && (
