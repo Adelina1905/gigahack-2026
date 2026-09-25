@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2.0",
+  "pipelineVersion": "2.0",
+  "documentId": "evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025-71162df9e91f",
+  "title": "Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
+  "documentType": "webpage_article",
+  "language": "ro",
+  "publisher": "Direcția Educație Ciocana",
+  "publishedDate": "2024-08-28",
+  "retrievedAt": "2026-09-25T22:26:50.276022+03:00",
+  "source": {
+    "sourceType": "derived_web_text",
+    "sourceUrl": "https://detsciocana.educ.md/evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025/",
+    "originalFilename": "information 1.txt",
+    "snapshotPath": "data/v2/01_sources/evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025-71162df9e91f/original.txt",
+    "mediaType": "text/plain",
+    "bytes": 4247,
+    "sha256": "71162df9e91f70a10cf7b9b69d5791c698898f619a364d1bee45060a440d6473"
+  }
+}

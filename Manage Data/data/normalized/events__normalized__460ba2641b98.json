@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "1.1",
+  "recordType": "municipalEvent",
+  "source": {
+    "file": "information__535509519a66__cleaned__336c59f13bf7.txt",
+    "sha256": "336c59f13bf7b53c983cacb3a273fdbdf8da90651333790b51013f8f1ec86199",
+    "language": "ro",
+    "sourceUrl": null
+  },
+  "recordCount": 6,
+  "records": [
+    {
+      "id": "event-001",
+      "title": "Târguri ale micilor antreprenori, ale producătorilor locali cu produse autohtone eco și apicole",
+      "location": "pe teritoriul sectoarelor",
+      "periodRaw": "04-06.09/11-13.09/18-20.09/25-27.09.2026",
+      "language": "ro",
+      "warnings": [],
+      "provenance": {
+        "block": 1,
+        "startLine": 1,
+        "endLine": 3,
+        "originalText": "Târguri ale micilor antreprenori, ale producătorilor locali cu produse autohtone eco și apicole.\nLocația: pe teritoriul sectoarelor.\nPerioada: 04-06.09/11-13.09/18-20.09/25-27.09.2026"
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "PARSED",
+      "occurrences": [
+        {
+          "sourceFragment": "04-06.09",
+          "startDate": "2026-09-04",
+          "endDate": "2026-09-06",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        },
+        {
+          "sourceFragment": "11-13.09",
+          "startDate": "2026-09-11",
+          "endDate": "2026-09-13",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        },
+        {
+          "sourceFragment": "18-20.09",
+          "startDate": "2026-09-18",
+          "endDate": "2026-09-20",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        },
+        {
+          "sourceFragment": "25-27.09.2026",
+          "startDate": "2026-09-25",
+          "endDate": "2026-09-27",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        }
+      ]
+    },
+    {
+      "id": "event-002",
+      "title": "Târguri apicole și de pomușoare",
+      "location": "Scuarul Teatrului Național de Operă și Balet „Maria Bieșu”",
+      "periodRaw": "05-06.09/12-13.09/19-20.09/26-27.09",
+      "language": "ro",
+      "warnings": [
+        "YEAR_NOT_EXPLICIT"
+      ],
+      "provenance": {
+        "block": 2,
+        "startLine": 5,
+        "endLine": 7,
+        "originalText": "Târguri apicole și de pomușoare.\nLocația: Scuarul Teatrului Național de Operă și Balet „Maria Bieșu”.\nPerioada: 05-06.09/12-13.09/19-20.09/26-27.09."
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "MISSING_YEAR",
+      "occurrences": []
+    },
+    {
+      "id": "event-003",
+      "title": "Târgul mămicilor „Mami&Co Fair”",
+      "location": "Scuarul „Mezon” din bd Moscova",
+      "periodRaw": "13.09/27.09.2026",
+      "language": "ro",
+      "warnings": [],
+      "provenance": {
+        "block": 3,
+        "startLine": 9,
+        "endLine": 11,
+        "originalText": "Târgul mămicilor „Mami&Co Fair”.\nLocația: Scuarul „Mezon” din bd Moscova.\nPerioada: 13.09/27.09.2026."
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "PARSED",
+      "occurrences": [
+        {
+          "sourceFragment": "13.09",
+          "startDate": "2026-09-13",
+          "endDate": "2026-09-13",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        },
+        {
+          "sourceFragment": "27.09.2026",
+          "startDate": "2026-09-27",
+          "endDate": "2026-09-27",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        }
+      ]
+    },
+    {
+      "id": "event-004",
+      "title": "Târgul „Roada Gliei” și Târgul „Butoiaș”",
+      "location": "str. Mitropolit Varlaam, 63; str. Cărbunari",
+      "periodRaw": "16.09-15.10.2026",
+      "language": "ro",
+      "warnings": [],
+      "provenance": {
+        "block": 4,
+        "startLine": 13,
+        "endLine": 15,
+        "originalText": "Târgul „Roada Gliei” și Târgul „Butoiaș”.\nLocația: str. Mitropolit Varlaam, 63; str. Cărbunari.\nPerioada: 16.09-15.10.2026."
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "PARSED",
+      "occurrences": [
+        {
+          "sourceFragment": "16.09-15.10.2026",
+          "startDate": "2026-09-16",
+          "endDate": "2026-10-15",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        }
+      ]
+    },
+    {
+      "id": "event-005",
+      "title": "Festivalul etniilor „Unitate prin diversitate”",
+      "location": "Grădina Publică „Ștefan cel Mare și Sfânt”",
+      "periodRaw": "20.09.2026",
+      "language": "ro",
+      "warnings": [],
+      "provenance": {
+        "block": 5,
+        "startLine": 17,
+        "endLine": 19,
+        "originalText": "Festivalul etniilor „Unitate prin diversitate”.\nLocația: Grădina Publică „Ștefan cel Mare și Sfânt”.\nPerioada: 20.09.2026."
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "PARSED",
+      "occurrences": [
+        {
+          "sourceFragment": "20.09.2026",
+          "startDate": "2026-09-20",
+          "endDate": "2026-09-20",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        }
+      ]
+    },
+    {
+      "id": "event-006",
+      "title": "Târg al meșterilor populari dedicat etniilor",
+      "location": "Scuarul Catedralei Mitropolitane „Nașterea Domnului”",
+      "periodRaw": "20.09.2026",
+      "language": "ro",
+      "warnings": [],
+      "provenance": {
+        "block": 6,
+        "startLine": 21,
+        "endLine": 23,
+        "originalText": "Târg al meșterilor populari dedicat etniilor\nLocația: Scuarul Catedralei Mitropolitane „Nașterea Domnului”.\nPerioada: 20.09.2026."
+      },
+      "unrecognizedLines": [],
+      "dateParsingStatus": "PARSED",
+      "occurrences": [
+        {
+          "sourceFragment": "20.09.2026",
+          "startDate": "2026-09-20",
+          "endDate": "2026-09-20",
+          "year": 2026,
+          "yearSource": "explicit_in_period"
+        }
+      ]
+    }
+  ],
+  "dateNormalization": {
+    "rule": "Use only years explicitly present in each periodRaw value.",
+    "parsedRecordCount": 5,
+    "unparsedRecordCount": 1,
+    "occurrenceCount": 9
+  }
+}

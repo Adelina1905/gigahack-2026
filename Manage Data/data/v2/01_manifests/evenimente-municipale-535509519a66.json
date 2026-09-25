@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2.0",
+  "pipelineVersion": "2.0",
+  "documentId": "evenimente-municipale-535509519a66",
+  "title": "Evenimente municipale",
+  "documentType": "event_listing",
+  "language": "ro",
+  "publisher": null,
+  "publishedDate": null,
+  "retrievedAt": "2026-09-25T22:27:11.246463+03:00",
+  "source": {
+    "sourceType": "text_document",
+    "sourceUrl": null,
+    "originalFilename": "information.txt",
+    "snapshotPath": "data/v2/01_sources/evenimente-municipale-535509519a66/original.txt",
+    "mediaType": "text/plain",
+    "bytes": 883,
+    "sha256": "535509519a66e5b4e74cac60ad6131b5e46b7665a9d4aca9a0370b008c0c53e3"
+  }
+}

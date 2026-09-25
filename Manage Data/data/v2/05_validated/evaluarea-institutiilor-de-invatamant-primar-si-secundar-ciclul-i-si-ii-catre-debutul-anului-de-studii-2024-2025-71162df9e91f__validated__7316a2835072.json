@@ -1,0 +1,710 @@
+{
+  "schemaVersion": "2.2",
+  "pipelineStage": "validated",
+  "documentId": "evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025-71162df9e91f",
+  "documentType": "webpage_article",
+  "title": "Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
+  "language": "ro",
+  "publisher": "Direcția Educație Ciocana",
+  "publishedDate": "2024-08-28",
+  "retrievedAt": "2026-09-25T22:26:50.276022+03:00",
+  "source": {
+    "sourceType": "derived_web_text",
+    "sourceUrl": "https://detsciocana.educ.md/evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025/",
+    "originalFilename": "information 1.txt",
+    "snapshotPath": "data/v2/01_sources/evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025-71162df9e91f/original.txt",
+    "mediaType": "text/plain",
+    "bytes": 4247,
+    "sha256": "71162df9e91f70a10cf7b9b69d5791c698898f619a364d1bee45060a440d6473"
+  },
+  "extraction": {
+    "engine": "native_text",
+    "status": "READY",
+    "requiresOcr": false,
+    "warnings": [
+      "DERIVED_WEB_TEXT"
+    ]
+  },
+  "assets": [
+    {
+      "type": "image",
+      "url": "https://detsciocana.educ.md/wp-content/uploads/sites/303/2024/08/Activitati-Cultural-Artistice-3-900x507.png"
+    }
+  ],
+  "passages": [
+    {
+      "passageId": "passage-2cb04abab8dbc14b",
+      "order": 1,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Direcția Generală Educație, Tineret și Sport a Primăriei municipiului Chișinău informează că pe parcursul a 3 zile (20/ 21 și 22 august 2024), 5 echipe de verificare, create prin ordinul DGETS, se deplasează la instituțiile de învățământ primar și secundar, ciclul I și II, de pe teritoriul municipiului, pentru a verifica pregătirea acestora către noul an școlar 2024 – 2025.",
+      "searchText": "Direcția Generală Educație, Tineret și Sport a Primăriei municipiului Chișinău informează că pe parcursul a 3 zile (20/ 21 și 22 august 2024), 5 echipe de verificare, create prin ordinul DGETS, se deplasează la instituțiile de învățământ primar și secundar, ciclul I și II, de pe teritoriul municipiului, pentru a verifica pregătirea acestora către noul an școlar 2024 – 2025.",
+      "contentHash": "2aae21e74e72eb5d013efc25b59e410785210a02a96ef4fdce35a90c0774083a",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 14,
+        "endLine": 14
+      },
+      "facts": [
+        {
+          "factId": "fact-4d100f8bb5e5204e",
+          "type": "date",
+          "value": "2024-08-20",
+          "qualifier": "explicit",
+          "sourceText": "20/ 21 și 22 august 2024",
+          "passageId": "passage-2cb04abab8dbc14b"
+        },
+        {
+          "factId": "fact-7428db4ccbc759c9",
+          "type": "date",
+          "value": "2024-08-21",
+          "qualifier": "explicit",
+          "sourceText": "20/ 21 și 22 august 2024",
+          "passageId": "passage-2cb04abab8dbc14b"
+        },
+        {
+          "factId": "fact-40c06a0c47d81cc7",
+          "type": "date",
+          "value": "2024-08-22",
+          "qualifier": "explicit",
+          "sourceText": "20/ 21 și 22 august 2024",
+          "passageId": "passage-2cb04abab8dbc14b"
+        },
+        {
+          "factId": "fact-23658ad922324bab",
+          "type": "academic_year",
+          "value": {
+            "startYear": 2024,
+            "endYear": 2025
+          },
+          "qualifier": "explicit",
+          "sourceText": "2024 – 2025",
+          "passageId": "passage-2cb04abab8dbc14b"
+        },
+        {
+          "factId": "fact-ed3c1fa2e2aaaf00",
+          "type": "count",
+          "value": 3,
+          "unit": "zile",
+          "qualifier": "explicit",
+          "sourceText": "3 zile",
+          "passageId": "passage-2cb04abab8dbc14b"
+        },
+        {
+          "factId": "fact-0c38ab77d78015bc",
+          "type": "count",
+          "value": 5,
+          "unit": "echipe de verificare",
+          "qualifier": "explicit",
+          "sourceText": "5 echipe de verificare",
+          "passageId": "passage-2cb04abab8dbc14b"
+        }
+      ],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-ec5f11280120aa4b",
+      "order": 2,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Această evaluare vizează aspecte precum infrastructura școlară, crearea condițiilor igienico – sanitare și prevenirea situațiilor de risc pentru viața și sănătatea elevilor/ angajaților, resursele didactice, echipamentele tehnice și capacitatea de a răspunde nevoilor educaționale a comunității.",
+      "searchText": "Această evaluare vizează aspecte precum infrastructura școlară, crearea condițiilor igienico – sanitare și prevenirea situațiilor de risc pentru viața și sănătatea elevilor/ angajaților, resursele didactice, echipamentele tehnice și capacitatea de a răspunde nevoilor educaționale a comunității.",
+      "contentHash": "c56742a1604ec6844c7f45d017dbbc1a8573321fb7c1b04c1e483ead42195b6a",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 16,
+        "endLine": 16
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-09e3a769bab09547",
+      "order": 3,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Din componența comisiilor fac parte reprezentanți ai DGETS și ai direcțiilor sectoriale, ai Centrului de Sănătate Publică Chișinău și ai Direcției teritoriale pentru siguranța alimentelor.",
+      "searchText": "Din componența comisiilor fac parte reprezentanți ai DGETS și ai direcțiilor sectoriale, ai Centrului de Sănătate Publică Chișinău și ai Direcției teritoriale pentru siguranța alimentelor.",
+      "contentHash": "a048bdd73bfd48fd1c319258abb819ae146d08129038757e7229668e34791bdd",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 18,
+        "endLine": 18
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-4e6ac67b5f77d197",
+      "order": 4,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "În prezent, în cadrul instituțiilor municipale din domeniul educației, activează peste 10 mii de cadre didactice.",
+      "searchText": "În prezent, în cadrul instituțiilor municipale din domeniul educației, activează peste 10 mii de cadre didactice.",
+      "contentHash": "bd56079ba5e32670beb1e1ba5ed98ea9843a8054721f8925db5adcc06eb6922a",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 20,
+        "endLine": 20
+      },
+      "facts": [
+        {
+          "factId": "fact-89d4c75607b8496a",
+          "type": "count",
+          "value": 10000,
+          "unit": "cadre didactice",
+          "qualifier": "lower_bound",
+          "sourceText": "peste 10 mii de cadre didactice",
+          "passageId": "passage-4e6ac67b5f77d197"
+        }
+      ],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-7b536913093d9f1d",
+      "order": 5,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Scopul evaluării instituțiilor de învățământ, este asigurarea ca toți elevii și copiii din municipiul Chișinău vor avea acces la un mediu educațional sigur și de calitate în noul an școlar. Astfel, este esențial să ne reafirmăm angajamentul nostru comun întru asigurarea calității în educație fiind o misiune comună ce implică întreaga comunitate școlară: elevi, profesori, părinți, inclusiv administrația locală.",
+      "searchText": "Scopul evaluării instituțiilor de învățământ, este asigurarea ca toți elevii și copiii din municipiul Chișinău vor avea acces la un mediu educațional sigur și de calitate în noul an școlar. Astfel, este esențial să ne reafirmăm angajamentul nostru comun întru asigurarea calității în educație fiind o misiune comună ce implică întreaga comunitate școlară: elevi, profesori, părinți, inclusiv administrația locală.",
+      "contentHash": "ffefe10ef43e860cc2ff768998dae16eff66da2d351d78b71c2e9b82c9625a6b",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 22,
+        "endLine": 22
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-dc0b5b81d38eee6d",
+      "order": 6,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Școala trebuie să devină un loc în care excelența este o normă, iar fiecare copil să simtă că este respectat, susținut, motivat să își atingă potențialul maxim.",
+      "searchText": "Școala trebuie să devină un loc în care excelența este o normă, iar fiecare copil să simtă că este respectat, susținut, motivat să își atingă potențialul maxim.",
+      "contentHash": "31b2edfeef693041b6ea3fb391e32a5705bdefa931ffb8b394b861f94990d1a4",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 24,
+        "endLine": 24
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-4043de4b8d722607",
+      "order": 7,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Menționăm că în municipiul Chișinău DGETS este organul local de specialitate care gestionează procesul educațional și asigură buna funcționare a 332 instituții de învățământ general din care:",
+      "searchText": "Menționăm că în municipiul Chișinău DGETS este organul local de specialitate care gestionează procesul educațional și asigură buna funcționare a 332 instituții de învățământ general din care:",
+      "contentHash": "60b2cdc6788cb2d2430ff6216d71a9dc4ca0c04e6337384499197dc0d9555635",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 26,
+        "endLine": 26
+      },
+      "facts": [
+        {
+          "factId": "fact-fbb6b697c7355bcf",
+          "type": "count",
+          "value": 332,
+          "unit": "instituții de învățământ general",
+          "qualifier": "explicit",
+          "sourceText": "332 instituții de învățământ general",
+          "passageId": "passage-4043de4b8d722607"
+        }
+      ],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-a7e8e5006f996aab",
+      "order": 8,
+      "type": "list",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "- 5 Școli primare-grădinițe (din care: 1 Complex educațional);\n- 9 Școli primare;\n- 28 Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”);\n- 7 Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători);\n- 82 Licee (din care: 1 Complex educațional „Kiril și Metodiu”; 4 Licee cu grupe preșcolare Lomonosov; Levski; Waldorf, Grătiești; 1 Liceu internat municipal sportiv);\n- 155 IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii);\n- 13 instituții extrașcolare;\n- 1 școala de meserie;\n- 13 școli sportive;\n- 19 instituții private.",
+      "searchText": "- 5 Școli primare-grădinițe (din care: 1 Complex educațional);\n- 9 Școli primare;\n- 28 Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”);\n- 7 Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători);\n- 82 Licee (din care: 1 Complex educațional „Kiril și Metodiu”; 4 Licee cu grupe preșcolare Lomonosov; Levski; Waldorf, Grătiești; 1 Liceu internat municipal sportiv);\n- 155 IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii);\n- 13 instituții extrașcolare;\n- 1 școala de meserie;\n- 13 școli sportive;\n- 19 instituții private.",
+      "contentHash": "8b30c045ff4c7a9baafea038c64f8cc1d12f9f40855dee8841ff9501d61a67e1",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 28,
+        "endLine": 37
+      },
+      "facts": [
+        {
+          "factId": "fact-f2910521336ecb1d",
+          "type": "count",
+          "value": 5,
+          "unit": "Școli primare-grădinițe (din care: 1 Complex educațional)",
+          "qualifier": "explicit",
+          "sourceText": "- 5 Școli primare-grădinițe (din care: 1 Complex educațional);",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-a26cf5bd58190c46",
+          "type": "count",
+          "value": 9,
+          "unit": "Școli primare",
+          "qualifier": "explicit",
+          "sourceText": "- 9 Școli primare;",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-2766c1e722758364",
+          "type": "count",
+          "value": 28,
+          "unit": "Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”)",
+          "qualifier": "explicit",
+          "sourceText": "- 28 Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”);",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-f47c3c66ff88d57f",
+          "type": "count",
+          "value": 7,
+          "unit": "Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători)",
+          "qualifier": "explicit",
+          "sourceText": "- 7 Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători);",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-a4283a54303b3234",
+          "type": "count",
+          "value": 82,
+          "unit": "Licee (din care: 1 Complex educațional „Kiril și Metodiu”",
+          "qualifier": "explicit",
+          "sourceText": "- 82 Licee (din care: 1 Complex educațional „Kiril și Metodiu”; 4 Licee cu grupe preșcolare Lomonosov; Levski; Waldorf, Grătiești; 1 Liceu internat municipal sportiv);",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-77ff1c703b9ef810",
+          "type": "count",
+          "value": 155,
+          "unit": "IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii)",
+          "qualifier": "explicit",
+          "sourceText": "- 155 IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii);",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-265c928752bc5c37",
+          "type": "count",
+          "value": 13,
+          "unit": "instituții extrașcolare",
+          "qualifier": "explicit",
+          "sourceText": "- 13 instituții extrașcolare;",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-d19e2ea47f90dfef",
+          "type": "count",
+          "value": 1,
+          "unit": "școala de meserie",
+          "qualifier": "explicit",
+          "sourceText": "- 1 școala de meserie;",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-ee5580339b582403",
+          "type": "count",
+          "value": 13,
+          "unit": "școli sportive",
+          "qualifier": "explicit",
+          "sourceText": "- 13 școli sportive;",
+          "passageId": "passage-a7e8e5006f996aab"
+        },
+        {
+          "factId": "fact-759d4ad373348746",
+          "type": "count",
+          "value": 19,
+          "unit": "instituții private",
+          "qualifier": "explicit",
+          "sourceText": "- 19 instituții private.",
+          "passageId": "passage-a7e8e5006f996aab"
+        }
+      ],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-10430822b4be8baf",
+      "order": 9,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Această acțiune de evaluare periodică subliniază angajamentul continuu al DGETS față de crearea unui mediu educațional sigur, modern și accesibil pentru toți copiii din municipiul Chișinău.",
+      "searchText": "Această acțiune de evaluare periodică subliniază angajamentul continuu al DGETS față de crearea unui mediu educațional sigur, modern și accesibil pentru toți copiii din municipiul Chișinău.",
+      "contentHash": "fa82a4639c4fc59726650f5dada873cdaecb37e701cd42cfc7d14cadbf1a168b",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 39,
+        "endLine": 39
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-affb260c6a11642c",
+      "order": 10,
+      "type": "paragraph",
+      "headingPath": [
+        "ARTICLE CONTENT"
+      ],
+      "citationText": "Prin implicarea activă a diverselor instituții și autorități competente, se dorește asigurarea unor condiții optime pentru desfășurarea procesului educațional, astfel încât noul an școlar să debuteze în cele mai bune condiții pentru elevi, cadrele didactice și întregul personal din instituțiile de învățământ.",
+      "searchText": "Prin implicarea activă a diverselor instituții și autorități competente, se dorește asigurarea unor condiții optime pentru desfășurarea procesului educațional, astfel încât noul an școlar să debuteze în cele mai bune condiții pentru elevi, cadrele didactice și întregul personal din instituțiile de învățământ.",
+      "contentHash": "677a6667c2135a44c997f39cf63f66ac82c15c1e7a268e1fa9785359cd36581c",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 41,
+        "endLine": 41
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-45cbaf7d68c7787f",
+      "order": 11,
+      "type": "paragraph",
+      "headingPath": [
+        "SUBSTANTIVE IMAGE TEXT"
+      ],
+      "citationText": "PRIMĂRIA MUNICIPIULUI CHIȘINĂU\nCONSILIUL MUNICIPAL CHIȘINĂU\nDIRECȚIA GENERALĂ EDUCAȚIE, TINERET ȘI SPORT",
+      "searchText": "PRIMĂRIA MUNICIPIULUI CHIȘINĂU\nCONSILIUL MUNICIPAL CHIȘINĂU\nDIRECȚIA GENERALĂ EDUCAȚIE, TINERET ȘI SPORT",
+      "contentHash": "02b04e9b95dc4a8849f10dfeb68a600ab46c57f536c5ed4c678dad6087adab53",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 45,
+        "endLine": 47
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    },
+    {
+      "passageId": "passage-b55bd5f0498c6c08",
+      "order": 12,
+      "type": "paragraph",
+      "headingPath": [
+        "EVALUAREA INSTITUȚIILOR DE ÎNVĂȚĂMÂNT PRIMAR ȘI SECUNDAR, CICLUL I ȘI II CĂTRE DEBUTUL ANULUI DE STUDII 2024-2025"
+      ],
+      "citationText": "Mai multe detalii: www.chisinauedu.md",
+      "searchText": "Mai multe detalii: www.chisinauedu.md",
+      "contentHash": "7271f0442647bee650115ffe5d8a60783b6a8651c351271865f62d88686ec37f",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 51,
+        "endLine": 51
+      },
+      "facts": [],
+      "warnings": [],
+      "validation": {
+        "dataStatus": "READY",
+        "dataIssues": [],
+        "citationStatus": "NEEDS_REVIEW",
+        "citationIssues": [
+          "RAW_WEBPAGE_SNAPSHOT_MISSING"
+        ],
+        "overallStatus": "NEEDS_REVIEW"
+      }
+    }
+  ],
+  "contentHash": "9bd59cfc35aac44190ddb458399299367ce150be9f1529e99af32655233a0951",
+  "facts": [
+    {
+      "factId": "fact-4d100f8bb5e5204e",
+      "type": "date",
+      "value": "2024-08-20",
+      "qualifier": "explicit",
+      "sourceText": "20/ 21 și 22 august 2024",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-7428db4ccbc759c9",
+      "type": "date",
+      "value": "2024-08-21",
+      "qualifier": "explicit",
+      "sourceText": "20/ 21 și 22 august 2024",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-40c06a0c47d81cc7",
+      "type": "date",
+      "value": "2024-08-22",
+      "qualifier": "explicit",
+      "sourceText": "20/ 21 și 22 august 2024",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-23658ad922324bab",
+      "type": "academic_year",
+      "value": {
+        "startYear": 2024,
+        "endYear": 2025
+      },
+      "qualifier": "explicit",
+      "sourceText": "2024 – 2025",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-ed3c1fa2e2aaaf00",
+      "type": "count",
+      "value": 3,
+      "unit": "zile",
+      "qualifier": "explicit",
+      "sourceText": "3 zile",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-0c38ab77d78015bc",
+      "type": "count",
+      "value": 5,
+      "unit": "echipe de verificare",
+      "qualifier": "explicit",
+      "sourceText": "5 echipe de verificare",
+      "passageId": "passage-2cb04abab8dbc14b"
+    },
+    {
+      "factId": "fact-89d4c75607b8496a",
+      "type": "count",
+      "value": 10000,
+      "unit": "cadre didactice",
+      "qualifier": "lower_bound",
+      "sourceText": "peste 10 mii de cadre didactice",
+      "passageId": "passage-4e6ac67b5f77d197"
+    },
+    {
+      "factId": "fact-fbb6b697c7355bcf",
+      "type": "count",
+      "value": 332,
+      "unit": "instituții de învățământ general",
+      "qualifier": "explicit",
+      "sourceText": "332 instituții de învățământ general",
+      "passageId": "passage-4043de4b8d722607"
+    },
+    {
+      "factId": "fact-f2910521336ecb1d",
+      "type": "count",
+      "value": 5,
+      "unit": "Școli primare-grădinițe (din care: 1 Complex educațional)",
+      "qualifier": "explicit",
+      "sourceText": "- 5 Școli primare-grădinițe (din care: 1 Complex educațional);",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-a26cf5bd58190c46",
+      "type": "count",
+      "value": 9,
+      "unit": "Școli primare",
+      "qualifier": "explicit",
+      "sourceText": "- 9 Școli primare;",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-2766c1e722758364",
+      "type": "count",
+      "value": 28,
+      "unit": "Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”)",
+      "qualifier": "explicit",
+      "sourceText": "- 28 Gimnazii (din care: 4 Complexe educaționale „Trușeni”, „STEAM”, „Cuzești”, „Hulboaca”);",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-f47c3c66ff88d57f",
+      "type": "count",
+      "value": 7,
+      "unit": "Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători)",
+      "qualifier": "explicit",
+      "sourceText": "- 7 Școli speciale (din care: 1 Complex educațional „Orfeu”, 1 Gimnaziu, Liceul Teoretic pentru elevi cu vedere slabă și nevăzători);",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-a4283a54303b3234",
+      "type": "count",
+      "value": 82,
+      "unit": "Licee (din care: 1 Complex educațional „Kiril și Metodiu”",
+      "qualifier": "explicit",
+      "sourceText": "- 82 Licee (din care: 1 Complex educațional „Kiril și Metodiu”; 4 Licee cu grupe preșcolare Lomonosov; Levski; Waldorf, Grătiești; 1 Liceu internat municipal sportiv);",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-77ff1c703b9ef810",
+      "type": "count",
+      "value": 155,
+      "unit": "IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii)",
+      "qualifier": "explicit",
+      "sourceText": "- 155 IET (din care 128 unități educaționale sunt în orașul Chișinău și 27 IET din suburbii);",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-265c928752bc5c37",
+      "type": "count",
+      "value": 13,
+      "unit": "instituții extrașcolare",
+      "qualifier": "explicit",
+      "sourceText": "- 13 instituții extrașcolare;",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-d19e2ea47f90dfef",
+      "type": "count",
+      "value": 1,
+      "unit": "școala de meserie",
+      "qualifier": "explicit",
+      "sourceText": "- 1 școala de meserie;",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-ee5580339b582403",
+      "type": "count",
+      "value": 13,
+      "unit": "școli sportive",
+      "qualifier": "explicit",
+      "sourceText": "- 13 școli sportive;",
+      "passageId": "passage-a7e8e5006f996aab"
+    },
+    {
+      "factId": "fact-759d4ad373348746",
+      "type": "count",
+      "value": 19,
+      "unit": "instituții private",
+      "qualifier": "explicit",
+      "sourceText": "- 19 instituții private.",
+      "passageId": "passage-a7e8e5006f996aab"
+    }
+  ],
+  "warnings": [],
+  "temporalContext": {
+    "publishedDate": "2024-08-28",
+    "statisticsAsOf": "2024-08-28"
+  },
+  "validation": {
+    "dataStatus": "READY",
+    "dataIssues": [],
+    "citationStatus": "NEEDS_REVIEW",
+    "citationIssues": [
+      "RAW_WEBPAGE_SNAPSHOT_MISSING"
+    ],
+    "overallStatus": "NEEDS_REVIEW",
+    "indexingDecision": "REVIEW"
+  },
+  "qualityReport": {
+    "totalPassages": 12,
+    "readyPassages": 0,
+    "reviewPassages": 12,
+    "factCount": 18
+  }
+}

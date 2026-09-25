@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "2.0",
+  "pipelineStage": "extracted",
+  "documentId": "evenimente-municipale-535509519a66",
+  "manifest": {
+    "schemaVersion": "2.0",
+    "pipelineVersion": "2.0",
+    "documentId": "evenimente-municipale-535509519a66",
+    "title": "Evenimente municipale",
+    "documentType": "event_listing",
+    "language": "ro",
+    "publisher": null,
+    "publishedDate": null,
+    "retrievedAt": "2026-09-25T22:27:11.246463+03:00",
+    "source": {
+      "sourceType": "text_document",
+      "sourceUrl": null,
+      "originalFilename": "information.txt",
+      "snapshotPath": "data/v2/01_sources/evenimente-municipale-535509519a66/original.txt",
+      "mediaType": "text/plain",
+      "bytes": 883,
+      "sha256": "535509519a66e5b4e74cac60ad6131b5e46b7665a9d4aca9a0370b008c0c53e3"
+    }
+  },
+  "extraction": {
+    "engine": "native_text",
+    "status": "READY",
+    "requiresOcr": false,
+    "warnings": []
+  },
+  "extractedMetadata": {},
+  "blocks": [
+    {
+      "blockId": "block-830119a48ea10ae1",
+      "order": 1,
+      "type": "municipal_event",
+      "citationText": "Târguri ale micilor antreprenori, ale producătorilor locali cu produse autohtone eco și apicole.\nLocația: pe teritoriul sectoarelor.\nPerioada: 04-06.09/11-13.09/18-20.09/25-27.09.2026",
+      "searchText": "Târguri ale micilor antreprenori, ale producătorilor locali cu produse autohtone eco și apicole.\nLocația: pe teritoriul sectoarelor.\nPerioada: 04-06.09/11-13.09/18-20.09/25-27.09.2026",
+      "contentHash": "822ac023e3ddc49a84612ed373aa5a52ca1c7d5ccf4169876a91a234d17f700a",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 1,
+        "endLine": 3
+      }
+    },
+    {
+      "blockId": "block-fd06bc52f9bec28a",
+      "order": 2,
+      "type": "municipal_event",
+      "citationText": "Târguri apicole și de pomușoare.\nLocația: Scuarul Teatrului Național de Operă și Balet „Maria Bieșu\".\nPerioada: 05- 06.09/12-13.09/19-20.09/26-27.09.",
+      "searchText": "Târguri apicole și de pomușoare.\nLocația: Scuarul Teatrului Național de Operă și Balet „Maria Bieșu\".\nPerioada: 05- 06.09/12-13.09/19-20.09/26-27.09.",
+      "contentHash": "2f1137fc4dc27108a723260eb4471a04b5db194be2d11f4973cdbd10c37aa749",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 5,
+        "endLine": 7
+      }
+    },
+    {
+      "blockId": "block-aa9ae0f0b374914d",
+      "order": 3,
+      "type": "municipal_event",
+      "citationText": "Târgul mămicilor ,,Mami&Co Fair\".\nLocația: Scuarul „Mezon\" din bd Moscova.\nPerioada: 13.09/27.09.2026.",
+      "searchText": "Târgul mămicilor ,,Mami&Co Fair\".\nLocația: Scuarul „Mezon\" din bd Moscova.\nPerioada: 13.09/27.09.2026.",
+      "contentHash": "512a79de9d354201dc2a33a2e8198b6dba7dc9faac79897797f69042016faa17",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 9,
+        "endLine": 11
+      }
+    },
+    {
+      "blockId": "block-da89190c0d0ccf77",
+      "order": 4,
+      "type": "municipal_event",
+      "citationText": "Târgul ,,Roada Gliei\" și Târgul ,,Butoiaș\".\nLocația: str. Mitropolit Varlaam, 63; str. Cărbunari.\nPerioada: 16.09-15.10.2026.",
+      "searchText": "Târgul ,,Roada Gliei\" și Târgul ,,Butoiaș\".\nLocația: str. Mitropolit Varlaam, 63; str. Cărbunari.\nPerioada: 16.09-15.10.2026.",
+      "contentHash": "7c99e17421415d1d0f4cc7b2743800c921261e0767f257572754edf4f9f78a57",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 13,
+        "endLine": 15
+      }
+    },
+    {
+      "blockId": "block-baab418c0a981337",
+      "order": 5,
+      "type": "municipal_event",
+      "citationText": "Festivalul etniilor ,,Unitate prin diversitate\".\nLocația: Grădina Publică „Ștefan cel Mare și Sfânt\".\nPerioada: 20.09.2026.",
+      "searchText": "Festivalul etniilor ,,Unitate prin diversitate\".\nLocația: Grădina Publică „Ștefan cel Mare și Sfânt\".\nPerioada: 20.09.2026.",
+      "contentHash": "e1fee9d5e32c7cc0c00e04985362cc02573a609e1ff55818333fac12181126e6",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 17,
+        "endLine": 19
+      }
+    },
+    {
+      "blockId": "block-06a11e2baafe94c3",
+      "order": 6,
+      "type": "municipal_event",
+      "citationText": "Târg al meșterilor populari dedicat etniilor\nLocația: Scuarul Catedralei Mitropolitane „Nașterea Domnului\".\nPerioada: 20.09.2026.",
+      "searchText": "Târg al meșterilor populari dedicat etniilor\nLocația: Scuarul Catedralei Mitropolitane „Nașterea Domnului\".\nPerioada: 20.09.2026.",
+      "contentHash": "c55b29d2f8fc21d2067241c5a9eabc1bf8f8329e287f8607f90de5950bc5ae75",
+      "provenance": {
+        "kind": "source_lines",
+        "startLine": 21,
+        "endLine": 23
+      }
+    }
+  ]
+}
