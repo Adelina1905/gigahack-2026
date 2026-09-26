@@ -1,7 +1,9 @@
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { api } from "../src/api";
 import ChatWindow from "../src/components/ChatWindow";
+import { safeHttpUrl } from "../src/components/sources/safeLink";
 import { I18nContext } from "../src/i18n/context";
 import { MESSAGES } from "../src/i18n/messages";
 import type { ChatMessage } from "../src/types/chat";
@@ -19,6 +21,8 @@ const message: ChatMessage = {
       added_date: "not-a-date",
       exactQuote: "The exact supporting sentence from the first document.",
       documentId: "document-1",
+      evidenceId: "evidence-1",
+      versionId: "version-1",
     },
     {
       title: "Unavailable municipal notice",
@@ -42,14 +46,55 @@ beforeEach(() => {
     configurable: true,
     value: () => {},
   });
+  vi.spyOn(api, "getSourcePreview").mockResolvedValue({
+    documentId: "document-1",
+    versionId: "version-1",
+    title: "A very detailed municipal PDF",
+    sourceUrl: "https://example.com/report.pdf",
+    sourceFile: "report.pdf",
+    sourceKind: "pdf",
+    publishedDate: "2026-09-27",
+    totalSections: 2,
+    start: 0,
+    focusIndex: 0,
+    focusSectionId: "passage-1",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "passage-1", order: 0, headingPath: ["Decision"],
+        text: "The exact supporting sentence from the first document.", locator: { page: 4 } },
+      { id: "passage-2", order: 1, headingPath: [], text: "Following stored text.", locator: { page: 5 } },
+    ],
+  });
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   cleanup();
   document.body.style.overflow = "";
 });
 
 describe("source preview", () => {
+  it("maps inline markers to the same source reader and leaves missing markers inert", async () => {
+    render(app());
+    const inline = screen.getByRole("button", { name: /Source 1 of 2: A very detailed/i });
+    fireEvent.click(inline);
+
+    expect(screen.getByRole("dialog", { name: "A very detailed municipal PDF" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("Following stored text.")).toBeTruthy());
+    expect(api.getSourcePreview).toHaveBeenCalledWith("document-1", expect.objectContaining({
+      versionId: "version-1", focusEvidenceId: "evidence-1",
+    }));
+
+    fireEvent.click(screen.getByRole("button", { name: en.message.closeSources }));
+    const missing: ChatMessage = { ...message, id: "missing", content: "Known [S1], missing [S9], malformed [SX]." };
+    cleanup();
+    render(app("chat-2", [missing]));
+    expect(screen.queryByRole("button", { name: /Source 9/i })).toBeNull();
+    expect(screen.getByText(/\[9\]/)).toBeTruthy();
+    expect(screen.getByText(/\[SX\]/)).toBeTruthy();
+  });
+
   it("opens from a citation pill with safe metadata and external-link attributes", () => {
     render(app());
     const trigger = screen.getByRole("button", { name: /1\s*example\.com/i });
@@ -58,7 +103,7 @@ describe("source preview", () => {
     const panel = screen.getByRole("dialog", { name: "A very detailed municipal PDF" });
     expect(panel.getAttribute("aria-modal")).toBeNull();
     expect(screen.getByText("Source 1 of 2")).toBeTruthy();
-    expect(screen.getByText("The exact supporting sentence from the first document.")).toBeTruthy();
+    expect(screen.getAllByText("The exact supporting sentence from the first document.")).toHaveLength(2);
     expect(screen.getByText("document-1")).toBeTruthy();
     expect(screen.queryByText("Invalid Date")).toBeNull();
 
@@ -118,5 +163,26 @@ describe("source preview", () => {
     fireEvent.click(screen.getByTestId("source-preview-backdrop"));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.body.style.overflow).toBe("");
+  });
+
+  it("falls back to the stored quotation when preview loading fails", async () => {
+    vi.mocked(api.getSourcePreview).mockRejectedValueOnce(new Error("offline"));
+    const failing = { ...message, id: "answer-fail", sources: [{ ...message.sources![0], documentId: "document-fail" }] };
+    render(app("chat-fail", [failing]));
+    fireEvent.click(screen.getByRole("button", { name: /1\s*example\.com/i }));
+    await waitFor(() => expect(screen.getByText(en.message.previewUnavailable)).toBeTruthy());
+    expect(screen.getByText("The exact supporting sentence from the first document.")).toBeTruthy();
+  });
+});
+
+describe("safe source links", () => {
+  it.each(["javascript:alert(1)", "data:text/html,x", "http://localhost/a", "http://127.0.0.1/a",
+    "http://10.0.0.1/a", "http://100.64.0.1/a", "http://172.16.0.1/a", "http://192.168.0.1/a",
+    "http://[::1]/a", "https://user:password@example.com/a", "not a url"])("rejects %s", value => {
+    expect(safeHttpUrl(value)).toBeUndefined();
+  });
+
+  it("allows public HTTPS hosts whose names happen to begin with fc", () => {
+    expect(safeHttpUrl("https://fcdomain.example/path")).toBe("https://fcdomain.example/path");
   });
 });

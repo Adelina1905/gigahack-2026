@@ -10,6 +10,7 @@
   "collections": {
     "evidenceAlias": "municipal_evidence_current",
     "catalogAlias": "municipal_catalog_current",
+    "previewCollection": "municipal_source_previews",
     "retainVersions": 2
   },
   "retrieval": {

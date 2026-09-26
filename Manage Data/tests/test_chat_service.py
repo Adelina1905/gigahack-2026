@@ -33,8 +33,11 @@ class ChatServiceTests(unittest.TestCase):
         self.assertEqual(rag.questions, ["Întrebare?"])
         self.assertEqual(llm.calls, [])
         self.assertEqual((reply.mode, reply.status, reply.answer), ("rag", "SUPPORTED", "Răspuns [S1]"))
-        self.assertEqual(reply.citations, [{"title": "Decizia 1", "url": "https://example.md/d1",
-                                            "exactQuote": "Textul exact", "documentId": "doc-1"}])
+        self.assertEqual(reply.citations, [{
+            "id": "S1", "evidenceId": "e1", "versionId": "v1", "title": "Decizia 1",
+            "url": "https://example.md/d1", "exactQuote": "Textul exact",
+            "documentId": "doc-1", "sourceFile": None, "locator": {"page": 2},
+        }])
         self.assertIsNone(reply.clarification_choices)
 
     def test_needs_clarification_returns_question_and_choices(self) -> None:

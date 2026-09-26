@@ -55,11 +55,16 @@ export function toAssistantMessage(response: ResponseView): ChatMessage {
     createdAt: toTimestamp(response.createdAt),
     sources: response.aiReply
       ? (response.aiReply.citations ?? []).map((citation) => ({
+          id: citation.id,
+          evidenceId: citation.evidenceId,
+          versionId: citation.versionId,
           title: citation.title || citation.documentId || "Source",
           link: citation.url ?? "",
           added_date: "",
           exactQuote: citation.exactQuote,
           documentId: citation.documentId,
+          sourceFile: citation.sourceFile,
+          locator: citation.locator,
         }))
       : (response.documents ?? []).map(toSourceDocument),
     requestId: response.requestId ?? undefined,

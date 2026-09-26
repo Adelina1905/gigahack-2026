@@ -38,6 +38,7 @@ function TypingDots() {
 // The RAG answer ends each claim with markers like "[S1] [S2]"; the cited documents
 // are shown as pills under the text instead. The rest is rendered as Markdown.
 const stripCitationMarkers = (text: string) => text.replace(/[ \t]*\[S\d+\]/g, "");
+const citationMarkdown = (text: string) => text.replace(/\[S(\d+)\]/g, "[$1](citation:S$1)");
 
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
   onToggleSpeech, speechState = "idle", activeSourceIndex = null,
@@ -70,17 +71,43 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
             <>
               {message.mode === "demo" && <p className="mb-2 text-xs font-semibold text-text-muted">{t.message.demo}</p>}
               {message.content && <Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={["img"]}
+                urlTransform={url => url.startsWith("citation:") ? url : (safeHttpUrl(url) ?? "")}
                 components={{
                   a: ({ href, children }) => {
+                    if (href?.startsWith("citation:S")) {
+                      const citationId = href.slice("citation:".length);
+                      const numericIndex = Number.parseInt(citationId.slice(1), 10) - 1;
+                      const sourceIndex = message.sources?.findIndex(source => source.id === citationId) ?? -1;
+                      const index = sourceIndex >= 0 ? sourceIndex : numericIndex;
+                      const source = message.sources?.[index];
+                      if (!source || !onSelectSource) return <span className="text-text-subtle">[{children}]</span>;
+                      return (
+                        <sup className="mx-0.5 inline-block align-super leading-none">
+                          <button
+                            type="button"
+                            aria-label={`${t.message.sourcePosition(index + 1, message.sources!.length)}: ${source.title}`}
+                            aria-haspopup="dialog"
+                            aria-expanded={activeSourceIndex === index}
+                            aria-controls={sourcePanelId}
+                            onClick={(event) => onSelectSource(message, index, event.currentTarget)}
+                            className={`cursor-pointer rounded-sm px-1 py-0.5 text-[0.7rem] font-bold underline decoration-1 underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                              activeSourceIndex === index ? "bg-primary text-text-inverted" : "bg-primary-50 text-primary hover:bg-primary-100"
+                            }`}
+                          >
+                            {children}
+                          </button>
+                        </sup>
+                      );
+                    }
                     const url = safeHttpUrl(href);
-                    return url ? <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{children}</a> : <span>{children}</span>;
+                    return url ? <a href={url} target="_blank" rel="noopener noreferrer" className="cursor-pointer text-primary underline hover:text-primary-dark">{children}</a> : <span>{children}</span>;
                   },
                   p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
                   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                   ul: ({ children }) => <ul className="list-disc pl-5">{children}</ul>,
                   ol: ({ children }) => <ol className="list-decimal pl-5">{children}</ol>,
                   pre: ({ children }) => <pre className="overflow-x-auto rounded-sm bg-background-secondary p-2">{children}</pre>,
-                }}>{stripCitationMarkers(message.content)}</Markdown>}
+                }}>{citationMarkdown(message.content)}</Markdown>}
               {message.sources && message.sources.length > 0 && onSelectSource && (
                 <CitationPills
                   sources={message.sources}

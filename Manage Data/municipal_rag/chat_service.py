@@ -50,8 +50,8 @@ class ChatService:
 
     @staticmethod
     def _rag_reply(status: str, result: dict[str, Any]) -> ChatReply:
-        citations = [{"title": item.get("title"), "url": item.get("url"), "exactQuote": item.get("exactQuote"),
-                      "documentId": item.get("documentId")} for item in result.get("citations") or []]
+        fields = ("id", "evidenceId", "versionId", "title", "url", "exactQuote", "documentId", "sourceFile", "locator")
+        citations = [{field: item.get(field) for field in fields} for item in result.get("citations") or []]
         if status == "NEEDS_CLARIFICATION":
             return ChatReply("rag", status, str(result.get("clarificationQuestion") or ""), citations,
                              list(result.get("clarificationChoices") or []))

@@ -45,13 +45,43 @@ export interface ResponseView {
     status: string;
     answer: string;
     citations: Array<{
+      id?: string | null;
+      evidenceId?: string | null;
+      versionId?: string | null;
       title: string | null;
       url: string | null;
       exactQuote: string | null;
       documentId: string | null;
+      sourceFile?: string | null;
+      locator?: Record<string, unknown> | null;
     }>;
     clarificationChoices: Array<{ documentId: string; label: string }> | null;
   } | null;
+}
+
+export interface SourceSectionView {
+  id: string;
+  order: number;
+  headingPath: string[];
+  text: string;
+  locator: Record<string, unknown>;
+}
+
+export interface SourcePreviewView {
+  documentId: string;
+  versionId: string;
+  title: string;
+  sourceUrl: string | null;
+  sourceFile: string | null;
+  sourceKind: "web" | "pdf" | "text";
+  publishedDate: string | null;
+  totalSections: number;
+  start: number;
+  focusIndex: number | null;
+  focusSectionId: string | null;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  sections: SourceSectionView[];
 }
 
 export interface ChatCreateRequest {
