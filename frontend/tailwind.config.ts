@@ -12,6 +12,7 @@ const config: Config = {
         background: {
           DEFAULT: "#FFFFFF", // Primary background
           secondary: "#F5F5F5", // Secondary background
+          canvas: "#F5F3EE", // Chat canvas, a limestone tint taken from the Nativity Cathedral facade
         },
         // Brand blues
         primary: {
@@ -60,11 +61,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        // Main display font
-        sans: ["Railway", "Raleway", "sans-serif"],
-        railway: ["Railway", "Raleway", "sans-serif"],
-        // Secondary, most-used body font
-        inter: ["Inter", "sans-serif"],
+        // UI and body font, as on chisinau.md
+        sans: ["Raleway", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Headline serif; chisinau.md sets article titles in Lora / Georgia
+        serif: ["Lora", "Georgia", "Times New Roman", "serif"],
       },
       fontWeight: {
         light: "300",

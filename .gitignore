@@ -1,10 +1,29 @@
 .env
 **/.env
+.env.*
+!.env.example
+
+# Python
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 tmp/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/target/
+
+# IDEs and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Municipal data pipeline (generated / large)
 Manage Data/Original Data/municipal_corpus/
 Manage Data/Original Data/chisinau-corpus-*/
 Manage Data/data/01_manifests/

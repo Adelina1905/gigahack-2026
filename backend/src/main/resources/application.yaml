@@ -1,3 +1,41 @@
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: backend
+  config:
+    # The repo-root .env is shared by every component; an optional backend/.env
+    # (see backend/.env.example) is imported last, so it overrides it.
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
+  autoconfigure:
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5433}/${POSTGRES_DB:smart_city}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:smart_city_app}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD}}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+app:
+  # Comma-separated list of browser origins allowed to call /api/** with credentials.
+  frontend-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,https://staging.faflist.solutions}
+  llm:
+    base-url: ${LLM_SERVICE_URL:http://127.0.0.1:8000}
+    connect-timeout: 5s
+    read-timeout: 180s
+    session-ttl: 30m
+    max-history: 20 # messages (user + assistant) kept per chat
+  alerts:
+    enabled: ${ALERTS_ENABLED:true} # scheduled scan of projects with alerts on
+    scan-interval: 2m
+    max-per-scan: 2 # new alerts per project per scheduled scan
+    manual-max: 3 # new alerts per manual scan / when alerts are turned on
