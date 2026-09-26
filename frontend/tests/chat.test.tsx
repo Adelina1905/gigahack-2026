@@ -43,12 +43,11 @@ describe("durable chat rendering", () => {
       citations: [{ title: "Second document ID", url: "https://example.com/two", documentId: "2", exactQuote: "Exact second quote" },
         { title: "First document ID", url: "https://example.org/one", documentId: "1", exactQuote: "Exact first quote" }],
     } });
-    render(<AssistantMessage message={assistant} />);
+    render(<AssistantMessage message={assistant} onSelectSource={() => {}} />);
     expect(screen.getByText("Demo response")).toBeTruthy();
-    // Citation markers are stripped from the text; the numbered pills and sources link instead.
+    // Citation markers are stripped from the text; numbered pills open the shared preview.
     expect(screen.getByText("Read.")).toBeTruthy();
-    expect(screen.getAllByRole("link")[0].getAttribute("href")).toBe("https://example.com/two");
-    expect(screen.getByText("Exact second quote")).toBeTruthy();
+    expect(screen.getAllByRole("button").some(button => button.textContent?.includes("example.com"))).toBe(true);
     expect(assistant.sources?.map(source => source.documentId)).toEqual(["2", "1"]);
   });
   it("links plain URLs and Markdown without enabling unsafe protocols or raw HTML", () => {
