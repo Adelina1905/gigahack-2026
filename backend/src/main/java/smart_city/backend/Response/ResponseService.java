@@ -18,13 +18,16 @@ public class ResponseService {
 
     private final ResponseRepository responseRepository;
     private final ChatRepository chatRepository;
+    private final AiResponseProvider aiResponseProvider;
 
     public ResponseService(
             ResponseRepository responseRepository,
-            ChatRepository chatRepository
+            ChatRepository chatRepository,
+            AiResponseProvider aiResponseProvider
     ) {
         this.responseRepository = responseRepository;
         this.chatRepository = chatRepository;
+        this.aiResponseProvider = aiResponseProvider;
     }
 
     @Transactional(readOnly = true)
@@ -68,9 +71,12 @@ public class ResponseService {
     ) {
         Chat chat = requireOwnedChat(clientId, chatId);
 
+        String userInput = request.text().trim();
+        String assistantText = aiResponseProvider.generateResponse(userInput);
+
         ChatResponseMessage response = new ChatResponseMessage(
                 chat,
-                request.text().trim()
+                assistantText
         );
 
         return ResponseView.from(responseRepository.save(response));
