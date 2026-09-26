@@ -44,5 +44,14 @@ public class DocumentService {
 
         return DocumentView.from(documentRepository.save(document));
     }
-}
 
+    // Cited documents are stored once and shared by every response citing them.
+    @Transactional
+    public StoredDocument findOrCreate(String title, String documentLink) {
+        return documentRepository
+                .findFirstByTitleAndDocumentLinkOrderByIdAsc(title, documentLink)
+                .orElseGet(() -> documentRepository.save(
+                        new StoredDocument(title, documentLink)
+                ));
+    }
+}

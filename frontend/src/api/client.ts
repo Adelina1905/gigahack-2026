@@ -1,19 +1,34 @@
+import type {
+    ChatCreateRequest,
+    ChatUpdateRequest,
+    ChatView,
+    DocumentCreateRequest,
+    DocumentView,
+    ResponseCreateRequest,
+    ResponseView,
+} from "./types";
+
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081/api";
 
-export interface Chat {
-    id: string;
-    name: string;
-    createdAt: string;
+// status is 0 when the request never reached the server (offline, CORS, backend down).
+export class ApiError extends Error {
+    readonly status: number;
+
+    constructor(message: string, status: number) {
+        super(message);
+        this.name = "ApiError";
+        this.status = status;
+    }
 }
 
-export interface ChatResponse {
-    id: number;
-    chatId: string;
-    text: string;
-    createdAt: string;
-}
+// Spring's default error body is { status, error, message, path, ... }.
+async function readErrorMessage(response: Response): Promise<string> {
+    const fallback = `Request failed with status ${response.status}`;
+    const body = await response.text().catch(() => "");
+    if (!body) return fallback;
 
+<<<<<<< HEAD
 export interface Document {
     id: number;
     title: string;
@@ -58,26 +73,40 @@ interface CreateResponseRequest {
 interface CreateDocumentRequest {
     title: string;
     documentLink: string;
+=======
+    try {
+        const json = JSON.parse(body) as { message?: string; error?: string };
+        return json.message || json.error || fallback;
+    } catch {
+        return body;
+    }
+>>>>>>> 1476d29b6fd73781a2c0d69909bb75d5f21c51bf
 }
 
 async function apiRequest<T>(
     path: string,
     options: RequestInit = {},
 ): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        headers: {
-            ...(options.body ? { "Content-Type": "application/json" } : {}),
-            ...options.headers,
-        },
-    });
+    let response: Response;
+
+    try {
+        response = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            credentials: "include",
+            headers: {
+                ...(options.body ? { "Content-Type": "application/json" } : {}),
+                ...options.headers,
+            },
+        });
+    } catch (error) {
+        throw new ApiError(
+            error instanceof Error ? error.message : "Network error",
+            0,
+        );
+    }
 
     if (!response.ok) {
-        const message = await response.text();
-        throw new Error(
-            message || `Request failed with status ${response.status}`,
-        );
+        throw new ApiError(await readErrorMessage(response), response.status);
     }
 
     if (response.status === 204) {
@@ -87,27 +116,27 @@ async function apiRequest<T>(
     return response.json() as Promise<T>;
 }
 
-export function getChats(): Promise<Chat[]> {
-    return apiRequest<Chat[]>("/chats");
+export function getChats(): Promise<ChatView[]> {
+    return apiRequest<ChatView[]>("/chats");
 }
 
-export function getChat(chatId: string): Promise<Chat> {
-    return apiRequest<Chat>(`/chats/${chatId}`);
+export function getChat(chatId: string): Promise<ChatView> {
+    return apiRequest<ChatView>(`/chats/${chatId}`);
 }
 
-export function createChat(name = "New chat"): Promise<Chat> {
-    const request: CreateChatRequest = { name };
+export function createChat(name = "New chat"): Promise<ChatView> {
+    const request: ChatCreateRequest = { name };
 
-    return apiRequest<Chat>("/chats", {
+    return apiRequest<ChatView>("/chats", {
         method: "POST",
         body: JSON.stringify(request),
     });
 }
 
-export function updateChat(chatId: string, name: string): Promise<Chat> {
-    const request: UpdateChatRequest = { name };
+export function updateChat(chatId: string, name: string): Promise<ChatView> {
+    const request: ChatUpdateRequest = { name };
 
-    return apiRequest<Chat>(`/chats/${chatId}`, {
+    return apiRequest<ChatView>(`/chats/${chatId}`, {
         method: "PATCH",
         body: JSON.stringify(request),
     });
@@ -119,15 +148,15 @@ export function deleteChat(chatId: string): Promise<void> {
     });
 }
 
-export function getResponses(chatId: string): Promise<ChatResponse[]> {
-    return apiRequest<ChatResponse[]>(`/chats/${chatId}/responses`);
+export function getResponses(chatId: string): Promise<ResponseView[]> {
+    return apiRequest<ResponseView[]>(`/chats/${chatId}/responses`);
 }
 
 export function getResponse(
     chatId: string,
     responseId: number,
-): Promise<ChatResponse> {
-    return apiRequest<ChatResponse>(
+): Promise<ResponseView> {
+    return apiRequest<ResponseView>(
         `/chats/${chatId}/responses/${responseId}`,
     );
 }
@@ -135,34 +164,46 @@ export function getResponse(
 export function createResponse(
     chatId: string,
     text: string,
-): Promise<ChatResponse> {
-    const request: CreateResponseRequest = { text };
+): Promise<ResponseView> {
+    const request: ResponseCreateRequest = { text };
 
-    return apiRequest<ChatResponse>(`/chats/${chatId}/responses`, {
+    return apiRequest<ResponseView>(`/chats/${chatId}/responses`, {
         method: "POST",
         body: JSON.stringify(request),
     });
 }
 
-export function getDocuments(): Promise<Document[]> {
-    return apiRequest<Document[]>("/documents");
+// Re-asks the AI with the stored prompt and replaces the answer in place.
+export function regenerateResponse(
+    chatId: string,
+    responseId: number,
+): Promise<ResponseView> {
+    return apiRequest<ResponseView>(
+        `/chats/${chatId}/responses/${responseId}`,
+        { method: "PUT" },
+    );
 }
 
-export function getDocument(documentId: number): Promise<Document> {
-    return apiRequest<Document>(`/documents/${documentId}`);
+export function getDocuments(): Promise<DocumentView[]> {
+    return apiRequest<DocumentView[]>("/documents");
+}
+
+export function getDocument(documentId: number): Promise<DocumentView> {
+    return apiRequest<DocumentView>(`/documents/${documentId}`);
 }
 
 export function createDocument(
     title: string,
     documentLink: string,
-): Promise<Document> {
-    const request: CreateDocumentRequest = { title, documentLink };
+): Promise<DocumentView> {
+    const request: DocumentCreateRequest = { title, documentLink };
 
-    return apiRequest<Document>("/documents", {
+    return apiRequest<DocumentView>("/documents", {
         method: "POST",
         body: JSON.stringify(request),
     });
 }
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 =======
@@ -189,3 +230,5 @@ export function clearLlmChat(
     });
 }
 >>>>>>> 14aa45ddf1c6c8e935f1772504fc1ac1ff14be79
+=======
+>>>>>>> 1476d29b6fd73781a2c0d69909bb75d5f21c51bf

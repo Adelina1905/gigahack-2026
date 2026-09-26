@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface ChatRepository extends JpaRepository<Chat, UUID> {
 
-    List<Chat> findAllByClientIdOrderByCreatedAtDesc(UUID clientId);
+    List<Chat> findAllByClientIdOrderByUpdatedAtDesc(UUID clientId);
 
     Optional<Chat> findByIdAndClientId(
             UUID id,

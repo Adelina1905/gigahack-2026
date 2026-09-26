@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -91,6 +92,26 @@ public class ResponseController {
                 ),
                 chatId,
                 request
+        );
+    }
+
+    @PutMapping("/{responseId}")
+    public ResponseView regenerateResponse(
+            @PathVariable UUID chatId,
+            @PathVariable Long responseId,
+            @CookieValue(
+                    name = AnonymousClientCookie.COOKIE_NAME,
+                    required = false
+            ) String clientCookie,
+            HttpServletResponse servletResponse
+    ) {
+        return responseService.regenerateResponse(
+                anonymousClientCookie.resolve(
+                        clientCookie,
+                        servletResponse
+                ),
+                chatId,
+                responseId
         );
     }
 }

@@ -12,9 +12,9 @@ React UI (:5173) ──► Java gateway (:8081) ──► Python LLM/RAG service
                      PostgreSQL (:5433)         Qdrant (:6333)
 ```
 
-- The **Java backend is the gateway** and owns session state. LLM chats are ephemeral: the browser generates a chat UUID, and Java keeps that chat's history in memory (TTL eviction, bounded length) and sends it with each turn.
+- The **Java backend is the gateway** and owns chat state. The UI's chats are stored in Postgres per anonymous browser (`smart_city_client_id` cookie, no user accounts). For each turn, Java sends the chat's recent stored turns to Python as history and stores the answer plus its cited documents. There is also an ephemeral in-memory chat API (`/api/llm/...`).
 - The **Python service** answers with cited municipal documents when a Qdrant index exists (`municipal_rag.answering.answer`, RAG v3). When there's no index, or the RAG returns NOT_FOUND/UNAVAILABLE, it falls back to plain LLM chat. It **must never ingest/embed documents while serving**; indexing is an offline `run_all.py` job.
-- All components read the single root `.env` (template: `.env.example`). Setup details are in `SETUP.md`.
+- All components read the single root `.env` (template: `.env.example`); the backend also imports an optional `backend/.env`, which overrides it. Setup details are in `SETUP.md`.
 - The team develops on Windows (docs use PowerShell, `mvnw.cmd`, `npm.cmd`); on Linux use `./mvnw` and `npm`. Port 8080 is often taken locally, which is why the backend defaults to 8081.
 
 ## Components and commands
@@ -46,18 +46,22 @@ uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requi
 ./mvnw test -Dtest=ClassName#method
 ```
 - Packages are per feature (`Chat`, `Response`, `Document`, `Llm`), each with Controller → Service → (Repository), `dto/` records, and `exceptions/` with `@ResponseStatus`.
-- `Llm` package: `POST /api/llm/chats/{chatId}/messages {text}` and `DELETE /api/llm/chats/{chatId}`. `LlmChatService` depends on the `LlmGateway` interface (implemented by `LlmServiceClient` over `RestClient`); history lives in `LlmSessionStore` and is only appended after a successful call. Settings are under `app.llm.*` in `application.yaml`.
-- The older DB-backed endpoints (`/api/chats`, `/api/chats/{id}/responses`, `/api/documents`) remain; they scope rows by the `smart_city_client_id` cookie (`AnonymousClientCookie`). `AiResponseProvider` now delegates to `LlmGateway` without history.
+- The UI uses the DB-backed endpoints: `/api/chats` (CRUD, listed by `updatedAt`), `/api/chats/{id}/responses` (POST asks the LLM; `PUT /{responseId}` regenerates an answer in place) and `/api/documents`. Rows are scoped by the `smart_city_client_id` cookie (`AnonymousClientCookie`). One `responses` row is one turn (`prompt` + `text`), and citations are linked through `response_documents` and returned as `documents`.
+- `ResponseService` calls the LLM between two short transactions (`TransactionTemplate`), so no DB connection is held during the call. `AiResponseProvider.historyFrom` turns the earlier stored turns into history, trimmed to `app.llm.max-history`. Regenerating uses only the turns before that response.
+- `Llm` package: `LlmGateway` interface (implemented by `LlmServiceClient` over `RestClient`) used by both chat paths; `LlmReply.displayText()` appends clarification choices. It also exposes the ephemeral API `POST /api/llm/chats/{chatId}/messages {text}` / `DELETE /api/llm/chats/{chatId}`, whose history lives in `LlmSessionStore`. Settings are under `app.llm.*` in `application.yaml`.
+- Tests inject fakes (e.g. a `@Primary` `RecordingLlmGateway` bean); `ResponseServiceTest` runs against the compose Postgres and rolls back.
 - The schema is owned by Flyway (`db/migration/V*__*.sql`) with `ddl-auto: validate`, so entity changes need a new migration.
-- `SecurityConfig` permits everything and allows credentialed CORS only from `app.frontend-origin` (default `http://localhost:5173`).
+- `SecurityConfig` permits everything and allows credentialed CORS only from `app.frontend-origins` (`FRONTEND_ORIGINS`; default `http://localhost:5173,https://staging.faflist.solutions`).
 
 ### Frontend (`frontend/`): React 19 + Vite + Tailwind v4, mixed JSX/TS
 ```
 npm install
 npm run dev | lint | typecheck | build
 ```
-- Single page: `App.jsx` → `pages/Playground.tsx` → `hooks/useChat.ts`, which generates the chat UUID and calls `sendLlmMessage` in `src/api/client.ts` (base `VITE_API_BASE_URL`, default `http://localhost:8081/api`).
-- `src/api/datasetServices.ts` and `hooks/useMockChat.ts` are legacy/mock paths.
+- Single page: `App.jsx` → `pages/Playground.tsx`, which composes `components/Sidebar.tsx` (the chat list from `hooks/useChats.ts`), `components/ChatWindow.tsx` and `hooks/useChat.ts` (per-chat threads, optimistic send, retry, regenerate). The open chat is in the URL (`?chat=<uuid>`, `hooks/useActiveChatId.ts`), and a chat is created on the first message.
+- `src/api/client.ts` holds the fetch calls (base `VITE_API_BASE_URL`, default `http://localhost:8081/api`; `ApiError.status` is 0 on network failure). `api/types.ts` mirrors the Java DTOs, `api/mappers.ts` is the only place they are mapped to UI types, and `api/index.ts` switches to `api/mockClient.ts` when `VITE_USE_MOCK=true`.
+- `db/cache.ts` is a best-effort IndexedDB (Dexie) cache of chats and messages, used for instant paint and to keep unsent messages; the server remains the source of truth.
+- `vite.config.js` proxies `/api` to 8081 and allows the staging host, so `VITE_API_BASE_URL=/api npm run dev -- --host 0.0.0.0` serves everything same-origin.
 
 ### Other Python prototypes
 - `test.py` (root): standalone FastAPI + Ollama prototype, not used by the system.
