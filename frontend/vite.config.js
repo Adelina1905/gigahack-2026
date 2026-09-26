@@ -6,8 +6,9 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    allowedHosts: ['staging.faflist.solutions'],
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': 'http://localhost:8081',
     },
   },
 })

@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { createChat, createResponse } from "../api/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { clearLlmChat, sendLlmMessage } from "../api/client";
 import type { ChatMessage, MessageStatus } from "../types/chat";
 
 const makeId = () => crypto.randomUUID();
@@ -7,8 +7,22 @@ const makeId = () => crypto.randomUUID();
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const chatIdRef = useRef<string | null>(null);
-  const chatCreationRef = useRef<Promise<string> | null>(null);
+  // Chats are ephemeral: the id lives only as long as this hook instance and
+  // the backend keeps the history in memory under it.
+  const chatIdRef = useRef(crypto.randomUUID());
+
+  useEffect(() => {
+    const chatId = chatIdRef.current;
+    const clear = () => {
+      clearLlmChat(chatId, { keepalive: true }).catch(() => {});
+    };
+
+    window.addEventListener("pagehide", clear);
+    return () => {
+      window.removeEventListener("pagehide", clear);
+      clear();
+    };
+  }, []);
 
   const setStatus = useCallback((id: string, status: MessageStatus) => {
     setMessages((current) =>
@@ -18,41 +32,29 @@ export function useChat() {
     );
   }, []);
 
-  const getOrCreateChatId = useCallback(async () => {
-    if (chatIdRef.current) return chatIdRef.current;
-
-    if (!chatCreationRef.current) {
-      chatCreationRef.current = createChat().then((chat) => {
-        chatIdRef.current = chat.id;
-        return chat.id;
-      });
-    }
-
-    try {
-      return await chatCreationRef.current;
-    } catch (error) {
-      chatCreationRef.current = null;
-      throw error;
-    }
-  }, []);
-
   const deliver = useCallback(
     async (messageId: string, userInput: string) => {
       setIsTyping(true);
 
       try {
-        const chatId = await getOrCreateChatId();
-        const assistantResponse = await createResponse(chatId, userInput);
+        const assistantResponse = await sendLlmMessage(
+          chatIdRef.current,
+          userInput,
+        );
 
         setStatus(messageId, "sent");
         setMessages((current) => [
           ...current,
           {
-            id: String(assistantResponse.id),
+            id: makeId(),
             role: "assistant",
             content: assistantResponse.text,
             createdAt: new Date(assistantResponse.createdAt).getTime(),
-            sources: [],
+            sources: assistantResponse.sources.map((source) => ({
+              title: source.title,
+              link: source.link ?? "",
+              added_date: "",
+            })),
           },
         ]);
       } catch (error) {
@@ -62,7 +64,7 @@ export function useChat() {
         setIsTyping(false);
       }
     },
-    [getOrCreateChatId, setStatus],
+    [setStatus],
   );
 
   const send = useCallback(

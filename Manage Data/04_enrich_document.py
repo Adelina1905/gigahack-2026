@@ -10,10 +10,10 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from pipeline_core import DATA_V2_DIRECTORY, read_json, stable_id, unique_preserving_order, write_versioned_json
+from pipeline_core import DATA_DIRECTORY, read_json, stable_id, unique_preserving_order, write_versioned_json
 
 
-DEFAULT_OUTPUT_DIRECTORY = DATA_V2_DIRECTORY / "04_enriched"
+DEFAULT_OUTPUT_DIRECTORY = DATA_DIRECTORY / "04_enriched"
 ROMANIAN_MONTHS = {
     "ianuarie": 1,
     "februarie": 2,
@@ -65,7 +65,9 @@ def date_fact(passage_id: str, source_text: str, value: str, qualifier: str) -> 
     }
 
 
-def extract_date_facts(passage: dict[str, Any]) -> list[dict[str, Any]]:
+def extract_date_facts(
+    passage: dict[str, Any], warnings: list[str] | None = None
+) -> list[dict[str, Any]]:
     text = passage["citationText"]
     passage_id = passage["passageId"]
     facts: list[dict[str, Any]] = []
@@ -75,7 +77,12 @@ def extract_date_facts(passage: dict[str, Any]) -> list[dict[str, Any]]:
         month = ROMANIAN_MONTHS[match.group("month").lower()]
         year = int(match.group("year"))
         for group in ("d1", "d2", "d3"):
-            parsed = date(year, month, int(match.group(group))).isoformat()
+            try:
+                parsed = date(year, month, int(match.group(group))).isoformat()
+            except ValueError:
+                if warnings is not None:
+                    warnings.append("INVALID_DATE_IGNORED")
+                continue
             facts.append(date_fact(passage_id, match.group(0), parsed, "explicit"))
         covered_spans.append(match.span())
 
@@ -85,17 +92,27 @@ def extract_date_facts(passage: dict[str, Any]) -> list[dict[str, Any]]:
     for match in ROMANIAN_DATE_PATTERN.finditer(text):
         if covered(match.span()):
             continue
-        parsed = date(
-            int(match.group("year")),
-            ROMANIAN_MONTHS[match.group("month").lower()],
-            int(match.group("day")),
-        ).isoformat()
+        try:
+            parsed = date(
+                int(match.group("year")),
+                ROMANIAN_MONTHS[match.group("month").lower()],
+                int(match.group("day")),
+            ).isoformat()
+        except ValueError:
+            if warnings is not None:
+                warnings.append("INVALID_DATE_IGNORED")
+            continue
         facts.append(date_fact(passage_id, match.group(0), parsed, "explicit"))
 
     for match in NUMERIC_DATE_PATTERN.finditer(text):
-        parsed = date(
-            int(match.group("year")), int(match.group("month")), int(match.group("day"))
-        ).isoformat()
+        try:
+            parsed = date(
+                int(match.group("year")), int(match.group("month")), int(match.group("day"))
+            ).isoformat()
+        except ValueError:
+            if warnings is not None:
+                warnings.append("INVALID_DATE_IGNORED")
+            continue
         facts.append(date_fact(passage_id, match.group(0), parsed, "explicit"))
 
     for match in ACADEMIC_YEAR_PATTERN.finditer(text):
@@ -226,14 +243,15 @@ def enrich_document(input_path: Path) -> dict[str, Any]:
         if not isinstance(passage, dict):
             raise ValueError("Every passage must be an object.")
         facts = extract_numeric_facts(passage)
+        date_warnings: list[str] = []
         if passage.get("type") != "municipal_event":
-            facts = extract_date_facts(passage) + facts
+            facts = extract_date_facts(passage, date_warnings) + facts
         event_facts, event_warnings = normalize_event_period(passage)
         facts.extend(event_facts)
         passage["facts"] = facts
-        passage["warnings"] = unique_preserving_order(event_warnings)
+        passage["warnings"] = unique_preserving_order(date_warnings + event_warnings)
         all_facts.extend(facts)
-        document_warnings.extend(event_warnings)
+        document_warnings.extend(date_warnings + event_warnings)
     document["schemaVersion"] = "2.1"
     document["pipelineStage"] = "enriched"
     document["facts"] = all_facts

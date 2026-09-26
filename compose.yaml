@@ -17,7 +17,24 @@ services:
       timeout: 5s
       retries: 10
 
+  qdrant:
+    # Keep the server minor version in step with qdrant-client in Manage Data/requirements.txt.
+    image: qdrant/qdrant:v1.19.1
+    container_name: gigahack-qdrant
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres_data:
     name: gigahack-postgres18-data
-
+  qdrant_data:
+    name: gigahack-qdrant-data

@@ -1,5 +1,5 @@
 .env
-<<<<<<< HEAD
+**/.env
 .env.*
 !.env.example
 
@@ -7,6 +7,8 @@
 .venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+tmp/
 
 # Frontend
 frontend/node_modules/
@@ -21,10 +23,20 @@ backend/target/
 .DS_Store
 Thumbs.db
 
-=======
-**/.env
-__pycache__/
-*.py[cod]
-.pytest_cache/
-tmp/
->>>>>>> main
+# Municipal data pipeline (generated / large)
+Manage Data/Original Data/municipal_corpus/
+Manage Data/Original Data/chisinau-corpus-*/
+Manage Data/data/01_manifests/
+Manage Data/data/01_sources/
+Manage Data/data/02_extracted/
+Manage Data/data/03_structured/
+Manage Data/data/04_enriched/
+Manage Data/data/05_validated/
+Manage Data/data/06_chunks/
+Manage Data/data/08_qdrant/*
+!Manage Data/data/08_qdrant/.gitkeep
+Manage Data/data/07_embeddings/*
+!Manage Data/data/07_embeddings/.gitkeep
+Manage Data/data/09_review/*
+!Manage Data/data/09_review/.gitkeep
+Manage Data/data/10_traces/*.jsonl

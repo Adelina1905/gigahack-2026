@@ -1,5 +1,5 @@
 const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081/api";
 
 export interface Chat {
     id: string;
@@ -19,6 +19,25 @@ export interface Document {
     title: string;
     documentLink: string;
     addedAt: string;
+}
+
+export interface LlmSource {
+    title: string;
+    link: string | null;
+    quote: string | null;
+}
+
+export interface LlmMessageResponse {
+    chatId: string;
+    text: string;
+    mode: "rag" | "llm";
+    status: string;
+    sources: LlmSource[];
+    createdAt: string;
+}
+
+interface LlmMessageRequest {
+    text: string;
 }
 
 interface CreateChatRequest {
@@ -142,3 +161,25 @@ export function createDocument(
     });
 }
 
+
+export function sendLlmMessage(
+    chatId: string,
+    text: string,
+): Promise<LlmMessageResponse> {
+    const request: LlmMessageRequest = { text };
+
+    return apiRequest<LlmMessageResponse>(`/llm/chats/${chatId}/messages`, {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function clearLlmChat(
+    chatId: string,
+    options: { keepalive?: boolean } = {},
+): Promise<void> {
+    return apiRequest<void>(`/llm/chats/${chatId}`, {
+        method: "DELETE",
+        keepalive: options.keepalive,
+    });
+}
