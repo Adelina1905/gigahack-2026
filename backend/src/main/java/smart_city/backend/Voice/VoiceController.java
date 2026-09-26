@@ -35,8 +35,12 @@ public class VoiceController {
     }
 
     @PostMapping(value = "/voice/transcriptions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public TranscriptionView transcribe(@RequestParam("audio") MultipartFile audio) {
-        TranscriptionView result = voice.transcribe(audio);
+    public TranscriptionView transcribe(
+            @RequestParam("audio") MultipartFile audio,
+            // The UI language when the recording was sent (ro, ru or en); optional.
+            @RequestParam(value = "language", required = false) String language
+    ) {
+        TranscriptionView result = voice.transcribe(audio, language);
         if (result == null || result.text() == null || result.text().isBlank()) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                     "Speech service returned an empty transcript");

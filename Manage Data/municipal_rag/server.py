@@ -77,6 +77,8 @@ class InputAudio(BaseModel):
 
 class TranscriptionRequest(BaseModel):
     inputAudio: InputAudio
+    # The UI language when the recording was sent, used as the speech-to-text language hint.
+    language: Literal["ro", "ru", "en"] | None = None
 
 
 class TranscriptionResponse(BaseModel):
@@ -166,7 +168,8 @@ def create_app(chat_service: ReplyService, rag: RagService | None, llm_configure
         if voice_service is None:
             raise HTTPException(status_code=503, detail="Speech service is unavailable")
         try:
-            result = voice_service.transcribe(request.inputAudio.data, request.inputAudio.format)
+            result = voice_service.transcribe(request.inputAudio.data, request.inputAudio.format,
+                                              request.language)
         except ManagedAudioApiError as error:
             raise HTTPException(status_code=error.status_code, detail=str(error)) from None
         return TranscriptionResponse(text=result.text, language=result.language,

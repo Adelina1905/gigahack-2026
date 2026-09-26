@@ -31,9 +31,9 @@ class VoiceControllerTest {
     @Test
     void transcriptionForwardsMultipartAudio() {
         var file = new MockMultipartFile("audio", "recording.webm", "audio/webm", new byte[]{1});
-        when(voice.transcribe(file)).thenReturn(new TranscriptionView("Salut", "ro", 1.0));
+        when(voice.transcribe(file, "ro")).thenReturn(new TranscriptionView("Salut", "ro", 1.0));
 
-        assertThat(controller.transcribe(file)).isEqualTo(new TranscriptionView("Salut", "ro", 1.0));
+        assertThat(controller.transcribe(file, "ro")).isEqualTo(new TranscriptionView("Salut", "ro", 1.0));
     }
 
     @Test

@@ -13,6 +13,8 @@ from .api import ManagedAudioApiError, request_audio_bytes, request_audio_json
 LOGGER = logging.getLogger(__name__)
 MAX_AUDIO_BYTES = 10 * 1024 * 1024
 SUPPORTED_FORMATS = {"aac", "flac", "m4a", "mp3", "mp4", "ogg", "wav", "webm"}
+# ISO-639-1 hints the UI can send: its languages (Romanian, Russian, English).
+SUPPORTED_LANGUAGES = {"ro", "ru", "en"}
 
 
 @dataclass(frozen=True)
@@ -49,10 +51,14 @@ class OpenRouterVoiceService:
         self._tts_model = tts_model
         self._tts_voice = tts_voice
 
-    def transcribe(self, encoded_audio: str, audio_format: str) -> Transcription:
+    def transcribe(self, encoded_audio: str, audio_format: str,
+                   language: str | None = None) -> Transcription:
         normalized_format = audio_format.strip().lower()
         if normalized_format not in SUPPORTED_FORMATS:
             raise ManagedAudioApiError(415, "Unsupported audio format")
+        normalized_language = language.strip().lower() if language else None
+        if normalized_language is not None and normalized_language not in SUPPORTED_LANGUAGES:
+            raise ManagedAudioApiError(400, "Unsupported language hint")
         try:
             decoded = base64.b64decode(encoded_audio, validate=True)
         except (binascii.Error, ValueError):
@@ -63,10 +69,14 @@ class OpenRouterVoiceService:
             raise ManagedAudioApiError(413, "Audio recording exceeds 10 MB")
 
         started = time.monotonic()
-        result, generation_id = request_audio_json("audio/transcriptions", {
+        payload: dict[str, object] = {
             "model": self._stt_model,
             "input_audio": {"data": encoded_audio, "format": normalized_format},
-        }, self._api_key)
+        }
+        # The UI language at request time; without it the provider detects the language itself.
+        if normalized_language is not None:
+            payload["language"] = normalized_language
+        result, generation_id = request_audio_json("audio/transcriptions", payload, self._api_key)
         text = result.get("text")
         if not isinstance(text, str) or not text.strip():
             raise ManagedAudioApiError(503, "The speech provider returned an empty transcript")
@@ -76,8 +86,9 @@ class OpenRouterVoiceService:
             duration = usage.get("seconds")
         duration_seconds = float(duration) if isinstance(duration, (int, float)) else None
         language = result.get("language")
-        LOGGER.info("Speech transcription completed model=%s format=%s elapsedMs=%d generationId=%s",
-                    self._stt_model, normalized_format, int((time.monotonic() - started) * 1000),
+        LOGGER.info("Speech transcription completed model=%s format=%s languageHint=%s elapsedMs=%d generationId=%s",
+                    self._stt_model, normalized_format, normalized_language or "-",
+                    int((time.monotonic() - started) * 1000),
                     generation_id or "-")
         return Transcription(text.strip(), language if isinstance(language, str) else None,
                              duration_seconds)

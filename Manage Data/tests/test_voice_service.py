@@ -40,6 +40,22 @@ class VoiceServiceTests(unittest.TestCase):
         })
         self.assertNotIn("language", payload)
 
+    @patch("municipal_rag.voice_service.request_audio_json")
+    def test_transcription_sends_the_ui_language_hint(self, request) -> None:
+        request.return_value = ({"text": "Привет", "language": "ru"}, None)
+        encoded = base64.b64encode(b"audio bytes").decode("ascii")
+
+        self.service.transcribe(encoded, "webm", " RU ")
+
+        _, payload, _ = request.call_args.args
+        self.assertEqual(payload["language"], "ru")
+
+    def test_transcription_rejects_an_unsupported_language_hint_locally(self) -> None:
+        encoded = base64.b64encode(b"audio bytes").decode("ascii")
+        with self.assertRaises(ManagedAudioApiError) as raised:
+            self.service.transcribe(encoded, "webm", "fr")
+        self.assertEqual(raised.exception.status_code, 400)
+
     def test_transcription_rejects_invalid_or_unsupported_audio_locally(self) -> None:
         for encoded, audio_format, status in (("not base64", "webm", 400),
                                                (base64.b64encode(b"x").decode(), "exe", 415)):
@@ -78,8 +94,9 @@ class VoiceServiceTests(unittest.TestCase):
             self.skipTest("requirements-server.txt is not installed")
 
         class FakeVoice:
-            def transcribe(self, encoded_audio: str, audio_format: str) -> Transcription:
-                self.transcription_call = (encoded_audio, audio_format)
+            def transcribe(self, encoded_audio: str, audio_format: str,
+                           language: str | None = None) -> Transcription:
+                self.transcription_call = (encoded_audio, audio_format, language)
                 return Transcription("Salut", "ro", 1.25)
 
             def synthesize(self, text: str) -> SpeechAudio:
@@ -96,7 +113,17 @@ class VoiceServiceTests(unittest.TestCase):
 
         self.assertEqual(transcription.status_code, 200)
         self.assertEqual(transcription.json(), {"text": "Salut", "language": "ro", "durationSeconds": 1.25})
-        self.assertEqual(voice.transcription_call, (encoded, "webm"))
+        self.assertEqual(voice.transcription_call, (encoded, "webm", None))
+
+        with_language = client.post("/v1/audio/transcriptions", json={
+            "inputAudio": {"data": encoded, "format": "webm"}, "language": "en",
+        })
+        unsupported = client.post("/v1/audio/transcriptions", json={
+            "inputAudio": {"data": encoded, "format": "webm"}, "language": "fr",
+        })
+        self.assertEqual(with_language.status_code, 200)
+        self.assertEqual(voice.transcription_call, (encoded, "webm", "en"))
+        self.assertEqual(unsupported.status_code, 422)
         self.assertEqual(speech.status_code, 200)
         self.assertEqual(speech.content, b"mp3")
         self.assertEqual(speech.headers["content-type"], "audio/mpeg")

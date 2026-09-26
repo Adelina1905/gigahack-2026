@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import type { Locale } from "../i18n/messages";
 import type { ChatMessage } from "../types/chat";
 
 export type VoicePhase =
@@ -26,6 +27,8 @@ interface UseVoiceModeOptions {
   chatId: string | null;
   messages: ChatMessage[];
   onSend: (text: string) => string | null;
+  // The active UI language, sent with each recording as the transcription hint.
+  language: Locale;
 }
 
 const CALIBRATION_MS = 500;
@@ -50,7 +53,7 @@ const extensionFor = (mimeType: string) => {
   return "webm";
 };
 
-export function useVoiceMode({ chatId, messages, onSend }: UseVoiceModeOptions) {
+export function useVoiceMode({ chatId, messages, onSend, language }: UseVoiceModeOptions) {
   const [enabled, setEnabled] = useState(false);
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [error, setError] = useState<VoiceError | null>(null);
@@ -61,6 +64,7 @@ export function useVoiceMode({ chatId, messages, onSend }: UseVoiceModeOptions) 
   const enabledRef = useRef(false);
   const onSendRef = useRef(onSend);
   const chatIdRef = useRef(chatId);
+  const languageRef = useRef(language);
   const previousChatIdRef = useRef(chatId);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -76,7 +80,7 @@ export function useVoiceMode({ chatId, messages, onSend }: UseVoiceModeOptions) 
   const audioUrlsRef = useRef(new Map<string, string>());
   const playbackTokenRef = useRef(0);
 
-  useEffect(() => { onSendRef.current = onSend; chatIdRef.current = chatId; });
+  useEffect(() => { onSendRef.current = onSend; chatIdRef.current = chatId; languageRef.current = language; });
 
   const clearCaptureResources = useCallback(() => {
     if (sampleTimerRef.current !== null) window.clearInterval(sampleTimerRef.current);
@@ -239,7 +243,8 @@ export function useVoiceMode({ chatId, messages, onSend }: UseVoiceModeOptions) 
         }
         const transcriptionToken = ++transcriptionTokenRef.current;
         setPhase("transcribing");
-        void api.transcribeAudio(blob, extensionFor(recordedType)).then(result => {
+        // Read at send time, so a language switch during recording is respected.
+        void api.transcribeAudio(blob, extensionFor(recordedType), languageRef.current).then(result => {
           if (transcriptionToken !== transcriptionTokenRef.current || !enabledRef.current) return;
           const requestId = onSendRef.current(result.text);
           if (!requestId) {

@@ -96,8 +96,8 @@ function ChatWindow({
   error,
   onDismissError,
 }: ChatWindowProps) {
-  const { t } = useI18n();
-  const voice = useVoiceMode({ chatId, messages, onSend });
+  const { t, locale } = useI18n();
+  const voice = useVoiceMode({ chatId, messages, onSend, language: locale });
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef({ chatId, hadMessages: false });
 

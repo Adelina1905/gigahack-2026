@@ -19,7 +19,7 @@ const render = (ui: React.ReactElement) => renderRaw(
 );
 
 function VoiceHarness() {
-  const voice = useVoiceMode({ chatId: null, messages: [], onSend: () => null });
+  const voice = useVoiceMode({ chatId: null, messages: [], onSend: () => null, language: "ro" });
   return <>
     <span data-testid="enabled">{String(voice.enabled)}</span>
     <span data-testid="error">{voice.error ?? "none"}</span>
@@ -69,6 +69,20 @@ describe("voice API client", () => {
     expect(options.body).toBeInstanceOf(FormData);
     expect(options.headers["Content-Type"]).toBeUndefined();
     expect(options.credentials).toBe("include");
+    // No language given: no hint is sent.
+    expect((options.body as FormData).has("language")).toBe(false);
+  });
+
+  it("sends the active UI language with the recording", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ text: "Привет", language: "ru", durationSeconds: 1 }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await transcribeAudio(new Blob(["audio"], { type: "audio/webm" }), "webm", "ru");
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options.body as FormData).get("language")).toBe("ru");
   });
 
   it("returns speech as a blob", async () => {

@@ -236,9 +236,12 @@ export function createDocument(
     });
 }
 
-export function transcribeAudio(audio: Blob, extension: string): Promise<TranscriptionView> {
+// language is the UI language when the recording is sent; the speech-to-text
+// service uses it as a hint instead of guessing between Romanian and Russian.
+export function transcribeAudio(audio: Blob, extension: string, language?: string): Promise<TranscriptionView> {
     const form = new FormData();
     form.append("audio", audio, `recording.${extension}`);
+    if (language) form.append("language", language);
     return apiRequest<TranscriptionView>("/voice/transcriptions", {
         method: "POST",
         body: form,
