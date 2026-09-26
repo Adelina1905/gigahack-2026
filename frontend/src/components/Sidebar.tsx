@@ -117,7 +117,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
         onClick={() => onSelect(chat.id)}
         aria-current={isActive ? "page" : undefined}
         title={chat.name}
-        className={`w-full truncate rounded-lg py-2 pl-3 pr-16 text-left text-sm transition-colors ${
+        className={`w-full cursor-pointer truncate rounded-lg py-2 pl-3 pr-16 text-left text-sm transition-colors ${
           isActive
             ? "bg-background font-medium text-text shadow-sm"
             : "text-text-muted hover:bg-background hover:text-text"
@@ -135,7 +135,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
           type="button"
           onClick={startEditing}
           aria-label={`Rename "${chat.name}"`}
-          className="rounded-md p-1.5 text-text-subtle hover:bg-background-secondary hover:text-text"
+          className="rounded-md cursor-pointer p-1.5 text-text-subtle hover:bg-background-secondary hover:text-text"
         >
           <svg {...iconProps} className="h-3.5 w-3.5">
             <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
@@ -145,7 +145,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
           type="button"
           onClick={handleDelete}
           aria-label={`Delete "${chat.name}"`}
-          className="rounded-md p-1.5 text-text-subtle hover:bg-danger-light hover:text-danger"
+          className="rounded-md cursor-pointer p-1.5 text-text-subtle hover:bg-danger-light hover:text-danger"
         >
           <svg {...iconProps} className="h-3.5 w-3.5">
             <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
