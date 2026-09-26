@@ -1,5 +1,5 @@
 import { ApiError } from "./client";
-import type { ChatView, DocumentView, ResponseView } from "./types";
+import type { ChatView, DocumentView, ProjectView, ResponseView } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 // In-memory stand-in for the Spring Boot API, persisted to localStorage so
@@ -89,7 +89,11 @@ function pickReply(prompt: string, exclude?: string): MockReply {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+type StoredProject = Omit<ProjectView, "chats">;
+
 interface MockStore {
+  // Missing in stores saved before projects existed.
+  projects?: StoredProject[];
   chats: ChatView[];
   responses: ResponseView[];
   nextResponseId: number;
@@ -111,7 +115,7 @@ function load(): MockStore {
   } catch {
     // Storage unavailable or corrupt: start empty.
   }
-  return { chats: [], responses: [], nextResponseId: 1 };
+  return { projects: [], chats: [], responses: [], nextResponseId: 1 };
 }
 
 function save(store: MockStore) {
@@ -128,26 +132,110 @@ function findChat(store: MockStore, chatId: string) {
   return chat;
 }
 
-const byUpdatedDesc = (a: ChatView, b: ChatView) =>
+const byUpdatedDesc = (a: { updatedAt: string }, b: { updatedAt: string }) =>
   b.updatedAt.localeCompare(a.updatedAt);
+
+const projectsOf = (store: MockStore) => (store.projects ??= []);
+
+function findProject(store: MockStore, projectId: string) {
+  const project = projectsOf(store).find((candidate) => candidate.id === projectId);
+  if (!project) throw notFound("Project");
+  return project;
+}
+
+const withChats = (store: MockStore, project: StoredProject): ProjectView => ({
+  ...project,
+  chats: store.chats
+    .filter((chat) => chat.projectId === project.id)
+    .map((chat) => ({ ...chat, projectId: chat.projectId ?? null }))
+    .sort(byUpdatedDesc),
+});
+
+function validName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 255) throw new ApiError("Invalid project name", 400);
+  return trimmed;
+}
+
+export async function getProjects(): Promise<ProjectView[]> {
+  await wait(150);
+  const store = load();
+  return [...projectsOf(store)].sort(byUpdatedDesc).map((project) => withChats(store, project));
+}
+
+export async function createProject(name: string): Promise<ProjectView> {
+  await wait(100);
+  const store = load();
+  const timestamp = now();
+  const project: StoredProject = {
+    id: crypto.randomUUID(),
+    name: validName(name),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  projectsOf(store).push(project);
+  save(store);
+  return withChats(store, project);
+}
+
+export async function updateProject(projectId: string, name: string): Promise<ProjectView> {
+  await wait(100);
+  const store = load();
+  const project = findProject(store, projectId);
+  project.name = validName(name);
+  project.updatedAt = now();
+  save(store);
+  return withChats(store, project);
+}
+
+// Like ON DELETE SET NULL: the chats stay and lose their project.
+export async function deleteProject(projectId: string): Promise<void> {
+  await wait(100);
+  const store = load();
+  findProject(store, projectId);
+  store.projects = projectsOf(store).filter((project) => project.id !== projectId);
+  for (const chat of store.chats) {
+    if (chat.projectId === projectId) chat.projectId = null;
+  }
+  save(store);
+}
+
+export async function setChatProject(chatId: string, projectId: string | null): Promise<ChatView> {
+  await wait(100);
+  const store = load();
+  const chat = findChat(store, chatId);
+  if (projectId) findProject(store, projectId).updatedAt = now();
+  chat.projectId = projectId;
+  save(store);
+  return chat;
+}
 
 export async function getChats(): Promise<ChatView[]> {
   await wait(150);
-  return [...load().chats].sort(byUpdatedDesc);
+  return load().chats
+    .map((chat) => ({ ...chat, projectId: chat.projectId ?? null }))
+    .sort(byUpdatedDesc);
 }
 
 export async function getChat(chatId: string): Promise<ChatView> {
   await wait(100);
-  return findChat(load(), chatId);
+  const chat = findChat(load(), chatId);
+  return { ...chat, projectId: chat.projectId ?? null };
 }
 
-export async function createChat(name = DEFAULT_CHAT_NAME): Promise<ChatView> {
+export async function createChat(
+  name = DEFAULT_CHAT_NAME,
+  _requestId?: string,
+  projectId?: string | null,
+): Promise<ChatView> {
   await wait(100);
   const store = load();
   const timestamp = now();
+  if (projectId) findProject(store, projectId).updatedAt = timestamp;
   const chat: ChatView = {
     id: crypto.randomUUID(),
     name,
+    projectId: projectId ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
   };

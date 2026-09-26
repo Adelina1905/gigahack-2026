@@ -125,7 +125,56 @@ export function useChats() {
     [chats, forget],
   );
 
+  // Files a chat under a project (or takes it out with null). Resolves to
+  // true once the server has accepted the move.
+  const moveToProject = useCallback(
+    async (chatId: string, projectId: string | null): Promise<boolean> => {
+      const previous = chats.find((chat) => chat.id === chatId);
+      if (!previous || previous.projectId === projectId) return false;
+
+      setChats((current) =>
+        current.map((chat) => (chat.id === chatId ? { ...chat, projectId } : chat)),
+      );
+
+      try {
+        upsert(toChatSummary(await api.setChatProject(chatId, projectId)));
+        return true;
+      } catch (moveError) {
+        console.error("Failed to move chat", moveError);
+        setChats((current) =>
+          current.map((chat) => (chat.id === chatId ? { ...chat, projectId: previous.projectId } : chat)),
+        );
+        setError("moveFailed");
+        return false;
+      }
+    },
+    [chats, upsert],
+  );
+
+  // A deleted project's chats stay, ungrouped. Returns their ids so the
+  // change can be undone if the delete fails.
+  const detachProject = useCallback(
+    (projectId: string) => {
+      const detached = chats.filter((chat) => chat.projectId === projectId).map((chat) => chat.id);
+      setChats((current) =>
+        current.map((chat) => (chat.projectId === projectId ? { ...chat, projectId: null } : chat)),
+      );
+      return detached;
+    },
+    [chats],
+  );
+
+  const reattachProject = useCallback((projectId: string, chatIds: string[]) => {
+    const ids = new Set(chatIds);
+    setChats((current) =>
+      current.map((chat) => (ids.has(chat.id) ? { ...chat, projectId } : chat)),
+    );
+  }, []);
+
   const dismissError = useCallback(() => setError(null), []);
 
-  return { chats, isLoaded, error, upsert, refresh, rename, remove, forget, dismissError };
+  return {
+    chats, isLoaded, error, upsert, refresh, rename, remove, forget,
+    moveToProject, detachProject, reattachProject, dismissError,
+  };
 }

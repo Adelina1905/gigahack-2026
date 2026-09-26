@@ -1,9 +1,13 @@
 import type {
     ChatCreateRequest,
+    ChatProjectRequest,
     ChatUpdateRequest,
     ChatView,
     DocumentCreateRequest,
     DocumentView,
+    ProjectCreateRequest,
+    ProjectUpdateRequest,
+    ProjectView,
     ResponseCreateRequest,
     ResponseRegenerateRequest,
     ResponseView,
@@ -97,8 +101,12 @@ export function getChat(chatId: string): Promise<ChatView> {
     return apiRequest<ChatView>(`/chats/${chatId}`);
 }
 
-export function createChat(name = DEFAULT_CHAT_NAME, requestId?: string): Promise<ChatView> {
-    const request: ChatCreateRequest = { name, requestId };
+export function createChat(
+    name = DEFAULT_CHAT_NAME,
+    requestId?: string,
+    projectId?: string | null,
+): Promise<ChatView> {
+    const request: ChatCreateRequest = { name, requestId, projectId: projectId ?? undefined };
 
     return apiRequest<ChatView>("/chats", {
         method: "POST",
@@ -117,6 +125,45 @@ export function updateChat(chatId: string, name: string): Promise<ChatView> {
 
 export function deleteChat(chatId: string): Promise<void> {
     return apiRequest<void>(`/chats/${chatId}`, {
+        method: "DELETE",
+    });
+}
+
+// null takes the chat out of its project.
+export function setChatProject(chatId: string, projectId: string | null): Promise<ChatView> {
+    const request: ChatProjectRequest = { projectId };
+
+    return apiRequest<ChatView>(`/chats/${chatId}/project`, {
+        method: "PUT",
+        body: JSON.stringify(request),
+    });
+}
+
+export function getProjects(): Promise<ProjectView[]> {
+    return apiRequest<ProjectView[]>("/projects");
+}
+
+export function createProject(name: string): Promise<ProjectView> {
+    const request: ProjectCreateRequest = { name };
+
+    return apiRequest<ProjectView>("/projects", {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function updateProject(projectId: string, name: string): Promise<ProjectView> {
+    const request: ProjectUpdateRequest = { name };
+
+    return apiRequest<ProjectView>(`/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(request),
+    });
+}
+
+// The project's chats are kept and move back to the ungrouped list.
+export function deleteProject(projectId: string): Promise<void> {
+    return apiRequest<void>(`/projects/${projectId}`, {
         method: "DELETE",
     });
 }

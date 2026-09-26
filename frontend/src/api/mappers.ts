@@ -1,5 +1,5 @@
-import type { ChatMessage, ChatSummary, SourceDocument } from "../types/chat";
-import type { ChatView, DocumentView, ResponseView } from "./types";
+import type { ChatMessage, ChatSummary, ProjectSummary, SourceDocument } from "../types/chat";
+import type { ChatView, DocumentView, ProjectView, ResponseView } from "./types";
 
 // The only place backend field names are translated into UI types.
 
@@ -16,7 +16,16 @@ export function toChatSummary(chat: ChatView): ChatSummary {
   return {
     id: chat.id,
     name: chat.name,
+    projectId: chat.projectId ?? null,
     updatedAt: toTimestamp(chat.updatedAt ?? chat.createdAt),
+  };
+}
+
+export function toProjectSummary(project: ProjectView): ProjectSummary {
+  return {
+    id: project.id,
+    name: project.name,
+    updatedAt: toTimestamp(project.updatedAt ?? project.createdAt),
   };
 }
 

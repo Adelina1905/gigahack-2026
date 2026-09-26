@@ -1,63 +1,62 @@
-package smart_city.backend.Chat;
+package smart_city.backend.Project;
 
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import smart_city.backend.Chat.dto.ChatCreateRequest;
-import smart_city.backend.Chat.dto.ChatProjectRequest;
-import smart_city.backend.Chat.dto.ChatResponse;
-import smart_city.backend.Chat.dto.ChatUpdateRequest;
+import smart_city.backend.Chat.AnonymousClientCookie;
+import smart_city.backend.Project.dto.ProjectCreateRequest;
+import smart_city.backend.Project.dto.ProjectResponse;
+import smart_city.backend.Project.dto.ProjectUpdateRequest;
 
 import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/chats")
-public class ChatController {
+@RequestMapping("/api/projects")
+public class ProjectController {
 
-    private final ChatService chatService;
+    private final ProjectService projectService;
     private final AnonymousClientCookie anonymousClientCookie;
 
-    public ChatController(
-            ChatService chatService,
+    public ProjectController(
+            ProjectService projectService,
             AnonymousClientCookie anonymousClientCookie
     ) {
-        this.chatService = chatService;
+        this.projectService = projectService;
         this.anonymousClientCookie = anonymousClientCookie;
     }
 
 
     @GetMapping
-    public List<ChatResponse> getAllChats(
+    public List<ProjectResponse> getAllProjects(
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
             ) String clientCookie,
             HttpServletResponse response
     ) {
-        return chatService.getAllChats(
+
+        return projectService.getAllProjects(
                 anonymousClientCookie.resolve(clientCookie, response)
         );
     }
 
 
-    @GetMapping("/{chatId}")
-    public ChatResponse getChat(
-            @PathVariable UUID chatId,
+    @GetMapping("/{projectId}")
+    public ProjectResponse getProject(
+            @PathVariable UUID projectId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -65,17 +64,17 @@ public class ChatController {
             HttpServletResponse response
     ) {
 
-        return chatService.getChat(
+        return projectService.getProject(
                 anonymousClientCookie.resolve(clientCookie, response),
-                chatId
+                projectId
         );
     }
 
 
     @PostMapping
-    public ResponseEntity<ChatResponse> createChat(
-            @Valid @RequestBody(required = false)
-            ChatCreateRequest request,
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProjectResponse createProject(
+            @Valid @RequestBody ProjectCreateRequest request,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -83,18 +82,17 @@ public class ChatController {
             HttpServletResponse response
     ) {
 
-        ChatService.CreationResult result = chatService.createIdempotent(
+        return projectService.createProject(
                 anonymousClientCookie.resolve(clientCookie, response),
                 request
         );
-        return ResponseEntity.status(result.created() ? 201 : 200).body(result.chat());
     }
 
 
-    @PatchMapping("/{chatId}")
-    public ChatResponse updateChat(
-            @PathVariable UUID chatId,
-            @Valid @RequestBody ChatUpdateRequest request,
+    @PatchMapping("/{projectId}")
+    public ProjectResponse updateProject(
+            @PathVariable UUID projectId,
+            @Valid @RequestBody ProjectUpdateRequest request,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -102,37 +100,18 @@ public class ChatController {
             HttpServletResponse response
     ) {
 
-        return chatService.updateChat(
+        return projectService.updateProject(
                 anonymousClientCookie.resolve(clientCookie, response),
-                chatId,
+                projectId,
                 request
         );
     }
 
 
-    @PutMapping("/{chatId}/project")
-    public ChatResponse moveChat(
-            @PathVariable UUID chatId,
-            @RequestBody ChatProjectRequest request,
-            @CookieValue(
-                    name = AnonymousClientCookie.COOKIE_NAME,
-                    required = false
-            ) String clientCookie,
-            HttpServletResponse response
-    ) {
-
-        return chatService.moveChat(
-                anonymousClientCookie.resolve(clientCookie, response),
-                chatId,
-                request
-        );
-    }
-
-
-    @DeleteMapping("/{chatId}")
+    @DeleteMapping("/{projectId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteChat(
-            @PathVariable UUID chatId,
+    public void deleteProject(
+            @PathVariable UUID projectId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -140,9 +119,9 @@ public class ChatController {
             HttpServletResponse response
     ) {
 
-        chatService.deleteChat(
+        projectService.deleteProject(
                 anonymousClientCookie.resolve(clientCookie, response),
-                chatId
+                projectId
         );
     }
 }

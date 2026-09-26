@@ -21,6 +21,8 @@ interface UseChatOptions {
   onChatCreated?: (chat: ChatSummary, isActive: boolean) => void;
   onReply?: (chatId: string) => void;
   onChatMissing?: (chatId: string) => void;
+  // The project a chat started from the draft is created in (null: none).
+  draftProjectId?: string | null;
 }
 
 export function useChat(chatId: string | null, options: UseChatOptions = {}) {
@@ -99,7 +101,8 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
       // The durable outbox is written before either chat creation or submission.
       await cache.saveMessages(target, threadsRef.current[target] ?? [message]);
       if (target === DRAFT) {
-        const chat = await api.createChat(DEFAULT_CHAT_NAME, message.chatRequestId);
+        const chat = await api.createChat(
+          DEFAULT_CHAT_NAME, message.chatRequestId, optionsRef.current.draftProjectId ?? null);
         target = chat.id;
         const draft = threadsRef.current[DRAFT] ?? [message];
         const next = { ...threadsRef.current, [target]: draft };

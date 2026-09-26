@@ -7,9 +7,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import smart_city.backend.config.ApiConflictException;
 
 import smart_city.backend.Chat.dto.ChatCreateRequest;
+import smart_city.backend.Chat.dto.ChatProjectRequest;
 import smart_city.backend.Chat.dto.ChatResponse;
 import smart_city.backend.Chat.dto.ChatUpdateRequest;
 import smart_city.backend.Chat.exceptions.ChatNotFoundException;
+import smart_city.backend.Project.Project;
+import smart_city.backend.Project.ProjectRepository;
+import smart_city.backend.Project.exceptions.ProjectNotFoundException;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,10 +22,16 @@ import java.util.UUID;
 public class ChatService {
 
     private final ChatRepository chatRepository;
+    private final ProjectRepository projectRepository;
     private final TransactionTemplate transactions;
 
-    public ChatService(ChatRepository chatRepository, TransactionTemplate transactions) {
+    public ChatService(
+            ChatRepository chatRepository,
+            ProjectRepository projectRepository,
+            TransactionTemplate transactions
+    ) {
         this.chatRepository = chatRepository;
+        this.projectRepository = projectRepository;
         this.transactions = transactions;
     }
 
@@ -59,13 +69,19 @@ public class ChatService {
         String name = request == null || request.name() == null || request.name().isBlank()
                 ? "New chat" : request.name().trim();
         UUID requestId = request == null || request.requestId() == null ? UUID.randomUUID() : request.requestId();
+        UUID projectId = request == null ? null : request.projectId();
         try {
             return transactions.execute(tx -> {
+                Project project = projectId == null ? null : findOwnedProject(clientId, projectId);
                 var previous = chatRepository.findByClientIdAndRequestId(clientId, requestId);
                 if (previous.isPresent()) return replay(previous.get(), name);
                 Chat chat = new Chat(clientId, name);
                 chat.setRequestId(requestId);
                 chat.setCreationName(name);
+                if (project != null) {
+                    chat.setProjectId(project.getId());
+                    project.touch();
+                }
                 return new CreationResult(ChatResponse.from(chatRepository.saveAndFlush(chat)), true);
             });
         } catch (DataIntegrityViolationException collision) {
@@ -103,6 +119,32 @@ public class ChatService {
 
 
     @Transactional
+    public ChatResponse moveChat(
+            UUID clientId,
+            UUID chatId,
+            ChatProjectRequest request
+    ) {
+
+        Chat chat = findOwnedChat(
+                clientId,
+                chatId
+        );
+
+        UUID projectId = request == null ? null : request.projectId();
+
+        if (projectId == null) {
+            chat.setProjectId(null);
+        } else {
+            Project project = findOwnedProject(clientId, projectId);
+            chat.setProjectId(project.getId());
+            project.touch();
+        }
+
+        return ChatResponse.from(chat);
+    }
+
+
+    @Transactional
     public void deleteChat(
             UUID clientId,
             UUID chatId
@@ -129,6 +171,22 @@ public class ChatService {
                 )
                 .orElseThrow(
                         ChatNotFoundException::new
+                );
+    }
+
+
+    private Project findOwnedProject(
+            UUID clientId,
+            UUID projectId
+    ) {
+
+        return projectRepository
+                .findByIdAndClientId(
+                        projectId,
+                        clientId
+                )
+                .orElseThrow(
+                        ProjectNotFoundException::new
                 );
     }
 }

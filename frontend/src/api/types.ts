@@ -5,8 +5,18 @@
 export interface ChatView {
   id: string; // UUID
   name: string;
+  projectId: string | null; // UUID of the project the chat is filed under
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601, bumped on every new or regenerated reply
+}
+
+// Project/dto/ProjectResponse.java
+export interface ProjectView {
+  id: string; // UUID
+  name: string;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601, bumped on rename and when a chat is added
+  chats: ChatView[]; // ordered by updatedAt desc
 }
 
 // Document/dto/DocumentView.java
@@ -47,9 +57,22 @@ export interface ResponseView {
 export interface ChatCreateRequest {
   name?: string;
   requestId?: string;
+  projectId?: string;
 }
 
 export interface ChatUpdateRequest {
+  name: string;
+}
+
+export interface ChatProjectRequest {
+  projectId: string | null;
+}
+
+export interface ProjectCreateRequest {
+  name: string;
+}
+
+export interface ProjectUpdateRequest {
   name: string;
 }
 
