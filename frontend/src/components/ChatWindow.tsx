@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../i18n/context";
+import type { ErrorKey } from "../i18n/messages";
 import type { ChatMessage } from "../types/chat";
 import ChatInput from "./Input";
 import UserMessage from "./UserMessage";
@@ -17,18 +19,14 @@ interface ChatWindowProps {
   onSend: (text: string) => void;
   onRetry?: (id: string) => void;
   onRegenerate?: (id: string) => void;
-  error?: string | null;
+  error?: ErrorKey | null;
   onDismissError?: () => void;
 }
 
-// Topics the indexed municipal corpus actually covers.
-const SUGGESTIONS = [
-  { topic: "Events", question: "Which fairs with local products take place in September?" },
-  { topic: "Community", question: "When and where is the “Unitate prin diversitate” festival?" },
-  { topic: "Education", question: "How many schools and kindergartens does the city manage?" },
-];
 
 function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
+  const { t } = useI18n();
+
   return (
     <div className="flex min-h-full flex-col justify-center gap-4 py-2">
       {/* Modelled on the blue "Ședința PMC" tile of chisinau.md. */}
@@ -38,12 +36,11 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
           className="pointer-events-none absolute -top-28 -right-24 h-80 w-80 rounded-full bg-primary-dark/60"
         />
         <div className="relative">
-          <p className="text-sm font-medium text-accent">Chișinău municipal assistant</p>
-          <h2 className="mt-2 font-serif text-[1.75rem] leading-tight sm:text-4xl">How can I help you today?</h2>
+          <p className="text-sm font-medium text-accent">{t.welcome.eyebrow}</p>
+          <h2 className="mt-2 font-serif text-[1.75rem] leading-tight sm:text-4xl">{t.welcome.title}</h2>
           <TitleRule tone="light" className="mt-3 sm:mt-4" />
           <p className="mt-3 max-w-xl text-[0.9375rem] font-light leading-relaxed text-white/85 sm:mt-4 sm:text-base">
-            Ask about city events, education and public services. Answers come from official municipal documents
-            and link to their sources.
+            {t.welcome.body}
           </p>
         </div>
         <Skyline
@@ -52,8 +49,9 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
         />
       </section>
 
+      {/* Topics the indexed municipal corpus actually covers. */}
       <div className="grid gap-3 sm:grid-cols-3">
-        {SUGGESTIONS.map(({ topic, question }) => (
+        {t.welcome.suggestions.map(({ topic, question }) => (
           <button
             key={question}
             type="button"
@@ -65,7 +63,7 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
             </span>
             <span className="font-serif text-[1.0625rem] leading-snug text-text">{question}</span>
             <span className="mt-auto inline-flex items-center gap-2 pt-1 text-sm font-medium text-primary">
-              Ask
+              {t.welcome.ask}
               <svg
                 viewBox="0 0 22 16"
                 aria-hidden="true"
@@ -97,6 +95,7 @@ function ChatWindow({
   error,
   onDismissError,
 }: ChatWindowProps) {
+  const { t } = useI18n();
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef({ chatId, hadMessages: false });
 
@@ -120,7 +119,7 @@ function ChatWindow({
       <div className="flex-1 overflow-y-auto px-4 py-6">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-text-subtle">
-            Loading conversation…
+            {t.chat.loading}
           </div>
         ) : isEmpty ? (
           <WelcomePanel onSend={onSend} />
@@ -145,12 +144,12 @@ function ChatWindow({
             role="alert"
             className="flex items-center justify-between gap-3 rounded-sm border border-danger bg-danger-light px-3 py-2 text-sm text-danger"
           >
-            <span>{error}</span>
+            <span>{t.errors[error]}</span>
             {onDismissError && (
               <button
                 type="button"
                 onClick={onDismissError}
-                aria-label="Dismiss error"
+                aria-label={t.chat.dismissError}
                 className="shrink-0 rounded-sm px-1.5 text-base leading-none hover:bg-background"
               >
                 ×
@@ -163,7 +162,7 @@ function ChatWindow({
         )}
         <ChatInput onSend={onSend} disabled={isTyping} />
         <p className="text-center text-[11px] text-text-subtle">
-          Answers are generated from municipal documents and can contain mistakes. Check the cited sources.
+          {t.chat.disclaimer}
         </p>
       </div>
     </div>

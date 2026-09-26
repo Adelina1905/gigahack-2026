@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import type { ChatSummary } from "../types/chat";
+import { useI18n } from "../i18n/context";
+import type { ChatGroup } from "../i18n/messages";
+import { DEFAULT_CHAT_NAME, type ChatSummary } from "../types/chat";
 import { CathedralArt } from "./brand/Landmarks";
 import TitleRule from "./brand/TitleRule";
 
@@ -18,19 +20,19 @@ interface SidebarProps {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const GROUPS = ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Older"] as const;
+const GROUPS: ChatGroup[] = ["today", "yesterday", "week", "month", "older"];
 
-function groupOf(updatedAt: number, startOfToday: number): (typeof GROUPS)[number] {
-  if (updatedAt >= startOfToday) return "Today";
-  if (updatedAt >= startOfToday - DAY_MS) return "Yesterday";
-  if (updatedAt >= startOfToday - 7 * DAY_MS) return "Previous 7 days";
-  if (updatedAt >= startOfToday - 30 * DAY_MS) return "Previous 30 days";
-  return "Older";
+function groupOf(updatedAt: number, startOfToday: number): ChatGroup {
+  if (updatedAt >= startOfToday) return "today";
+  if (updatedAt >= startOfToday - DAY_MS) return "yesterday";
+  if (updatedAt >= startOfToday - 7 * DAY_MS) return "week";
+  if (updatedAt >= startOfToday - 30 * DAY_MS) return "month";
+  return "older";
 }
 
 function groupChats(chats: ChatSummary[]) {
   const startOfToday = new Date().setHours(0, 0, 0, 0);
-  const groups = new Map<string, ChatSummary[]>();
+  const groups = new Map<ChatGroup, ChatSummary[]>();
 
   for (const chat of chats) {
     const label = groupOf(chat.updatedAt, startOfToday);
@@ -61,6 +63,8 @@ interface ChatItemProps {
 }
 
 function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProps) {
+  const { t } = useI18n();
+  const title = chat.name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : chat.name;
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(chat.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +96,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Delete "${chat.name}"? This can't be undone.`)) onDelete(chat.id);
+    if (window.confirm(t.sidebar.confirmRemove(title))) onDelete(chat.id);
   };
 
   if (isEditing) {
@@ -105,7 +109,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          aria-label="Chat name"
+          aria-label={t.sidebar.chatName}
           className="w-full rounded-sm border border-primary bg-background px-3 py-2 text-sm text-text focus:outline-none"
         />
       </li>
@@ -118,14 +122,14 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
         type="button"
         onClick={() => onSelect(chat.id)}
         aria-current={isActive ? "page" : undefined}
-        title={chat.name}
+        title={title}
         className={`w-full cursor-pointer truncate rounded-r-sm border-l-[3px] py-2 pl-3 pr-16 text-left text-sm transition-colors ${
           isActive
             ? "border-primary bg-primary-50 font-semibold text-primary-700"
             : "border-transparent text-text-muted hover:bg-background-secondary hover:text-text"
         }`}
       >
-        {chat.name}
+        {title}
       </button>
 
       <div
@@ -136,7 +140,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
         <button
           type="button"
           onClick={startEditing}
-          aria-label={`Rename "${chat.name}"`}
+          aria-label={t.sidebar.rename(title)}
           className="cursor-pointer rounded-sm p-1.5 text-text-subtle hover:bg-background hover:text-primary"
         >
           <svg {...iconProps} className="h-3.5 w-3.5">
@@ -146,7 +150,7 @@ function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProp
         <button
           type="button"
           onClick={handleDelete}
-          aria-label={`Delete "${chat.name}"`}
+          aria-label={t.sidebar.remove(title)}
           className="cursor-pointer rounded-sm p-1.5 text-text-subtle hover:bg-danger-light hover:text-danger"
         >
           <svg {...iconProps} className="h-3.5 w-3.5">
@@ -169,6 +173,7 @@ function Sidebar({
   isOpen,
   onClose,
 }: SidebarProps) {
+  const { t } = useI18n();
   const groups = groupChats(chats);
 
   return (
@@ -182,7 +187,7 @@ function Sidebar({
       )}
 
       <aside
-        aria-label="Chat history"
+        aria-label={t.sidebar.label}
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-hidden border-r border-border bg-background transition-transform md:relative md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -195,13 +200,13 @@ function Sidebar({
 
         <div className="relative flex items-start justify-between gap-2 px-5 pt-5">
           <div>
-            <h2 className="text-[1.625rem] font-light leading-tight text-primary">Conversations</h2>
+            <h2 className="text-[1.625rem] font-light leading-tight text-primary">{t.sidebar.title}</h2>
             <TitleRule className="mt-2.5" />
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close sidebar"
+            aria-label={t.sidebar.close}
             className="rounded-sm p-2 text-text-muted hover:bg-background-secondary md:hidden"
           >
             <svg {...iconProps} className="h-4 w-4">
@@ -219,14 +224,14 @@ function Sidebar({
             <svg {...iconProps} className="h-4 w-4">
               <path d="M12 5v14M5 12h14" />
             </svg>
-            New chat
+            {t.sidebar.newChat}
           </button>
         </div>
 
         <nav className="relative flex-1 overflow-y-auto px-4 pb-4">
           {groups.length === 0 ? (
             <p className="px-1 py-2 text-sm text-text-subtle">
-              {isLoaded ? "No chats yet." : "Loading chats…"}
+              {isLoaded ? t.sidebar.empty : t.sidebar.loading}
             </p>
           ) : (
             groups.map((group) => (
@@ -234,7 +239,7 @@ function Sidebar({
                 {/* Outlined like the date stamps on chisinau.md news cards. */}
                 <h3 className="pb-1.5">
                   <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
-                    {group.label}
+                    {t.sidebar.groups[group.label]}
                   </span>
                 </h3>
                 <ul className="flex flex-col gap-0.5">

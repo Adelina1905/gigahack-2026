@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
 
 interface SourceItemProps {
@@ -14,15 +15,16 @@ const getHostname = (link: string) => {
   }
 };
 
-const formatDate = (iso: string) => {
+const formatDate = (iso: string, locale: string) => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
 };
 
 function SourceItem({ source, index }: SourceItemProps) {
+  const { t } = useI18n();
   const hostname = getHostname(source.link);
-  const addedDate = formatDate(source.added_date);
+  const addedDate = formatDate(source.added_date, t.meta.intl);
 
   const content = (
     <>
@@ -38,7 +40,7 @@ function SourceItem({ source, index }: SourceItemProps) {
           <span className="truncate text-xs text-text-subtle">
             {hostname}
             {hostname && addedDate && " · "}
-            {addedDate && `Added ${addedDate}`}
+            {addedDate && t.message.added(addedDate)}
           </span>
         )}
       </span>

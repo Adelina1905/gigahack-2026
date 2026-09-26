@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "../i18n/context";
 import type { ChatMessage } from "../types/chat";
 import { CityEmblem } from "./brand/Landmarks";
 import SourceList from "./sources/SourceList";
@@ -12,8 +13,9 @@ interface AssistantMessageProps {
 }
 
 function TypingDots() {
+  const { t } = useI18n();
   return (
-    <div className="flex items-center gap-1 py-1.5" aria-label="Assistant is typing">
+    <div className="flex items-center gap-1 py-1.5" aria-label={t.message.typing}>
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
@@ -43,6 +45,7 @@ function renderBold(text: string) {
 }
 
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: AssistantMessageProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -80,7 +83,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
               onClick={handleCopy}
               className="rounded-sm px-2 py-1 text-xs text-text-subtle hover:bg-background hover:text-primary"
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? t.message.copied : t.message.copy}
             </button>
             {onRegenerate && (
               <button
@@ -88,7 +91,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
                 onClick={() => onRegenerate(message.id)}
                 className="rounded-sm px-2 py-1 text-xs text-text-subtle hover:bg-background hover:text-primary"
               >
-                Regenerate
+                {t.message.regenerate}
               </button>
             )}
           </div>

@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n/context";
 import type { SourceDocument } from "../types/chat";
 
 interface CitationPillsProps {
@@ -16,10 +17,11 @@ const getHostname = (link: string) => {
 // Compact references under the answer text, numbered like the Sources list below it.
 // Hovering or focusing a pill opens a small card linking to the document.
 function CitationPills({ sources }: CitationPillsProps) {
+  const { t } = useI18n();
   if (sources.length === 0) return null;
 
   return (
-    <ul aria-label="Cited in this answer" className="mt-2 flex flex-wrap gap-1.5 whitespace-normal">
+    <ul aria-label={t.message.citedIn} className="mt-2 flex flex-wrap gap-1.5 whitespace-normal">
       {sources.map((source, i) => {
         const hostname = getHostname(source.link);
         return (
@@ -49,7 +51,7 @@ function CitationPills({ sources }: CitationPillsProps) {
                     </svg>
                   </a>
                 ) : (
-                  <p className="mt-1.5 text-xs text-text-subtle">No link available</p>
+                  <p className="mt-1.5 text-xs text-text-subtle">{t.message.noLink}</p>
                 )}
               </div>
             </div>

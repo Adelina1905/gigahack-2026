@@ -1,0 +1,250 @@
+export const LOCALES = ["ro", "ru", "en"] as const;
+export type Locale = (typeof LOCALES)[number];
+export const DEFAULT_LOCALE: Locale = "ro";
+
+// Romanian is the source language; the other locales must match its shape.
+// Russian follows chisinau.md's spelling of the city, "Кишинэу".
+const ro = {
+  meta: {
+    name: "Română",
+    short: "RO",
+    intl: "ro-MD",
+    title: "Asistent Municipal · Chișinău",
+    officialSiteUrl: "https://www.chisinau.md/",
+  },
+  header: {
+    tagline: "Asistentul virtual al municipiului Chișinău · răspunsuri cu trimiteri la documente oficiale",
+    officialSite: "Site oficial: chisinau.md",
+    wordmark: ["Asistent Municipal", "Chișinău"],
+    openMenu: "Deschide istoricul conversațiilor",
+    language: "Limba",
+  },
+  sidebar: {
+    label: "Istoricul conversațiilor",
+    title: "Conversații",
+    newChat: "Conversație nouă",
+    close: "Închide panoul",
+    empty: "Nicio conversație încă.",
+    loading: "Se încarcă conversațiile…",
+    groups: {
+      today: "Astăzi",
+      yesterday: "Ieri",
+      week: "Ultimele 7 zile",
+      month: "Ultimele 30 de zile",
+      older: "Mai vechi",
+    },
+    chatName: "Numele conversației",
+    rename: (name: string) => `Redenumește „${name}”`,
+    remove: (name: string) => `Șterge „${name}”`,
+    confirmRemove: (name: string) => `Ștergeți „${name}”? Acțiunea nu poate fi anulată.`,
+  },
+  breadcrumb: "Navigare",
+  welcome: {
+    eyebrow: "Asistentul municipal al Chișinăului",
+    title: "Cu ce vă pot ajuta astăzi?",
+    body: "Întrebați despre evenimentele din oraș, educație și serviciile publice. Răspunsurile se bazează pe documente oficiale ale municipalității și trimit la sursele lor.",
+    ask: "Întreabă",
+    suggestions: [
+      { topic: "Evenimente", question: "Ce târguri cu produse autohtone au loc în septembrie?" },
+      { topic: "Comunitate", question: "Când și unde are loc festivalul „Unitate prin diversitate”?" },
+      { topic: "Educație", question: "Câte școli și grădinițe administrează municipalitatea?" },
+    ],
+  },
+  chat: {
+    loading: "Se încarcă conversația…",
+    placeholder: "Întrebați despre Chișinău…",
+    send: "Trimite mesajul",
+    disclaimer:
+      "Răspunsurile sunt generate pe baza documentelor municipale și pot conține erori. Verificați sursele citate.",
+    dismissError: "Închide mesajul de eroare",
+  },
+  message: {
+    typing: "Asistentul scrie",
+    copy: "Copiază",
+    copied: "Copiat",
+    regenerate: "Generează din nou",
+    sending: "Se trimite…",
+    failed: "Mesajul nu a fost trimis",
+    retry: "Reîncearcă",
+    sources: "Surse",
+    added: (date: string) => `Adăugat ${date}`,
+    citedIn: "Surse citate în acest răspuns",
+    noLink: "Link indisponibil",
+  },
+  support: {
+    prefix: "Pentru mai multe informații, contactați serviciul de asistență la",
+    dismiss: "Închide",
+  },
+  errors: {
+    offline: "Serverul nu poate fi accesat. Verificați conexiunea și încercați din nou.",
+    chatMissing: "Această conversație nu mai există. Începeți o conversație nouă pentru a continua.",
+    generic: "Ceva nu a funcționat. Încercați din nou.",
+    renameFailed: "Conversația nu a putut fi redenumită. Încercați din nou.",
+    deleteFailed: "Conversația nu a putut fi ștearsă. Încercați din nou.",
+  },
+};
+
+export type Messages = typeof ro;
+export type ErrorKey = keyof Messages["errors"];
+export type ChatGroup = keyof Messages["sidebar"]["groups"];
+
+const ru: Messages = {
+  meta: {
+    name: "Русский",
+    short: "RU",
+    intl: "ru-MD",
+    title: "Муниципальный ассистент · Кишинэу",
+    officialSiteUrl: "https://www.chisinau.md/ru",
+  },
+  header: {
+    tagline: "Виртуальный ассистент муниципия Кишинэу · ответы со ссылками на официальные документы",
+    officialSite: "Официальный сайт: chisinau.md",
+    wordmark: ["Муниципальный", "ассистент", "Кишинэу"],
+    openMenu: "Открыть историю чатов",
+    language: "Язык",
+  },
+  sidebar: {
+    label: "История чатов",
+    title: "Чаты",
+    newChat: "Новый чат",
+    close: "Закрыть панель",
+    empty: "Чатов пока нет.",
+    loading: "Загрузка чатов…",
+    groups: {
+      today: "Сегодня",
+      yesterday: "Вчера",
+      week: "Последние 7 дней",
+      month: "Последние 30 дней",
+      older: "Ранее",
+    },
+    chatName: "Название чата",
+    rename: (name) => `Переименовать «${name}»`,
+    remove: (name) => `Удалить «${name}»`,
+    confirmRemove: (name) => `Удалить «${name}»? Это действие нельзя отменить.`,
+  },
+  breadcrumb: "Навигация",
+  welcome: {
+    eyebrow: "Муниципальный ассистент Кишинэу",
+    title: "Чем я могу вам помочь?",
+    body: "Спрашивайте о городских мероприятиях, образовании и муниципальных услугах. Ответы основаны на официальных документах муниципалитета и содержат ссылки на источники.",
+    ask: "Спросить",
+    suggestions: [
+      { topic: "События", question: "Какие ярмарки местной продукции пройдут в сентябре?" },
+      { topic: "Сообщество", question: "Когда и где пройдёт фестиваль этносов «Единство в многообразии»?" },
+      { topic: "Образование", question: "Сколько школ и детских садов в ведении города?" },
+    ],
+  },
+  chat: {
+    loading: "Загрузка чата…",
+    placeholder: "Спросите о Кишинэу…",
+    send: "Отправить сообщение",
+    disclaimer:
+      "Ответы составляются на основе муниципальных документов и могут содержать ошибки. Проверяйте указанные источники.",
+    dismissError: "Закрыть сообщение об ошибке",
+  },
+  message: {
+    typing: "Ассистент печатает",
+    copy: "Копировать",
+    copied: "Скопировано",
+    regenerate: "Сгенерировать заново",
+    sending: "Отправка…",
+    failed: "Сообщение не отправлено",
+    retry: "Повторить",
+    sources: "Источники",
+    added: (date) => `Добавлено ${date}`,
+    citedIn: "Источники в этом ответе",
+    noLink: "Ссылка недоступна",
+  },
+  support: {
+    prefix: "Для получения дополнительной информации обратитесь в службу поддержки по номеру",
+    dismiss: "Закрыть",
+  },
+  errors: {
+    offline: "Не удаётся связаться с сервером. Проверьте подключение и попробуйте ещё раз.",
+    chatMissing: "Этот чат больше не существует. Начните новый чат, чтобы продолжить.",
+    generic: "Что-то пошло не так. Попробуйте ещё раз.",
+    renameFailed: "Не удалось переименовать чат. Попробуйте ещё раз.",
+    deleteFailed: "Не удалось удалить чат. Попробуйте ещё раз.",
+  },
+};
+
+const en: Messages = {
+  meta: {
+    name: "English",
+    short: "EN",
+    intl: "en-GB",
+    title: "Municipal Assistant · Chișinău",
+    officialSiteUrl: "https://www.chisinau.md/en",
+  },
+  header: {
+    tagline: "Municipal Q&A assistant · answers cite official documents of Chișinău",
+    officialSite: "Official site: chisinau.md",
+    wordmark: ["Municipal Assistant", "Chișinău"],
+    openMenu: "Open chat history",
+    language: "Language",
+  },
+  sidebar: {
+    label: "Chat history",
+    title: "Conversations",
+    newChat: "New chat",
+    close: "Close sidebar",
+    empty: "No chats yet.",
+    loading: "Loading chats…",
+    groups: {
+      today: "Today",
+      yesterday: "Yesterday",
+      week: "Previous 7 days",
+      month: "Previous 30 days",
+      older: "Older",
+    },
+    chatName: "Chat name",
+    rename: (name) => `Rename "${name}"`,
+    remove: (name) => `Delete "${name}"`,
+    confirmRemove: (name) => `Delete "${name}"? This can't be undone.`,
+  },
+  breadcrumb: "Breadcrumb",
+  welcome: {
+    eyebrow: "Chișinău municipal assistant",
+    title: "How can I help you today?",
+    body: "Ask about city events, education and public services. Answers come from official municipal documents and link to their sources.",
+    ask: "Ask",
+    suggestions: [
+      { topic: "Events", question: "Which fairs with local products take place in September?" },
+      { topic: "Community", question: "When and where is the “Unitate prin diversitate” festival?" },
+      { topic: "Education", question: "How many schools and kindergartens does the city manage?" },
+    ],
+  },
+  chat: {
+    loading: "Loading conversation…",
+    placeholder: "Ask about Chișinău…",
+    send: "Send message",
+    disclaimer: "Answers are generated from municipal documents and can contain mistakes. Check the cited sources.",
+    dismissError: "Dismiss error",
+  },
+  message: {
+    typing: "Assistant is typing",
+    copy: "Copy",
+    copied: "Copied",
+    regenerate: "Regenerate",
+    sending: "Sending…",
+    failed: "Failed to send",
+    retry: "Retry",
+    sources: "Sources",
+    added: (date) => `Added ${date}`,
+    citedIn: "Cited in this answer",
+    noLink: "No link available",
+  },
+  support: {
+    prefix: "For more information, contact support at",
+    dismiss: "Dismiss",
+  },
+  errors: {
+    offline: "Can't reach the server. Check your connection and try again.",
+    chatMissing: "This chat no longer exists. Start a new chat to continue.",
+    generic: "Something went wrong. Please try again.",
+    renameFailed: "Couldn't rename the chat. Please try again.",
+    deleteFailed: "Couldn't delete the chat. Please try again.",
+  },
+};
+
+export const MESSAGES: Record<Locale, Messages> = { ro, ru, en };

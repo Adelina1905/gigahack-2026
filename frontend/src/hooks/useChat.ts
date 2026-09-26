@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../api";
 import { toAssistantMessage, toChatSummary, toMessages } from "../api/mappers";
 import * as cache from "../db/cache";
+import type { ErrorKey } from "../i18n/messages";
 import type { ChatMessage, ChatSummary } from "../types/chat";
 
 // Messages typed before the backend chat exists live under this key.
@@ -16,14 +17,10 @@ const makeId = () => crypto.randomUUID();
 const isMissingChat = (error: unknown) =>
   error instanceof ApiError && (error.status === 404 || error.status === 400);
 
-const describeError = (error: unknown) => {
-  if (error instanceof ApiError && error.status === 0) {
-    return "Can't reach the server. Check your connection and try again.";
-  }
-  if (isMissingChat(error)) {
-    return "This chat no longer exists. Start a new chat to continue.";
-  }
-  return "Something went wrong. Please try again.";
+const describeError = (error: unknown): ErrorKey => {
+  if (error instanceof ApiError && error.status === 0) return "offline";
+  if (isMissingChat(error)) return "chatMissing";
+  return "generic";
 };
 
 const isUnsent = (message: ChatMessage) =>
@@ -95,7 +92,7 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
   const [threads, setThreads] = useState<Record<string, ChatMessage[]>>({});
   const [typing, setTyping] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorKey | null>(null);
 
   const keyRef = useRef(key);
   const threadsRef = useRef(threads);

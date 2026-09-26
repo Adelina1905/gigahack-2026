@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../api";
 import { toChatSummary } from "../api/mappers";
 import * as cache from "../db/cache";
+import type { ErrorKey } from "../i18n/messages";
 import type { ChatSummary } from "../types/chat";
 
 const sortChats = (chats: ChatSummary[]) =>
@@ -12,7 +13,7 @@ const sortChats = (chats: ChatSummary[]) =>
 export function useChats() {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorKey | null>(null);
   // Chats created while the initial fetch was in flight must survive it.
   const createdLocallyRef = useRef(new Set<string>());
 
@@ -93,7 +94,7 @@ export function useChats() {
         setChats((current) =>
           current.map((chat) => (chat.id === chatId ? previous : chat)),
         );
-        setError("Couldn't rename the chat. Please try again.");
+        setError("renameFailed");
       }
     },
     [chats],
@@ -117,7 +118,7 @@ export function useChats() {
         if (deleteError instanceof ApiError && deleteError.status === 404) return;
         console.error("Failed to delete chat", deleteError);
         setChats(previous);
-        setError("Couldn't delete the chat. Please try again.");
+        setError("deleteFailed");
       }
     },
     [chats, forget],
