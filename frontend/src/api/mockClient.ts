@@ -10,6 +10,7 @@ import type {
   DocumentView,
   ProjectView,
   ResponseView,
+  SourcePreviewView,
 } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
@@ -22,7 +23,8 @@ const STORAGE_KEY = "smart-city-mock-api";
 // grounded RAG answers are one claim per line ending in "[S1]" markers, with the
 // cited corpus documents attached; LLM fallback answers carry no documents; a
 // clarification lists its choices as "- " lines. Titles and links are real corpus sources.
-type MockReply = { text: string; documents: DocumentView[] };
+type MockCitation = NonNullable<ResponseView["aiReply"]>["citations"][number];
+type MockReply = { text: string; documents: DocumentView[]; citations?: MockCitation[] };
 
 const EVENTS_DOCUMENT: DocumentView = {
   id: 1,
@@ -55,6 +57,17 @@ const EVENTS_REPLY: MockReply = {
     "Festivalul etniilor „Unitate prin diversitate” are loc în Grădina Publică „Ștefan cel Mare și Sfânt” pe 20.09.2026. [S1]",
   ].join("\n"),
   documents: [EVENTS_DOCUMENT],
+  citations: [{
+    id: "S1",
+    evidenceId: "events-calendar",
+    versionId: "demo-2026-09",
+    title: EVENTS_DOCUMENT.title,
+    url: null,
+    exactQuote: "Târgurile micilor antreprenori și ale producătorilor locali au loc în fiecare weekend din septembrie 2026.",
+    documentId: "events-2026",
+    sourceFile: "evenimente-municipale.txt",
+    locator: { startLine: 12, endLine: 16 },
+  }],
 };
 
 const SCHOOLS_REPLY: MockReply = {
@@ -63,6 +76,92 @@ const SCHOOLS_REPLY: MockReply = {
     "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar 2024-2025. [S1] [S2]",
   ].join("\n"),
   documents: [SCHOOL_EVALUATION_DOCUMENT, DGETS_SCAN_DOCUMENT],
+  citations: [
+    {
+      id: "S1",
+      evidenceId: "school-visits",
+      versionId: "demo-2024-08",
+      title: SCHOOL_EVALUATION_DOCUMENT.title,
+      url: SCHOOL_EVALUATION_DOCUMENT.documentLink,
+      exactQuote: "Pe parcursul a 3 zile, 20, 21 și 22 august 2024, cinci echipe de verificare s-au deplasat la instituțiile de învățământ.",
+      documentId: "school-evaluation-2024",
+      sourceFile: "evaluarea-institutiilor.html",
+      locator: { startLine: 24, endLine: 27 },
+    },
+    {
+      id: "S2",
+      evidenceId: "school-readiness",
+      versionId: "demo-2025-09",
+      title: DGETS_SCAN_DOCUMENT.title,
+      url: DGETS_SCAN_DOCUMENT.documentLink,
+      exactQuote: "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar.",
+      documentId: "dgets-scan-2025",
+      sourceFile: "scan-dgets-2025-09-30.pdf",
+      locator: { page: 2 },
+    },
+  ],
+};
+
+const SOURCE_PREVIEWS: Record<string, SourcePreviewView> = {
+  "events-2026": {
+    documentId: "events-2026",
+    versionId: "demo-2026-09",
+    title: EVENTS_DOCUMENT.title,
+    sourceUrl: null,
+    sourceFile: "evenimente-municipale.txt",
+    sourceKind: "text",
+    publishedDate: "2026-09-01",
+    totalSections: 3,
+    start: 0,
+    focusIndex: 1,
+    focusSectionId: "events-calendar",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "events-intro", order: 0, headingPath: ["Agenda municipală"], text: "Programul reunește activitățile publice anunțate pentru luna septembrie 2026.", locator: { startLine: 1, endLine: 3 } },
+      { id: "events-calendar", order: 1, headingPath: ["Târguri locale"], text: "Târgurile micilor antreprenori și ale producătorilor locali au loc în fiecare weekend din septembrie 2026.", locator: { startLine: 12, endLine: 16 } },
+      { id: "events-festival", order: 2, headingPath: ["Festivaluri"], text: "Festivalul etniilor este programat în Grădina Publică «Ștefan cel Mare și Sfânt».", locator: { startLine: 18, endLine: 20 } },
+    ],
+  },
+  "school-evaluation-2024": {
+    documentId: "school-evaluation-2024",
+    versionId: "demo-2024-08",
+    title: SCHOOL_EVALUATION_DOCUMENT.title,
+    sourceUrl: SCHOOL_EVALUATION_DOCUMENT.documentLink,
+    sourceFile: "evaluarea-institutiilor.html",
+    sourceKind: "web",
+    publishedDate: "2024-08-23",
+    totalSections: 3,
+    start: 0,
+    focusIndex: 1,
+    focusSectionId: "school-visits",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "school-purpose", order: 0, headingPath: ["Pregătirea noului an școlar"], text: "DGETS a organizat evaluarea instituțiilor înainte de debutul anului de studii 2024–2025.", locator: { startLine: 18, endLine: 21 } },
+      { id: "school-visits", order: 1, headingPath: ["Vizite de verificare"], text: "Pe parcursul a 3 zile, 20, 21 și 22 august 2024, cinci echipe de verificare s-au deplasat la instituțiile de învățământ.", locator: { startLine: 24, endLine: 27 } },
+      { id: "school-result", order: 2, headingPath: ["Concluzii"], text: "Observațiile colectate au fost comunicate administrațiilor instituțiilor pentru remediere.", locator: { startLine: 31, endLine: 33 } },
+    ],
+  },
+  "dgets-scan-2025": {
+    documentId: "dgets-scan-2025",
+    versionId: "demo-2025-09",
+    title: DGETS_SCAN_DOCUMENT.title,
+    sourceUrl: DGETS_SCAN_DOCUMENT.documentLink,
+    sourceFile: "scan-dgets-2025-09-30.pdf",
+    sourceKind: "pdf",
+    publishedDate: "2025-09-30",
+    totalSections: 2,
+    start: 0,
+    focusIndex: 0,
+    focusSectionId: "school-readiness",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "school-readiness", order: 0, headingPath: ["Raport de verificare"], text: "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar.", locator: { page: 2 } },
+      { id: "school-actions", order: 1, headingPath: ["Măsuri recomandate"], text: "Instituțiile au primit recomandări privind siguranța, igiena și organizarea spațiilor educaționale.", locator: { page: 3 } },
+    ],
+  },
 };
 
 const CLARIFICATION_REPLY: MockReply = {
@@ -93,7 +192,7 @@ const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, ...LLM_RE
 function pickReply(prompt: string, exclude?: string): MockReply {
   const text = prompt.toLowerCase();
   if (/[а-яё]/.test(text)) return LLM_REPLY_RU;
-  if (/t[aâ]rg|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
+  if (/t[aâ]rg|fair|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
   if (/[sș]coal|[sș]colar|educa|[iî]nv[aă][tț]|dgets|school/.test(text)) return SCHOOLS_REPLY;
   if (/document/.test(text)) return CLARIFICATION_REPLY;
   const pool = ALL_REPLIES.filter((reply) => reply.text !== exclude);
@@ -135,6 +234,13 @@ interface MockStore {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => new Date().toISOString();
 const notFound = (what: string) => new ApiError(`${what} not found`, 404);
+const aiReplyFor = (reply: MockReply): ResponseView["aiReply"] => reply.citations ? {
+  mode: "rag",
+  status: "SUPPORTED",
+  answer: reply.text,
+  citations: reply.citations,
+  clarificationChoices: null,
+} : null;
 
 const titleFrom = (text: string) => {
   const singleLine = text.replace(/\s+/g, " ").trim();
@@ -306,6 +412,33 @@ export async function getResponses(chatId: string): Promise<ResponseView[]> {
   return store.responses.filter((response) => response.chatId === chatId);
 }
 
+export async function getSourcePreview(
+  documentId: string,
+  options: { versionId?: string | null; focusEvidenceId?: string | null; start?: number; limit?: number; signal?: AbortSignal } = {},
+): Promise<SourcePreviewView> {
+  await wait(250);
+  if (options.signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
+  const preview = SOURCE_PREVIEWS[documentId];
+  if (!preview || (options.versionId && options.versionId !== preview.versionId)) throw notFound("Source preview");
+
+  const start = Math.max(0, options.start ?? 0);
+  const limit = Math.max(1, options.limit ?? 40);
+  const sections = preview.sections.slice(start, start + limit);
+  const focusSectionId = options.focusEvidenceId ?? preview.focusSectionId;
+  const focusIndex = focusSectionId
+    ? preview.sections.findIndex((section) => section.id === focusSectionId)
+    : -1;
+  return {
+    ...preview,
+    start,
+    focusIndex: focusIndex >= 0 ? focusIndex : null,
+    focusSectionId: focusIndex >= 0 ? focusSectionId : null,
+    hasPrevious: start > 0,
+    hasNext: start + sections.length < preview.sections.length,
+    sections,
+  };
+}
+
 export async function createResponse(
   chatId: string,
   text: string,
@@ -330,6 +463,7 @@ export async function createResponse(
     requestId,
     generationStatus: "COMPLETED",
     generationVersion: 0,
+    aiReply: aiReplyFor(reply),
   };
 
   store.responses.push(response);
@@ -355,6 +489,7 @@ export async function regenerateResponse(
   const reply = pickReply(response.prompt ?? "", response.text ?? undefined);
   response.text = reply.text;
   response.documents = reply.documents;
+  response.aiReply = aiReplyFor(reply);
   response.generationVersion = (response.generationVersion ?? 0) + 1;
   chat.updatedAt = now();
   save(store);
