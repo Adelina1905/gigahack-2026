@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://municipal-assistant.local/schemas/document.schema.json",
+  "title": "Municipal document",
+  "type": "object",
+  "required": ["schemaVersion", "pipelineStage", "documentId", "documentType", "title", "language", "source", "extraction", "passages"],
+  "properties": {
+    "schemaVersion": {"type": "string"},
+    "pipelineStage": {"type": "string"},
+    "documentId": {"type": "string", "minLength": 8},
+    "documentType": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "language": {"type": "string", "minLength": 2},
+    "source": {
+      "type": "object",
+      "required": ["sourceType", "snapshotPath", "sha256"],
+      "properties": {
+        "sourceType": {"type": "string"},
+        "sourceUrl": {"type": ["string", "null"]},
+        "snapshotPath": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "extraction": {
+      "type": "object",
+      "required": ["status", "requiresOcr"],
+      "properties": {
+        "status": {"type": "string"},
+        "requiresOcr": {"type": "boolean"}
+      }
+    },
+    "passages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["passageId", "order", "type", "citationText", "searchText", "contentHash", "provenance"],
+        "properties": {
+          "passageId": {"type": "string"},
+          "order": {"type": "integer", "minimum": 1},
+          "type": {"type": "string"},
+          "citationText": {"type": "string", "minLength": 1},
+          "searchText": {"type": "string", "minLength": 1},
+          "contentHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "provenance": {"type": "object"}
+        }
+      }
+    }
+  }
+}
