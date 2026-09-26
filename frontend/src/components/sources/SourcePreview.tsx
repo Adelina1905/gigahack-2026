@@ -19,6 +19,9 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 const PAGE_SIZE = 40;
 const MIN_WIDTH = 360;
 const DEFAULT_WIDTH = 440;
+const MIN_IMAGE_ZOOM = 50;
+const MAX_IMAGE_ZOOM = 200;
+const IMAGE_ZOOM_STEP = 25;
 const previewCache = new Map<string, SourcePreviewView>();
 
 const isDesktopViewport = () => typeof window.matchMedia === "function"
@@ -27,6 +30,14 @@ const isDesktopViewport = () => typeof window.matchMedia === "function"
 
 const getHostname = (link: string) => {
   try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return ""; }
+};
+
+const safePreviewImagePath = (value?: string | null) => {
+  if (!value?.startsWith("/") || value.startsWith("//")) return undefined;
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : undefined;
+  } catch { return undefined; }
 };
 
 const formatDate = (iso: string, locale: string) => {
@@ -78,9 +89,12 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   const [preview, setPreview] = useState<SourcePreviewView | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [imageZoom, setImageZoom] = useState(100);
+  const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
   const source = sources[activeIndex];
   const previewForSource = preview?.documentId === source?.documentId ? preview : null;
   const link = safeHttpUrl(source?.link ?? previewForSource?.sourceUrl);
+  const previewImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
   const hostname = link ? getHostname(link) : "";
   const addedDate = source ? formatDate(source.added_date || previewForSource?.publishedDate || "", t.meta.intl) : "";
   const cacheKey = source?.documentId ? `${source.documentId}:${source.versionId ?? "current"}` : "";
@@ -125,6 +139,8 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
 
   useEffect(() => {
     const cached = cacheKey ? previewCache.get(cacheKey) ?? null : null;
+    setImageZoom(100);
+    setImageNaturalWidth(0);
     setPreview(cached);
     setFailed(false);
     const controller = new AbortController();
@@ -251,14 +267,37 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
                 {t.message.openSource}<span aria-hidden="true">↗</span>
               </a>
             </div>
-            <iframe
+            {previewImageUrl ? <>
+              <div className="relative h-[55dvh] min-h-96 bg-white lg:h-[65dvh] lg:min-h-[32rem]">
+                <div className="absolute right-2 bottom-2 z-10 flex items-center gap-1 rounded-md border border-border/80 bg-background/90 p-1 shadow-md backdrop-blur-sm">
+                  <button type="button" aria-label={t.message.zoomOut} disabled={imageZoom <= MIN_IMAGE_ZOOM}
+                    onClick={() => setImageZoom(value => Math.max(MIN_IMAGE_ZOOM, value - IMAGE_ZOOM_STEP))}
+                    className="h-6 w-6 cursor-pointer rounded-sm text-sm font-semibold text-primary hover:bg-primary-50 disabled:cursor-default disabled:opacity-40">−</button>
+                  <button type="button" aria-label={t.message.resetZoom} onClick={() => setImageZoom(100)}
+                    className="min-w-11 cursor-pointer rounded-sm px-1 py-1 text-[11px] font-semibold text-text-muted hover:bg-background-secondary">{imageZoom}%</button>
+                  <button type="button" aria-label={t.message.zoomIn} disabled={imageZoom >= MAX_IMAGE_ZOOM}
+                    onClick={() => setImageZoom(value => Math.min(MAX_IMAGE_ZOOM, value + IMAGE_ZOOM_STEP))}
+                    className="h-6 w-6 cursor-pointer rounded-sm text-sm font-semibold text-primary hover:bg-primary-50 disabled:cursor-default disabled:opacity-40">+</button>
+                </div>
+                <div className="h-full overflow-auto">
+                  <img
+                    src={previewImageUrl}
+                    alt={`${t.message.websitePreview}: ${source.title}`}
+                    loading="lazy"
+                    onLoad={event => setImageNaturalWidth(event.currentTarget.naturalWidth)}
+                    style={imageNaturalWidth ? { width: `${Math.round(imageNaturalWidth * imageZoom / 100)}px` } : undefined}
+                    className="block h-auto max-w-none"
+                  />
+                </div>
+              </div>
+            </> : <iframe
               src={link}
               title={`${t.message.websitePreview}: ${source.title}`}
               loading="lazy"
               referrerPolicy="no-referrer"
               sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
               className="h-[55dvh] min-h-96 w-full border-0 bg-white lg:h-[65dvh] lg:min-h-[32rem]"
-            />
+            />}
             <p className="border-t border-border px-3 py-2 text-xs leading-relaxed text-text-subtle">
               {t.message.websitePreviewHint}
             </p>

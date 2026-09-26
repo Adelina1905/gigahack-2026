@@ -16,6 +16,7 @@ describe("offline source preview examples", () => {
     });
 
     expect(preview.focusSectionId).toBe("school-visits");
+    expect(preview.previewImageUrl).toBe("/source-previews/school-evaluation-2024.png");
     expect(preview.sections.some((section) => section.id === "school-visits")).toBe(true);
     expect(preview.sections).toHaveLength(3);
   });

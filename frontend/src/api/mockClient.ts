@@ -131,6 +131,7 @@ const SOURCE_PREVIEWS: Record<string, SourcePreviewView> = {
     sourceFile: "evaluarea-institutiilor.html",
     sourceKind: "web",
     publishedDate: "2024-08-23",
+    previewImageUrl: "/source-previews/school-evaluation-2024.png",
     totalSections: 3,
     start: 0,
     focusIndex: 1,

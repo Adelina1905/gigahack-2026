@@ -75,6 +75,8 @@ export interface SourcePreviewView {
   sourceFile: string | null;
   sourceKind: "web" | "pdf" | "text";
   publishedDate: string | null;
+  // Optional static capture used when the original website cannot be embedded.
+  previewImageUrl?: string | null;
   totalSections: number;
   start: number;
   focusIndex: number | null;

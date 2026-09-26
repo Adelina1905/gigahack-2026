@@ -124,6 +124,49 @@ describe("source preview", () => {
     expect(quote.compareDocumentPosition(previewSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("uses a captured image when an unembeddable website has one", async () => {
+    vi.mocked(api.getSourcePreview).mockResolvedValueOnce({
+      documentId: "document-captured",
+      versionId: "version-1",
+      title: "A very detailed municipal PDF",
+      sourceUrl: "https://example.com/report.pdf",
+      sourceFile: "report.pdf",
+      sourceKind: "web",
+      publishedDate: "2026-09-27",
+      previewImageUrl: "/source-previews/document-1.png",
+      totalSections: 0,
+      start: 0,
+      focusIndex: null,
+      focusSectionId: null,
+      hasPrevious: false,
+      hasNext: false,
+      sections: [],
+    });
+    const captured = {
+      ...message,
+      id: "answer-captured",
+      sources: [{ ...message.sources![0], documentId: "document-captured" }],
+    };
+    render(app("chat-captured", [captured]));
+    fireEvent.click(screen.getByRole("button", { name: /1\s*example\.com/i }));
+
+    const image = await screen.findByRole("img", { name: `${en.message.websitePreview}: A very detailed municipal PDF` });
+    expect(image.getAttribute("src")).toBe("/source-previews/document-1.png");
+    expect(image.className).toContain("max-w-none");
+    expect(image.className).not.toContain("w-full");
+    expect(image.parentElement?.className).toContain("overflow-auto");
+    const zoomControls = screen.getByRole("button", { name: en.message.zoomOut }).parentElement!;
+    expect(zoomControls.className).toContain("absolute");
+    expect(zoomControls.className).toContain("right-2");
+    expect(zoomControls.className).toContain("bottom-2");
+    const zoomIn = screen.getByRole("button", { name: en.message.zoomIn });
+    fireEvent.click(zoomIn);
+    expect(screen.getByRole("button", { name: en.message.resetZoom }).textContent).toBe("125%");
+    fireEvent.click(screen.getByRole("button", { name: en.message.resetZoom }));
+    expect(screen.getByRole("button", { name: en.message.resetZoom }).textContent).toBe("100%");
+    expect(screen.queryByTitle(`${en.message.websitePreview}: A very detailed municipal PDF`)).toBeNull();
+  });
+
   it("navigates in order and never links an unsafe or unavailable URL", () => {
     render(app());
     fireEvent.click(screen.getByRole("button", { name: /1\s*example\.com/i }));
