@@ -1,6 +1,30 @@
 .env
+<<<<<<< HEAD
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/target/
+
+# IDEs and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+=======
 **/.env
 __pycache__/
 *.py[cod]
 .pytest_cache/
 tmp/
+>>>>>>> main
