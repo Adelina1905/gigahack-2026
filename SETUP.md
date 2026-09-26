@@ -33,6 +33,19 @@ All components read this single root `.env`: Docker Compose, Spring Boot (via
 Spring Boot also imports an optional `backend/.env` (template: `backend/.env.example`),
 which overrides the root one. Never commit `.env`.
 
+Voice mode uses that same OpenRouter key. Its model defaults can be overridden:
+
+```properties
+OPENROUTER_STT_MODEL=openai/whisper-large-v3-turbo
+OPENROUTER_TTS_MODEL=microsoft/mai-voice-2-flash
+OPENROUTER_TTS_VOICE=en-US-Harper:MAI-Voice-2
+```
+
+The browser records only after Voice mode is enabled and the microphone is pressed.
+Microphone access requires `localhost` or HTTPS. Recordings pass through Java to the
+internal Python service and are never written to disk or PostgreSQL. Generated MP3s
+are cached only in the current browser session.
+
 ## 2. Databases
 
 ```bash
@@ -112,6 +125,16 @@ CHAT=$(curl -s -c /tmp/jar -b /tmp/jar -X POST localhost:8081/api/chats \
 curl -s -c /tmp/jar -b /tmp/jar -X POST localhost:8081/api/chats/$CHAT/responses \
   -H 'Content-Type: application/json' -d '{"text":"Salut! Ce poți face?"}'
 ```
+
+After setting `OPENROUTER_API_KEY`, transcription can be checked through Java:
+
+```bash
+curl -b /tmp/jar -c /tmp/jar -F "audio=@sample.webm;type=audio/webm" \
+  localhost:8081/api/voice/transcriptions
+```
+
+This call spends OpenRouter credits. Automated tests mock the provider and never use
+the configured key.
 
 ## Durable chat API
 

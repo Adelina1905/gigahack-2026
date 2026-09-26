@@ -7,12 +7,15 @@ import type { ChatMessage } from "../types/chat";
 import { CityEmblem } from "./brand/Landmarks";
 import SourceList from "./sources/SourceList";
 import CitationPills from "./CitationPills";
+import type { SpeechState } from "../hooks/useVoiceMode";
 
 interface AssistantMessageProps {
   message?: ChatMessage;
   isTyping?: boolean;
   onCopy?: (content: string) => void;
   onRegenerate?: (id: string) => void;
+  onToggleSpeech?: (message: ChatMessage) => void;
+  speechState?: SpeechState;
 }
 
 function TypingDots() {
@@ -34,7 +37,8 @@ function TypingDots() {
 // are shown as pills under the text instead. The rest is rendered as Markdown.
 const stripCitationMarkers = (text: string) => text.replace(/[ \t]*\[S\d+\]/g, "");
 
-function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: AssistantMessageProps) {
+function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
+  onToggleSpeech, speechState = "idle" }: AssistantMessageProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const pending = message?.generationStatus === "PENDING";
@@ -93,6 +97,18 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
             >
               {copied ? t.message.copied : t.message.copy}
             </button>
+            {onToggleSpeech && !failed && (
+              <button
+                type="button"
+                onClick={() => onToggleSpeech(message)}
+                disabled={speechState === "loading"}
+                aria-label={speechState === "playing" ? t.voice.stopPlayback : t.voice.play}
+                className="rounded-sm px-2 py-1 text-xs text-text-subtle hover:bg-background hover:text-primary disabled:opacity-50"
+              >
+                {speechState === "loading" ? t.voice.loadingAudio
+                  : speechState === "playing" ? t.voice.stopPlayback : t.voice.play}
+              </button>
+            )}
             {onRegenerate && !failed && (
               <button
                 type="button"

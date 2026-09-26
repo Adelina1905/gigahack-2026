@@ -11,6 +11,77 @@ from typing import Any
 BASE = "https://openrouter.ai/api/v1"
 
 
+class ManagedAudioApiError(RuntimeError):
+    """Sanitized audio-provider failure with an HTTP status suitable for the API."""
+
+    def __init__(self, status_code: int, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _audio_error(error: urllib.error.HTTPError) -> ManagedAudioApiError:
+    if error.code == 429:
+        return ManagedAudioApiError(429, "The speech provider is rate limited")
+    if error.code in {400, 413, 415}:
+        return ManagedAudioApiError(error.code, "The speech provider rejected the audio request")
+    if error.code in {408, 504}:
+        return ManagedAudioApiError(504, "The speech provider timed out")
+    return ManagedAudioApiError(503, "The speech provider is unavailable")
+
+
+def request_audio_json(endpoint: str, payload: dict[str, Any], api_key: str,
+                       timeout: float = 90) -> tuple[dict[str, Any], str | None]:
+    """Make one billable JSON audio request. Audio calls are intentionally not retried."""
+    if not api_key:
+        raise ManagedAudioApiError(503, "OPENROUTER_API_KEY is not configured")
+    request = urllib.request.Request(
+        f"{BASE}/{endpoint.lstrip('/')}",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
+                 "User-Agent": "municipal-rag/3.0"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            value = json.loads(response.read().decode("utf-8"))
+            generation_id = response.headers.get("X-Generation-Id")
+    except urllib.error.HTTPError as error:
+        raise _audio_error(error) from None
+    except (TimeoutError, urllib.error.URLError):
+        raise ManagedAudioApiError(504, "The speech provider timed out") from None
+    except json.JSONDecodeError:
+        raise ManagedAudioApiError(503, "The speech provider returned invalid JSON") from None
+    if not isinstance(value, dict):
+        raise ManagedAudioApiError(503, "The speech provider returned an invalid response")
+    return value, generation_id
+
+
+def request_audio_bytes(endpoint: str, payload: dict[str, Any], api_key: str,
+                        timeout: float = 90) -> tuple[bytes, str, str | None]:
+    """Make one billable request whose successful body is raw audio bytes."""
+    if not api_key:
+        raise ManagedAudioApiError(503, "OPENROUTER_API_KEY is not configured")
+    request = urllib.request.Request(
+        f"{BASE}/{endpoint.lstrip('/')}",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
+                 "User-Agent": "municipal-rag/3.0"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            data = response.read()
+            content_type = response.headers.get_content_type()
+            generation_id = response.headers.get("X-Generation-Id")
+    except urllib.error.HTTPError as error:
+        raise _audio_error(error) from None
+    except (TimeoutError, urllib.error.URLError):
+        raise ManagedAudioApiError(504, "The speech provider timed out") from None
+    if not data or not content_type.startswith("audio/"):
+        raise ManagedAudioApiError(503, "The speech provider returned invalid audio")
+    return data, content_type, generation_id
+
+
 def request_json(endpoint: str, payload: dict[str, Any], api_key: str, timeout: float = 90, retries: int = 3) -> dict[str, Any]:
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not configured")

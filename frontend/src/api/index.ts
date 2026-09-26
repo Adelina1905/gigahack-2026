@@ -14,5 +14,7 @@ export const api = {
   getResponse: realClient.getResponse,
   createResponse: realClient.createResponse,
   regenerateResponse: realClient.regenerateResponse,
+  transcribeAudio: realClient.transcribeAudio,
+  getResponseSpeech: realClient.getResponseSpeech,
   ...(import.meta.env.VITE_USE_MOCK === "true" ? mockClient : {}),
 };

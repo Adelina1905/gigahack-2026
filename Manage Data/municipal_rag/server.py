@@ -5,11 +5,13 @@ import os
 import uuid
 from typing import TYPE_CHECKING, Literal, Protocol
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 
+from .api import ManagedAudioApiError
 from .chat_service import ChatReply, ChatService, LlmUnavailableError
 from .config import load_config, load_dotenv
+from .voice_service import OpenRouterVoiceService
 
 if TYPE_CHECKING:
     from .rag_service import RagService
@@ -67,8 +69,28 @@ class HealthResponse(BaseModel):
     ragAvailable: bool
 
 
+class InputAudio(BaseModel):
+    data: str = Field(min_length=1, max_length=14_000_000)
+    format: str
+
+
+class TranscriptionRequest(BaseModel):
+    inputAudio: InputAudio
+
+
+class TranscriptionResponse(BaseModel):
+    text: str
+    language: str | None = None
+    durationSeconds: float | None = None
+
+
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=8000)
+
+
 def create_app(chat_service: ReplyService, rag: RagService | None, llm_configured: bool,
-               *, mode: Literal["live", "demo"] = "live") -> FastAPI:
+               *, mode: Literal["live", "demo"] = "live",
+               voice_service: OpenRouterVoiceService | None = None) -> FastAPI:
     app = FastAPI(title="Municipal chat service")
 
     @app.get("/health", response_model=HealthResponse)
@@ -89,6 +111,28 @@ def create_app(chat_service: ReplyService, rag: RagService | None, llm_configure
             citations=[Citation(**{key: None if item.get(key) is None else str(item.get(key)) for key in Citation.model_fields}) for item in reply.citations],
             clarificationChoices=None if reply.clarification_choices is None else
                 [ClarificationChoice(documentId=str(item.get("documentId")), label=str(item.get("label"))) for item in reply.clarification_choices])
+
+    @app.post("/v1/audio/transcriptions", response_model=TranscriptionResponse)
+    def transcribe(request: TranscriptionRequest) -> TranscriptionResponse:
+        if voice_service is None:
+            raise HTTPException(status_code=503, detail="Speech service is unavailable")
+        try:
+            result = voice_service.transcribe(request.inputAudio.data, request.inputAudio.format)
+        except ManagedAudioApiError as error:
+            raise HTTPException(status_code=error.status_code, detail=str(error)) from None
+        return TranscriptionResponse(text=result.text, language=result.language,
+                                     durationSeconds=result.duration_seconds)
+
+    @app.post("/v1/audio/speech")
+    def speech(request: SpeechRequest) -> Response:
+        if voice_service is None:
+            raise HTTPException(status_code=503, detail="Speech service is unavailable")
+        try:
+            result = voice_service.synthesize(request.text)
+        except ManagedAudioApiError as error:
+            raise HTTPException(status_code=error.status_code, detail=str(error)) from None
+        return Response(content=result.data, media_type=result.content_type,
+                        headers={"Cache-Control": "no-store"})
 
     return app
 
@@ -121,5 +165,12 @@ def _create_live_app() -> FastAPI:
     client = QdrantClient(url=qdrant_url, api_key=qdrant_key or None, timeout=5)
     rag = QdrantRagService(client, config, qdrant_url)
     llm = OpenRouterChatModel(config.generator_model, api_key)
+    voice = OpenRouterVoiceService(
+        api_key,
+        os.environ.get("OPENROUTER_STT_MODEL", "openai/whisper-large-v3-turbo").strip(),
+        os.environ.get("OPENROUTER_TTS_MODEL", "microsoft/mai-voice-2-flash").strip(),
+        os.environ.get("OPENROUTER_TTS_VOICE", "en-US-Harper:MAI-Voice-2").strip(),
+    )
     LOGGER.info("Chat service starting: llmConfigured=%s qdrant=%s", bool(api_key), qdrant_url)
-    return create_app(ChatService(rag, llm), rag, llm_configured=bool(api_key))
+    return create_app(ChatService(rag, llm), rag, llm_configured=bool(api_key),
+                      voice_service=voice)
