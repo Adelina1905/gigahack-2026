@@ -12,13 +12,13 @@ import java.util.UUID;
 public interface AlertTopicRepository extends JpaRepository<AlertTopic, Long> {
 
     // Removed AUTO topics included.
-    List<AlertTopic> findAllByProjectIdOrderByCreatedAtAscIdAsc(UUID projectId);
+    List<AlertTopic> findAllBySubscriptionIdOrderByCreatedAtAscIdAsc(Long subscriptionId);
 
-    List<AlertTopic> findAllByProjectIdAndRemovedFalseOrderByCreatedAtAscIdAsc(UUID projectId);
+    List<AlertTopic> findAllBySubscriptionIdAndRemovedFalseOrderByCreatedAtAscIdAsc(Long subscriptionId);
 
-    Optional<AlertTopic> findByIdAndProjectIdAndRemovedFalse(Long id, UUID projectId);
+    Optional<AlertTopic> findByIdAndSubscriptionIdAndRemovedFalse(Long id, Long subscriptionId);
 
-    boolean existsByProjectIdAndRemovedFalse(UUID projectId);
+    boolean existsBySubscriptionIdAndRemovedFalse(Long subscriptionId);
 
     // The user's questions in the project's chats, most recent first.
     @Query("select r.prompt from ChatResponseMessage r where r.chat.projectId = :projectId "
@@ -27,5 +27,14 @@ public interface AlertTopicRepository extends JpaRepository<AlertTopic, Long> {
 
     @Query("select max(r.createdAt) from ChatResponseMessage r where r.chat.projectId = :projectId "
             + "and r.prompt is not null")
-    OffsetDateTime findLatestPromptAt(UUID projectId);
+    OffsetDateTime findLatestProjectPromptAt(UUID projectId);
+
+    // The user's questions in one chat, most recent first.
+    @Query("select r.prompt from ChatResponseMessage r where r.chat.id = :chatId "
+            + "and r.prompt is not null order by r.createdAt desc, r.id desc")
+    List<String> findChatPrompts(UUID chatId, Limit limit);
+
+    @Query("select max(r.createdAt) from ChatResponseMessage r where r.chat.id = :chatId "
+            + "and r.prompt is not null")
+    OffsetDateTime findLatestChatPromptAt(UUID chatId);
 }

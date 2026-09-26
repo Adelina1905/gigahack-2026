@@ -22,6 +22,10 @@ interface ProjectItemProps {
   unreadAlerts?: number;
   // Opens the project's "Alerts & topics" dialog; the action is hidden without it.
   onOpenAlerts?: (project: ProjectSummary) => void;
+  // A chat in a project follows the project's alerts; one that kept its own
+  // subscription (from before it was moved here) still shows its badge and bell.
+  unreadAlertsByChat?: Record<string, number>;
+  onOpenChatAlerts?: (chat: ChatSummary) => void;
 }
 
 function ProjectItem({
@@ -40,6 +44,8 @@ function ProjectItem({
   onMoveChat,
   unreadAlerts = 0,
   onOpenAlerts,
+  unreadAlertsByChat,
+  onOpenChatAlerts,
 }: ProjectItemProps) {
   const { t } = useI18n();
   const unreadId = useId();
@@ -170,6 +176,8 @@ function ProjectItem({
                 onSelect={onSelectChat}
                 onDelete={onDeleteChat}
                 onMove={onMoveChat}
+                unreadAlerts={unreadAlertsByChat?.[chat.id] ?? 0}
+                onOpenAlerts={(unreadAlertsByChat?.[chat.id] ?? 0) > 0 ? onOpenChatAlerts : undefined}
               />
             ))
           )}

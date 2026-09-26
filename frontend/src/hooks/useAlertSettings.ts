@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, api, type Api } from "../api";
 import { toAlertSettings, toAlertTopic } from "../api/mappers";
 import type { ErrorKey } from "../i18n/messages";
-import type { AlertSettings, AlertTopic } from "../types/alerts";
+import { parseScopeKey, scopeKey, type AlertScope, type AlertSettings, type AlertTopic } from "../types/alerts";
+import {
+  createScopeTopic,
+  deleteScopeTopic,
+  getScopeSettings,
+  scanScope,
+  updateScopeSettings,
+  updateScopeTopic,
+} from "./alertScope";
 
 export type AlertSettingsClient = Pick<
   Api,
@@ -12,6 +20,12 @@ export type AlertSettingsClient = Pick<
   | "updateAlertTopic"
   | "deleteAlertTopic"
   | "scanProjectAlerts"
+  | "getChatAlertSettings"
+  | "updateChatAlertSettings"
+  | "createChatAlertTopic"
+  | "updateChatAlertTopic"
+  | "deleteChatAlertTopic"
+  | "scanChatAlerts"
 >;
 
 // The backend saves the change first and answers 503 when the matching
@@ -23,12 +37,15 @@ interface UseAlertSettingsOptions {
   onAlertsChanged?: () => void;
 }
 
-// One project's alert switch, followed topics and manual scan.
+// One project's or chat's alert switch, followed topics and manual scan.
 export function useAlertSettings(
-  projectId: string,
+  target: AlertScope,
   client: AlertSettingsClient = api,
   { onAlertsChanged }: UseAlertSettingsOptions = {},
 ) {
+  // Callers usually pass a fresh object each render; only a new scope reloads.
+  const key = scopeKey(target);
+  const scope = useMemo(() => parseScopeKey(key), [key]);
   const [settings, setSettings] = useState<AlertSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
@@ -49,7 +66,7 @@ export function useAlertSettings(
     let cancelled = false;
     void (async () => {
       try {
-        const loaded = toAlertSettings(await clientRef.current.getAlertSettings(projectId));
+        const loaded = toAlertSettings(await getScopeSettings(clientRef.current, scope));
         if (!cancelled) setSettings(loaded);
       } catch (loadError) {
         console.error("Failed to load alert settings", loadError);
@@ -61,7 +78,7 @@ export function useAlertSettings(
     return () => {
       cancelled = true;
     };
-  }, [projectId]);
+  }, [scope]);
 
   const setTopics = (update: (topics: AlertTopic[]) => AlertTopic[]) =>
     setSettings((current) => (current ? { ...current, topics: update(current.topics) } : current));
@@ -70,24 +87,26 @@ export function useAlertSettings(
   const reload = useCallback(
     async (fallback: AlertSettings | null) => {
       try {
-        setSettings(toAlertSettings(await clientRef.current.getAlertSettings(projectId)));
+        setSettings(toAlertSettings(await getScopeSettings(clientRef.current, scope)));
       } catch (loadError) {
         console.error("Failed to reload alert settings", loadError);
         setSettings(fallback);
       }
     },
-    [projectId],
+    [scope],
   );
 
   const setEnabled = useCallback(
     async (enabled: boolean) => {
-      const previous = settingsRef.current;
+      // The rendered settings, not settingsRef: the ref is only synced after
+      // render, so a click right after the first load could see null.
+      const previous = settings;
       if (!previous || previous.enabled === enabled) return;
       setSettings({ ...previous, enabled });
       setIsSaving(true);
       setError(null);
       try {
-        setSettings(toAlertSettings(await clientRef.current.updateAlertSettings(projectId, enabled)));
+        setSettings(toAlertSettings(await updateScopeSettings(clientRef.current, scope, enabled)));
         if (enabled) changedRef.current?.();
       } catch (saveError) {
         console.error("Failed to update alert settings", saveError);
@@ -102,7 +121,7 @@ export function useAlertSettings(
         setIsSaving(false);
       }
     },
-    [projectId, reload],
+    [scope, reload, settings],
   );
 
   const addTopic = useCallback(
@@ -111,7 +130,7 @@ export function useAlertSettings(
       if (!trimmed) return false;
       setError(null);
       try {
-        const topic = toAlertTopic(await clientRef.current.createAlertTopic(projectId, trimmed));
+        const topic = toAlertTopic(await createScopeTopic(clientRef.current, scope, trimmed));
         // An existing label comes back as the existing topic.
         setTopics((topics) => [...topics.filter((candidate) => candidate.id !== topic.id), topic]);
         return true;
@@ -121,18 +140,18 @@ export function useAlertSettings(
         return false;
       }
     },
-    [projectId],
+    [scope],
   );
 
   const renameTopic = useCallback(
     async (topicId: number, label: string) => {
       const trimmed = label.trim();
-      const previous = settingsRef.current?.topics.find((topic) => topic.id === topicId);
+      const previous = settings?.topics.find((topic) => topic.id === topicId);
       if (!previous || !trimmed || trimmed === previous.label) return;
       setTopics((topics) => topics.map((topic) => (topic.id === topicId ? { ...topic, label: trimmed } : topic)));
       setError(null);
       try {
-        const saved = toAlertTopic(await clientRef.current.updateAlertTopic(projectId, topicId, trimmed));
+        const saved = toAlertTopic(await updateScopeTopic(clientRef.current, scope, topicId, trimmed));
         setTopics((topics) => topics.map((topic) => (topic.id === topicId ? saved : topic)));
       } catch (renameError) {
         console.error("Failed to rename alert topic", renameError);
@@ -140,24 +159,24 @@ export function useAlertSettings(
         setError("alertSettingsSaveFailed");
       }
     },
-    [projectId],
+    [scope, settings],
   );
 
   const removeTopic = useCallback(
     async (topicId: number) => {
-      const previous = settingsRef.current?.topics;
+      const previous = settings?.topics;
       if (!previous?.some((topic) => topic.id === topicId)) return;
       setTopics((topics) => topics.filter((topic) => topic.id !== topicId));
       setError(null);
       try {
-        await clientRef.current.deleteAlertTopic(projectId, topicId);
+        await deleteScopeTopic(clientRef.current, scope, topicId);
       } catch (removeError) {
         console.error("Failed to remove alert topic", removeError);
         setTopics(() => previous);
         setError("alertSettingsSaveFailed");
       }
     },
-    [projectId],
+    [scope, settings],
   );
 
   const checkNow = useCallback(async () => {
@@ -165,10 +184,10 @@ export function useAlertSettings(
     setLastScanCreated(null);
     setError(null);
     try {
-      const result = await clientRef.current.scanProjectAlerts(projectId);
+      const result = await scanScope(clientRef.current, scope);
       setLastScanCreated(result.created);
       // Picks up the new last-scan time.
-      setSettings(toAlertSettings(await clientRef.current.getAlertSettings(projectId)));
+      setSettings(toAlertSettings(await getScopeSettings(clientRef.current, scope)));
       if (result.created > 0) changedRef.current?.();
     } catch (scanError) {
       console.error("Failed to scan for alerts", scanError);
@@ -177,7 +196,7 @@ export function useAlertSettings(
     } finally {
       setIsScanning(false);
     }
-  }, [projectId, reload]);
+  }, [scope, reload]);
 
   const dismissError = useCallback(() => setError(null), []);
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "../../i18n/context";
 import type { ErrorKey } from "../../i18n/messages";
-import type { Alert } from "../../types/alerts";
-import type { ProjectSummary } from "../../types/chat";
+import { alertScope, scopeKey, type Alert, type AlertScope } from "../../types/alerts";
+import { DEFAULT_CHAT_NAME, type ChatSummary, type ProjectSummary } from "../../types/chat";
 import { iconProps } from "../sidebar/iconProps";
 import { safeHttpUrl } from "../sources/safeLink";
 import { formatCalendarDate } from "./format";
@@ -11,6 +11,11 @@ interface AlertBellProps {
   alerts: Alert[];
   unreadTotal: number;
   projects: ProjectSummary[];
+  // Names the conversations whose own alerts are listed.
+  chats?: ChatSummary[];
+  // The per-browser "Offer alerts in conversations" switch; hidden without a handler.
+  offerAlerts?: boolean;
+  onOfferAlertsChange?: (enabled: boolean) => void;
   isLoading?: boolean;
   error?: ErrorKey | null;
   // Called each time the panel opens, to fetch the latest list.
@@ -31,12 +36,22 @@ const BellIcon = ({ className }: { className: string }) => (
 const smallActionClass =
   "inline-flex cursor-pointer items-center gap-1 rounded-sm px-1.5 py-1 text-xs font-semibold text-primary hover:bg-primary-50";
 
-// Alerts are shown under their project, in the order the newest alert of each arrived.
-function groupByProject(alerts: Alert[]) {
-  const groups = new Map<string, Alert[]>();
-  for (const alert of alerts) groups.set(alert.projectId, [...(groups.get(alert.projectId) ?? []), alert]);
+// Alerts are shown under their project or conversation, in the order the
+// newest alert of each arrived.
+function groupByScope(alerts: Alert[]) {
+  const groups = new Map<string, { scope: AlertScope; alerts: Alert[] }>();
+  for (const alert of alerts) {
+    const scope = alertScope(alert);
+    const key = scopeKey(scope);
+    const group = groups.get(key) ?? { scope, alerts: [] };
+    group.alerts.push(alert);
+    groups.set(key, group);
+  }
   return [...groups.entries()];
 }
+
+const FolderPath = () => <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />;
+const ChatPath = () => <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />;
 
 interface AlertCardProps {
   alert: Alert;
@@ -119,6 +134,9 @@ function AlertBell({
   alerts,
   unreadTotal,
   projects,
+  chats = [],
+  offerAlerts = true,
+  onOfferAlertsChange,
   isLoading = false,
   error,
   onOpen,
@@ -170,8 +188,15 @@ function AlertBell({
     onOpen();
   };
 
-  const projectName = (projectId: string) =>
-    projects.find((project) => project.id === projectId)?.name ?? t.alerts.unknownProject;
+  const offerId = useId();
+  const scopeName = (scope: AlertScope) => {
+    if (scope.kind === "project") {
+      return projects.find((project) => project.id === scope.id)?.name ?? t.alerts.unknownProject;
+    }
+    const name = chats.find((chat) => chat.id === scope.id)?.name;
+    if (!name) return t.alerts.unknownChat;
+    return name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : name;
+  };
   const hasUnread = unreadTotal > 0 || alerts.some((alert) => !alert.isRead);
   const badge = unreadTotal > 99 ? "99+" : String(unreadTotal);
 
@@ -233,6 +258,27 @@ function AlertBell({
             </div>
           </div>
 
+          {onOfferAlertsChange && (
+            <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p id={offerId} className="text-xs font-semibold text-text">{t.alerts.offer.label}</p>
+                <p className="text-[11px] text-text-subtle">{t.alerts.offer.hint}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={offerAlerts}
+                aria-labelledby={offerId}
+                onClick={() => onOfferAlertsChange(!offerAlerts)}
+                className="shrink-0 cursor-pointer rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <span aria-hidden="true" className={`relative block h-5 w-9 rounded-full transition-colors ${offerAlerts ? "bg-primary" : "bg-border-strong"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${offerAlerts ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                </span>
+              </button>
+            </div>
+          )}
+
           {error && (
             <div role="alert" className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-sm border border-danger bg-danger-light px-3 py-2 text-sm text-danger">
               <span>{t.errors[error]}</span>
@@ -257,13 +303,13 @@ function AlertBell({
                 )}
               </p>
             ) : (
-              groupByProject(alerts).map(([projectId, items]) => (
-                <section key={projectId} aria-label={projectName(projectId)} className="border-b border-border last:border-b-0">
+              groupByScope(alerts).map(([key, { scope, alerts: items }]) => (
+                <section key={key} aria-label={scopeName(scope)} className="border-b border-border last:border-b-0">
                   <h3 className="flex items-center gap-1.5 bg-background-secondary px-4 py-1.5 text-xs font-semibold text-text-muted">
                     <svg {...iconProps} className="h-3.5 w-3.5 text-primary" aria-hidden="true">
-                      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                      {scope.kind === "project" ? <FolderPath /> : <ChatPath />}
                     </svg>
-                    <span className="truncate">{projectName(projectId)}</span>
+                    <span className="truncate">{scopeName(scope)}</span>
                   </h3>
                   <ul className="divide-y divide-border">
                     {items.map((alert) => (

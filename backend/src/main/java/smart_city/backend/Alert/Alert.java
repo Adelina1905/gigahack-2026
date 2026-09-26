@@ -25,8 +25,15 @@ public class Alert {
     @Column(name = "client_id", nullable = false)
     private UUID clientId;
 
-    @Column(name = "project_id", nullable = false)
+    @Column(name = "subscription_id", nullable = false)
+    private Long subscriptionId;
+
+    // Exactly one is set: the subscription's project or chat.
+    @Column(name = "project_id")
     private UUID projectId;
+
+    @Column(name = "chat_id")
+    private UUID chatId;
 
     // Plain column: the database clears it (ON DELETE SET NULL) when the topic is deleted.
     @Column(name = "topic_id")
@@ -104,8 +111,16 @@ public class Alert {
         return clientId;
     }
 
+    public Long getSubscriptionId() {
+        return subscriptionId;
+    }
+
     public UUID getProjectId() {
         return projectId;
+    }
+
+    public UUID getChatId() {
+        return chatId;
     }
 
     public Long getTopicId() {

@@ -43,6 +43,7 @@ public class AlertController {
     @GetMapping
     public List<AlertView> getAlerts(
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID chatId,
             @RequestParam(defaultValue = "false") boolean unreadOnly,
             @RequestParam(defaultValue = "50") int limit,
             @CookieValue(
@@ -55,6 +56,7 @@ public class AlertController {
         return alertService.getAlerts(
                 anonymousClientCookie.resolve(clientCookie, response),
                 projectId,
+                chatId,
                 unreadOnly,
                 limit
         );
@@ -105,7 +107,8 @@ public class AlertController {
 
         return new ReadAllResult(alertService.markAllRead(
                 anonymousClientCookie.resolve(clientCookie, response),
-                request == null ? null : request.projectId()
+                request == null ? null : request.projectId(),
+                request == null ? null : request.chatId()
         ));
     }
 

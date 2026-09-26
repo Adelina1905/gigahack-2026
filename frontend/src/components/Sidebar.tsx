@@ -27,6 +27,9 @@ interface SidebarProps {
   // Unread alerts per project id.
   unreadAlertsByProject?: Record<string, number>;
   onOpenProjectAlerts?: (project: ProjectSummary) => void;
+  // Unread alerts per chat id (the chat's own subscription).
+  unreadAlertsByChat?: Record<string, number>;
+  onOpenChatAlerts?: (chat: ChatSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -93,6 +96,8 @@ function Sidebar({
   onNewChatInProject,
   unreadAlertsByProject,
   onOpenProjectAlerts,
+  unreadAlertsByChat,
+  onOpenChatAlerts,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -233,6 +238,8 @@ function Sidebar({
                     onMoveChat={onMoveChat}
                     unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
                     onOpenAlerts={onOpenProjectAlerts}
+                    unreadAlertsByChat={unreadAlertsByChat}
+                    onOpenChatAlerts={onOpenChatAlerts}
                   />
                 ))}
               </ul>
@@ -262,6 +269,8 @@ function Sidebar({
                       onSelect={onSelect}
                       onDelete={onDelete}
                       onMove={onMoveChat}
+                      unreadAlerts={unreadAlertsByChat?.[chat.id] ?? 0}
+                      onOpenAlerts={onOpenChatAlerts}
                     />
                   ))}
                 </ul>

@@ -5,7 +5,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-// Periodically scans every project with alerts turned on (new documents "arrive" over time).
+// Periodically scans every project and chat with alerts turned on (new documents "arrive" over time).
 @Component
 @EnableScheduling
 @EnableConfigurationProperties(AlertProperties.class)
@@ -25,7 +25,7 @@ public class AlertScanTask {
     )
     public void scan() {
         if (properties.enabled()) {
-            alertService.scanEnabledProjects();
+            alertService.scanEnabledSubscriptions();
         }
     }
 }

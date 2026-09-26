@@ -25,15 +25,15 @@ import smart_city.backend.Chat.AnonymousClientCookie;
 
 import java.util.UUID;
 
-// A project's alert settings, topics and manual scan.
+// A chat's own alert settings, topics and manual scan (same semantics as ProjectAlertController).
 @RestController
-@RequestMapping("/api/projects/{projectId}")
-public class ProjectAlertController {
+@RequestMapping("/api/chats/{chatId}")
+public class ChatAlertController {
 
     private final AlertService alertService;
     private final AnonymousClientCookie anonymousClientCookie;
 
-    public ProjectAlertController(
+    public ChatAlertController(
             AlertService alertService,
             AnonymousClientCookie anonymousClientCookie
     ) {
@@ -44,7 +44,7 @@ public class ProjectAlertController {
 
     @GetMapping("/alert-settings")
     public AlertSettingsView getSettings(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -54,14 +54,14 @@ public class ProjectAlertController {
 
         return alertService.getSettings(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId)
+                AlertScope.chat(chatId)
         );
     }
 
 
     @PutMapping("/alert-settings")
     public AlertSettingsView updateSettings(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @Valid @RequestBody AlertSettingsRequest request,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
@@ -72,7 +72,7 @@ public class ProjectAlertController {
 
         return alertService.updateSettings(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId),
+                AlertScope.chat(chatId),
                 request.enabled()
         );
     }
@@ -80,7 +80,7 @@ public class ProjectAlertController {
 
     @PostMapping("/alert-topics/refresh")
     public AlertSettingsView refreshTopics(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -90,7 +90,7 @@ public class ProjectAlertController {
 
         return alertService.refreshTopics(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId)
+                AlertScope.chat(chatId)
         );
     }
 
@@ -98,7 +98,7 @@ public class ProjectAlertController {
     @PostMapping("/alert-topics")
     @ResponseStatus(HttpStatus.CREATED)
     public AlertTopicView addTopic(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @Valid @RequestBody AlertTopicRequest request,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
@@ -109,7 +109,7 @@ public class ProjectAlertController {
 
         return alertService.addTopic(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId),
+                AlertScope.chat(chatId),
                 request.label()
         );
     }
@@ -117,7 +117,7 @@ public class ProjectAlertController {
 
     @PatchMapping("/alert-topics/{topicId}")
     public AlertTopicView renameTopic(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @PathVariable Long topicId,
             @Valid @RequestBody AlertTopicRequest request,
             @CookieValue(
@@ -129,7 +129,7 @@ public class ProjectAlertController {
 
         return alertService.renameTopic(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId),
+                AlertScope.chat(chatId),
                 topicId,
                 request.label()
         );
@@ -139,7 +139,7 @@ public class ProjectAlertController {
     @DeleteMapping("/alert-topics/{topicId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTopic(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @PathVariable Long topicId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
@@ -150,7 +150,7 @@ public class ProjectAlertController {
 
         alertService.deleteTopic(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId),
+                AlertScope.chat(chatId),
                 topicId
         );
     }
@@ -158,7 +158,7 @@ public class ProjectAlertController {
 
     @PostMapping("/alerts/scan")
     public ScanResult scan(
-            @PathVariable UUID projectId,
+            @PathVariable UUID chatId,
             @CookieValue(
                     name = AnonymousClientCookie.COOKIE_NAME,
                     required = false
@@ -168,7 +168,7 @@ public class ProjectAlertController {
 
         return alertService.scanNow(
                 anonymousClientCookie.resolve(clientCookie, response),
-                AlertScope.project(projectId)
+                AlertScope.chat(chatId)
         );
     }
 }

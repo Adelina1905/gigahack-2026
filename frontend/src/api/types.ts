@@ -93,10 +93,12 @@ export interface DocumentCreateRequest {
   documentLink: string;
 }
 
-// Alert/dto/AlertView.java — one matched document for one project.
+// Alert/dto/AlertView.java — one matched document for one project or one chat.
+// Exactly one of projectId and chatId is set.
 export interface AlertView {
   id: number;
-  projectId: string; // UUID
+  projectId: string | null; // UUID of a project subscription
+  chatId: string | null; // UUID of a chat's own subscription
   topicId: number | null; // null once the topic was deleted
   topicLabel: string; // the topic's label when the alert was created
   documentId: string;
@@ -115,6 +117,7 @@ export interface AlertView {
 export interface AlertUnreadCountView {
   total: number;
   byProject: Record<string, number>; // project UUID -> unread alerts
+  byChat: Record<string, number>; // chat UUID -> unread alerts of the chat's own subscription
 }
 
 export interface AlertTopicView {
@@ -125,8 +128,10 @@ export interface AlertTopicView {
   minScore: number | null;
 }
 
+// One subscription: a project's or a chat's (exactly one id is set).
 export interface AlertSettingsView {
-  projectId: string; // UUID
+  projectId: string | null; // UUID
+  chatId: string | null; // UUID
   enabled: boolean;
   // True once the one-time opt-in was answered either way.
   prompted: boolean;
@@ -134,8 +139,10 @@ export interface AlertSettingsView {
   lastScanAt: string | null; // ISO 8601
 }
 
+// Neither id marks every alert as read.
 export interface AlertReadAllRequest {
-  projectId: string | null; // null marks every project's alerts
+  projectId?: string | null;
+  chatId?: string | null;
 }
 
 export interface AlertReadAllView {

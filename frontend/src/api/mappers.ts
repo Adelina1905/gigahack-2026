@@ -92,7 +92,8 @@ export function toMessages(response: ResponseView): ChatMessage[] {
 export function toAlert(alert: AlertView): Alert {
   return {
     id: alert.id,
-    projectId: alert.projectId,
+    projectId: alert.projectId ?? null,
+    chatId: alert.chatId ?? null,
     topicId: alert.topicId ?? null,
     topicLabel: alert.topicLabel,
     documentId: alert.documentId,
@@ -110,7 +111,11 @@ export function toAlert(alert: AlertView): Alert {
 }
 
 export function toUnreadAlertCounts(counts: AlertUnreadCountView): UnreadAlertCounts {
-  return { total: counts.total ?? 0, byProject: { ...(counts.byProject ?? {}) } };
+  return {
+    total: counts.total ?? 0,
+    byProject: { ...(counts.byProject ?? {}) },
+    byChat: { ...(counts.byChat ?? {}) },
+  };
 }
 
 export function toAlertTopic(topic: AlertTopicView): AlertTopic {
@@ -125,7 +130,8 @@ export function toAlertTopic(topic: AlertTopicView): AlertTopic {
 
 export function toAlertSettings(settings: AlertSettingsView): AlertSettings {
   return {
-    projectId: settings.projectId,
+    projectId: settings.projectId ?? null,
+    chatId: settings.chatId ?? null,
     enabled: settings.enabled,
     prompted: settings.prompted,
     topics: (settings.topics ?? []).map(toAlertTopic),

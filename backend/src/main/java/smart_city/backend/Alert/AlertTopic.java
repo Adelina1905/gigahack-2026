@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "alert_topics")
@@ -23,8 +22,8 @@ public class AlertTopic {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "project_id", nullable = false)
-    private UUID projectId;
+    @Column(name = "subscription_id", nullable = false)
+    private Long subscriptionId;
 
     @Column(nullable = false, length = MAX_LABEL)
     private String label;
@@ -53,8 +52,8 @@ public class AlertTopic {
     }
 
 
-    public AlertTopic(UUID projectId, String label, String query, AlertTopicSource source) {
-        this.projectId = projectId;
+    public AlertTopic(Long subscriptionId, String label, String query, AlertTopicSource source) {
+        this.subscriptionId = subscriptionId;
         this.label = label;
         this.query = query;
         this.source = source;
@@ -75,8 +74,8 @@ public class AlertTopic {
         return id;
     }
 
-    public UUID getProjectId() {
-        return projectId;
+    public Long getSubscriptionId() {
+        return subscriptionId;
     }
 
     public String getLabel() {

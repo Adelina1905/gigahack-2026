@@ -60,7 +60,7 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     @Autowired private ChatRepository chatRepository;
     @Autowired private ResponseRepository responseRepository;
     @Autowired private AlertTopicRepository topicRepository;
-    @Autowired private ProjectAlertSettingsRepository settingsRepository;
+    @Autowired private AlertSubscriptionRepository subscriptionRepository;
 
     private final UUID clientId = UUID.randomUUID();
     private final UUID otherClientId = UUID.randomUUID();
@@ -85,26 +85,31 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     }
 
     private AlertTopicView userTopic(UUID project, String label) {
-        return alertService.addTopic(clientId, project, label);
+        return alertService.addTopic(clientId, AlertScope.project(project), label);
     }
 
     private static FeedDocument doc(String id, String keyword, double score) {
         return new FeedDocument(id, keyword, score);
     }
 
-    private void enableDirectly(UUID project) {
-        ProjectAlertSettings row = new ProjectAlertSettings(project);
+    // Turns alerts on without the backfill scan that updateSettings runs.
+    private void enableDirectly(AlertScope scope) {
+        alertService.updateSettings(clientId, scope, false);
+        AlertSubscription row = subscriptionRepository.findByScope(scope).orElseThrow();
         row.setEnabled(true);
-        row.setPrompted(true);
-        settingsRepository.saveAndFlush(row);
+        subscriptionRepository.saveAndFlush(row);
+    }
+
+    private Long subscriptionId(AlertScope scope) {
+        return subscriptionRepository.findByScope(scope).orElseThrow().getId();
     }
 
     @Test
     void settingsDefaultToOffWithoutARow() {
-        AlertSettingsView view = alertService.getSettings(clientId, projectId);
+        AlertSettingsView view = alertService.getSettings(clientId, AlertScope.project(projectId));
 
-        assertThat(view).isEqualTo(new AlertSettingsView(projectId, false, false, List.of(), null));
-        assertThat(settingsRepository.findById(projectId)).isEmpty();
+        assertThat(view).isEqualTo(new AlertSettingsView(projectId, null, false, false, List.of(), null));
+        assertThat(subscriptionRepository.findByProjectId(projectId)).isEmpty();
     }
 
     @Test
@@ -116,7 +121,7 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                 new TopicSuggestion("Transport public", "abonament transport public")
         );
 
-        AlertSettingsView refreshed = alertService.refreshTopics(clientId, projectId);
+        AlertSettingsView refreshed = alertService.refreshTopics(clientId, AlertScope.project(projectId));
 
         assertThat(matcher.topicsCalls).hasSize(1);
         assertThat(matcher.topicsCalls.getFirst().questions()).containsExactly(
@@ -130,17 +135,17 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                         org.assertj.core.groups.Tuple.tuple("Reparații drumuri", "reparație drum strada", AlertTopicSource.AUTO),
                         org.assertj.core.groups.Tuple.tuple("Transport public", "abonament transport public", AlertTopicSource.AUTO)
                 );
-        assertThat(settingsRepository.findById(projectId).orElseThrow().getTopicsRefreshedAt()).isNotNull();
+        assertThat(subscriptionRepository.findByProjectId(projectId).orElseThrow().getTopicsRefreshedAt()).isNotNull();
 
         Long roads = refreshed.topics().getFirst().id();
-        alertService.deleteTopic(clientId, projectId, roads);
+        alertService.deleteTopic(clientId, AlertScope.project(projectId), roads);
         matcher.suggest(
                 new TopicSuggestion("REPARAȚII DRUMURI", "drum"),
                 new TopicSuggestion("transport public", "transport"),
                 new TopicSuggestion("Parcări", "parcare")
         );
 
-        AlertSettingsView again = alertService.refreshTopics(clientId, projectId);
+        AlertSettingsView again = alertService.refreshTopics(clientId, AlertScope.project(projectId));
 
         assertThat(matcher.topicsCalls.get(1).existingLabels())
                 .containsExactly("Reparații drumuri", "Transport public");
@@ -151,7 +156,7 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
 
     @Test
     void refreshWithoutQuestionsDoesNotCallTheService() {
-        AlertSettingsView view = alertService.refreshTopics(clientId, projectId);
+        AlertSettingsView view = alertService.refreshTopics(clientId, AlertScope.project(projectId));
 
         assertThat(view.topics()).isEmpty();
         assertThat(matcher.topicsCalls).isEmpty();
@@ -169,7 +174,7 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                 doc("d5", "parcare", 0.95)
         );
 
-        AlertSettingsView on = alertService.updateSettings(clientId, projectId, true);
+        AlertSettingsView on = alertService.updateSettings(clientId, AlertScope.project(projectId), true);
 
         assertThat(on.enabled()).isTrue();
         assertThat(on.prompted()).isTrue();
@@ -177,7 +182,7 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         assertThat(on.topics()).extracting(AlertTopicView::label).containsExactly("Transport");
         assertThat(matcher.matchCalls).hasSize(1);
         assertThat(matcher.matchCalls.getFirst().limit()).isEqualTo(3);
-        List<AlertView> alerts = alertService.getAlerts(clientId, projectId, false, 50);
+        List<AlertView> alerts = alertService.getAlerts(clientId, projectId, null, false, 50);
         assertThat(alerts).extracting(AlertView::documentId).containsExactlyInAnyOrder("d1", "d2", "d3");
         AlertView first = alerts.stream().filter(a -> a.documentId().equals("d1")).findFirst().orElseThrow();
         assertThat(first.topicLabel()).isEqualTo("Transport");
@@ -187,17 +192,17 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         assertThat(first.readAt()).isNull();
 
         // Already on: no second backfill.
-        alertService.updateSettings(clientId, projectId, true);
+        alertService.updateSettings(clientId, AlertScope.project(projectId), true);
         assertThat(matcher.matchCalls).hasSize(1);
 
-        AlertSettingsView off = alertService.updateSettings(clientId, projectId, false);
+        AlertSettingsView off = alertService.updateSettings(clientId, AlertScope.project(projectId), false);
         assertThat(off.enabled()).isFalse();
         assertThat(off.prompted()).isTrue();
     }
 
     @Test
     void declineOnlyMarksPrompted() {
-        AlertSettingsView view = alertService.updateSettings(clientId, projectId, false);
+        AlertSettingsView view = alertService.updateSettings(clientId, AlertScope.project(projectId), false);
 
         assertThat(view.enabled()).isFalse();
         assertThat(view.prompted()).isTrue();
@@ -210,17 +215,17 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         ask("Întrebare");
         matcher.setFailing(true);
 
-        assertThatThrownBy(() -> alertService.updateSettings(clientId, projectId, true))
+        assertThatThrownBy(() -> alertService.updateSettings(clientId, AlertScope.project(projectId), true))
                 .isInstanceOf(AlertMatcherUnavailableException.class);
 
-        AlertSettingsView view = alertService.getSettings(clientId, projectId);
+        AlertSettingsView view = alertService.getSettings(clientId, AlertScope.project(projectId));
         assertThat(view.enabled()).isTrue();
         assertThat(view.prompted()).isTrue();
     }
 
     @Test
     void scheduledScanAddsAtMostTwoNewAlertsAndExcludesEarlierOnes() {
-        enableDirectly(projectId);
+        enableDirectly(AlertScope.project(projectId));
         userTopic(projectId, "transport");
         UUID disabled = project();
         userTopic(disabled, "transport");
@@ -232,21 +237,21 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                 doc("d5", "transport", 0.5)
         );
 
-        alertService.scanEnabledProjects();
-        alertService.scanEnabledProjects();
+        alertService.scanEnabledSubscriptions();
+        alertService.scanEnabledSubscriptions();
 
         assertThat(matcher.matchCalls).hasSize(2);
         assertThat(matcher.matchCalls.get(0).limit()).isEqualTo(2);
         assertThat(matcher.matchCalls.get(0).excludedDocumentIds()).isEmpty();
         assertThat(matcher.matchCalls.get(1).excludedDocumentIds()).containsExactlyInAnyOrder("d1", "d2");
-        assertThat(alertService.getAlerts(clientId, projectId, false, 50))
+        assertThat(alertService.getAlerts(clientId, projectId, null, false, 50))
                 .extracting(AlertView::documentId).containsExactlyInAnyOrder("d1", "d2", "d3", "d4");
-        assertThat(alertService.getAlerts(clientId, disabled, false, 50)).isEmpty();
+        assertThat(alertService.getAlerts(clientId, disabled, null, false, 50)).isEmpty();
 
-        alertService.scanEnabledProjects();
-        alertService.scanEnabledProjects();
+        alertService.scanEnabledSubscriptions();
+        alertService.scanEnabledSubscriptions();
 
-        assertThat(alertService.getAlerts(clientId, projectId, false, 50)).hasSize(5);
+        assertThat(alertService.getAlerts(clientId, projectId, null, false, 50)).hasSize(5);
         assertThat(matcher.matchCalls.get(3).excludedDocumentIds()).hasSize(5);
         // No questions in the project: the scheduled scan never asked for topics.
         assertThat(matcher.topicsCalls).isEmpty();
@@ -254,33 +259,33 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
 
     @Test
     void scheduledScanRefreshesTopicsOnlyWhenThereAreNewQuestions() {
-        enableDirectly(projectId);
+        enableDirectly(AlertScope.project(projectId));
         ask("Cum plătesc impozitul?");
         matcher.suggest(new TopicSuggestion("Impozite", "impozit pe bunuri"));
 
-        alertService.scanEnabledProjects();
-        alertService.scanEnabledProjects();
+        alertService.scanEnabledSubscriptions();
+        alertService.scanEnabledSubscriptions();
 
         assertThat(matcher.topicsCalls).hasSize(1);
-        assertThat(alertService.getSettings(clientId, projectId).topics())
+        assertThat(alertService.getSettings(clientId, AlertScope.project(projectId)).topics())
                 .extracting(AlertTopicView::label).containsExactly("Impozite");
 
         ask("Și termenul de plată?");
-        alertService.scanEnabledProjects();
+        alertService.scanEnabledSubscriptions();
 
         assertThat(matcher.topicsCalls).hasSize(2);
     }
 
     @Test
     void scheduledScanSkipsWhenTheServiceIsDown() {
-        enableDirectly(projectId);
+        enableDirectly(AlertScope.project(projectId));
         userTopic(projectId, "transport");
         matcher.setFailing(true);
 
-        alertService.scanEnabledProjects();
+        alertService.scanEnabledSubscriptions();
 
         assertThat(matcher.matchCalls).hasSize(1);
-        assertThat(alertService.getAlerts(clientId, projectId, false, 50)).isEmpty();
+        assertThat(alertService.getAlerts(clientId, projectId, null, false, 50)).isEmpty();
     }
 
     @Test
@@ -288,19 +293,19 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         userTopic(projectId, "transport");
         matcher.feed(doc("d1", "transport", 0.9), doc("d2", "transport", 0.8));
 
-        ScanResult first = alertService.scanProject(clientId, projectId);
+        ScanResult first = alertService.scanNow(clientId, AlertScope.project(projectId));
         matcher.setIgnoringExclusions(true);
-        ScanResult second = alertService.scanProject(clientId, projectId);
+        ScanResult second = alertService.scanNow(clientId, AlertScope.project(projectId));
 
         assertThat(first).isEqualTo(new ScanResult(2, "lexical"));
         assertThat(second).isEqualTo(new ScanResult(0, "lexical"));
-        assertThat(alertService.getAlerts(clientId, projectId, false, 50)).hasSize(2);
-        assertThat(alertService.getSettings(clientId, projectId).lastScanAt()).isNotNull();
+        assertThat(alertService.getAlerts(clientId, projectId, null, false, 50)).hasSize(2);
+        assertThat(alertService.getSettings(clientId, AlertScope.project(projectId)).lastScanAt()).isNotNull();
     }
 
     @Test
     void scanWithoutTopicsMatchesNothing() {
-        ScanResult result = alertService.scanProject(clientId, projectId);
+        ScanResult result = alertService.scanNow(clientId, AlertScope.project(projectId));
 
         assertThat(result).isEqualTo(new ScanResult(0, "none"));
         assertThat(matcher.matchCalls).isEmpty();
@@ -310,26 +315,26 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     void notRelevantHidesTheAlertAndRaisesTheTopicThreshold() {
         AlertTopicView topic = userTopic(projectId, "transport");
         matcher.feed(doc("d1", "transport", 0.62), doc("d2", "transport", 0.61), doc("d3", "transport", 0.5));
-        alertService.scanProject(clientId, projectId);
-        AlertView dismissed = alertService.getAlerts(clientId, projectId, false, 50).stream()
+        alertService.scanNow(clientId, AlertScope.project(projectId));
+        AlertView dismissed = alertService.getAlerts(clientId, projectId, null, false, 50).stream()
                 .filter(a -> a.documentId().equals("d2")).findFirst().orElseThrow();
 
         alertService.dismissNotRelevant(clientId, dismissed.id());
 
-        assertThat(alertService.getAlerts(clientId, projectId, false, 50))
+        assertThat(alertService.getAlerts(clientId, projectId, null, false, 50))
                 .extracting(AlertView::documentId).containsExactlyInAnyOrder("d1", "d3");
         assertThat(alertService.getUnreadCount(clientId).total()).isEqualTo(2);
-        Double minScore = alertService.getSettings(clientId, projectId).topics().getFirst().minScore();
+        Double minScore = alertService.getSettings(clientId, AlertScope.project(projectId)).topics().getFirst().minScore();
         assertThat(minScore).isCloseTo(0.62, org.assertj.core.data.Offset.offset(1e-9));
 
         // A second dismissal with a lower score never lowers the threshold.
-        AlertView lower = alertService.getAlerts(clientId, projectId, false, 50).stream()
+        AlertView lower = alertService.getAlerts(clientId, projectId, null, false, 50).stream()
                 .filter(a -> a.documentId().equals("d3")).findFirst().orElseThrow();
         alertService.dismissNotRelevant(clientId, lower.id());
         assertThat(topicRepository.findById(topic.id()).orElseThrow().getMinScore())
                 .isCloseTo(0.62, org.assertj.core.data.Offset.offset(1e-9));
 
-        alertService.scanProject(clientId, projectId);
+        alertService.scanNow(clientId, AlertScope.project(projectId));
         List<MatchTopic> sent = matcher.matchCalls.getLast().topics();
         assertThat(sent).extracting(MatchTopic::minScore).containsExactly(minScore);
         assertThat(matcher.matchCalls.getLast().excludedDocumentIds()).containsExactlyInAnyOrder("d1", "d2", "d3");
@@ -344,54 +349,54 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         userTopic(projectId, "transport");
         userTopic(second, "parcare");
         matcher.feed(doc("t1", "transport", 0.9), doc("t2", "transport", 0.8), doc("p1", "parcare", 0.9));
-        alertService.scanProject(clientId, projectId);
-        alertService.scanProject(clientId, second);
+        alertService.scanNow(clientId, AlertScope.project(projectId));
+        alertService.scanNow(clientId, AlertScope.project(second));
 
         UnreadCountView counts = alertService.getUnreadCount(clientId);
         assertThat(counts.total()).isEqualTo(3);
         assertThat(counts.byProject()).isEqualTo(Map.of(projectId, 2L, second, 1L));
         assertThat(alertService.getUnreadCount(otherClientId).total()).isZero();
 
-        AlertView one = alertService.getAlerts(clientId, projectId, true, 50).getFirst();
+        AlertView one = alertService.getAlerts(clientId, projectId, null, true, 50).getFirst();
         AlertView read = alertService.markRead(clientId, one.id());
         assertThat(read.readAt()).isNotNull();
-        assertThat(alertService.getAlerts(clientId, projectId, true, 50)).hasSize(1);
-        assertThat(alertService.getAlerts(clientId, null, false, 50)).hasSize(3);
-        assertThat(alertService.getAlerts(clientId, null, false, 1)).hasSize(1);
+        assertThat(alertService.getAlerts(clientId, projectId, null, true, 50)).hasSize(1);
+        assertThat(alertService.getAlerts(clientId, null, null, false, 50)).hasSize(3);
+        assertThat(alertService.getAlerts(clientId, null, null, false, 1)).hasSize(1);
 
-        assertThat(alertService.markAllRead(clientId, projectId)).isEqualTo(1);
+        assertThat(alertService.markAllRead(clientId, projectId, null)).isEqualTo(1);
         assertThat(alertService.getUnreadCount(clientId).byProject()).isEqualTo(Map.of(second, 1L));
-        assertThat(alertService.markAllRead(clientId, null)).isEqualTo(1);
+        assertThat(alertService.markAllRead(clientId, null, null)).isEqualTo(1);
         assertThat(alertService.getUnreadCount(clientId).total()).isZero();
     }
 
     @Test
     void topicCrud() {
-        AlertTopicView added = alertService.addTopic(clientId, projectId, "  Apă   potabilă ");
+        AlertTopicView added = alertService.addTopic(clientId, AlertScope.project(projectId), "  Apă   potabilă ");
         assertThat(added.label()).isEqualTo("Apă potabilă");
         assertThat(added.query()).isEqualTo("Apă potabilă");
         assertThat(added.source()).isEqualTo(AlertTopicSource.USER);
         assertThat(added.minScore()).isNull();
-        assertThat(alertService.addTopic(clientId, projectId, "apă potabilă").id()).isEqualTo(added.id());
+        assertThat(alertService.addTopic(clientId, AlertScope.project(projectId), "apă potabilă").id()).isEqualTo(added.id());
 
-        AlertTopic auto = topicRepository.save(new AlertTopic(projectId, "Drumuri", "drum", AlertTopicSource.AUTO));
-        AlertTopicView renamed = alertService.renameTopic(clientId, projectId, auto.getId(), "Drumuri noi");
+        AlertTopic auto = topicRepository.save(new AlertTopic(subscriptionId(AlertScope.project(projectId)), "Drumuri", "drum", AlertTopicSource.AUTO));
+        AlertTopicView renamed = alertService.renameTopic(clientId, AlertScope.project(projectId), auto.getId(), "Drumuri noi");
         assertThat(renamed).isEqualTo(new AlertTopicView(auto.getId(), "Drumuri noi", "Drumuri noi", AlertTopicSource.USER, null));
 
-        AlertTopic other = topicRepository.save(new AlertTopic(projectId, "Parcări", "parcare", AlertTopicSource.AUTO));
-        alertService.deleteTopic(clientId, projectId, other.getId());
-        alertService.deleteTopic(clientId, projectId, added.id());
+        AlertTopic other = topicRepository.save(new AlertTopic(subscriptionId(AlertScope.project(projectId)), "Parcări", "parcare", AlertTopicSource.AUTO));
+        alertService.deleteTopic(clientId, AlertScope.project(projectId), other.getId());
+        alertService.deleteTopic(clientId, AlertScope.project(projectId), added.id());
 
         assertThat(topicRepository.findById(other.getId()).orElseThrow().isRemoved()).isTrue();
         assertThat(topicRepository.findById(added.id())).isEmpty();
-        assertThat(alertService.getSettings(clientId, projectId).topics())
+        assertThat(alertService.getSettings(clientId, AlertScope.project(projectId)).topics())
                 .extracting(AlertTopicView::label).containsExactly("Drumuri noi");
 
         UUID second = project();
         Long secondTopic = userTopic(second, "Altceva").id();
-        assertThatThrownBy(() -> alertService.renameTopic(clientId, projectId, secondTopic, "X"))
+        assertThatThrownBy(() -> alertService.renameTopic(clientId, AlertScope.project(projectId), secondTopic, "X"))
                 .isInstanceOf(AlertTopicNotFoundException.class);
-        assertThatThrownBy(() -> alertService.deleteTopic(clientId, projectId, other.getId()))
+        assertThatThrownBy(() -> alertService.deleteTopic(clientId, AlertScope.project(projectId), other.getId()))
                 .isInstanceOf(AlertTopicNotFoundException.class);
     }
 
@@ -399,33 +404,33 @@ class AlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     void anotherClientsProjectOrAlertIsNotFound() {
         userTopic(projectId, "transport");
         matcher.feed(doc("d1", "transport", 0.9));
-        alertService.scanProject(clientId, projectId);
-        Long alertId = alertService.getAlerts(clientId, projectId, false, 50).getFirst().id();
-        Long topicId = alertService.getSettings(clientId, projectId).topics().getFirst().id();
+        alertService.scanNow(clientId, AlertScope.project(projectId));
+        Long alertId = alertService.getAlerts(clientId, projectId, null, false, 50).getFirst().id();
+        Long topicId = alertService.getSettings(clientId, AlertScope.project(projectId)).topics().getFirst().id();
         int matchCalls = matcher.matchCalls.size();
 
-        assertThat(alertService.getAlerts(otherClientId, null, false, 50)).isEmpty();
-        assertThatThrownBy(() -> alertService.getAlerts(otherClientId, projectId, false, 50))
+        assertThat(alertService.getAlerts(otherClientId, null, null, false, 50)).isEmpty();
+        assertThatThrownBy(() -> alertService.getAlerts(otherClientId, projectId, null, false, 50))
                 .isInstanceOf(ProjectNotFoundException.class);
         assertThatThrownBy(() -> alertService.markRead(otherClientId, alertId))
                 .isInstanceOf(AlertNotFoundException.class);
         assertThatThrownBy(() -> alertService.dismissNotRelevant(otherClientId, alertId))
                 .isInstanceOf(AlertNotFoundException.class);
-        assertThatThrownBy(() -> alertService.markAllRead(otherClientId, projectId))
+        assertThatThrownBy(() -> alertService.markAllRead(otherClientId, projectId, null))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.getSettings(otherClientId, projectId))
+        assertThatThrownBy(() -> alertService.getSettings(otherClientId, AlertScope.project(projectId)))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.updateSettings(otherClientId, projectId, true))
+        assertThatThrownBy(() -> alertService.updateSettings(otherClientId, AlertScope.project(projectId), true))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.refreshTopics(otherClientId, projectId))
+        assertThatThrownBy(() -> alertService.refreshTopics(otherClientId, AlertScope.project(projectId)))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.addTopic(otherClientId, projectId, "X"))
+        assertThatThrownBy(() -> alertService.addTopic(otherClientId, AlertScope.project(projectId), "X"))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.renameTopic(otherClientId, projectId, topicId, "X"))
+        assertThatThrownBy(() -> alertService.renameTopic(otherClientId, AlertScope.project(projectId), topicId, "X"))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.deleteTopic(otherClientId, projectId, topicId))
+        assertThatThrownBy(() -> alertService.deleteTopic(otherClientId, AlertScope.project(projectId), topicId))
                 .isInstanceOf(ProjectNotFoundException.class);
-        assertThatThrownBy(() -> alertService.scanProject(otherClientId, projectId))
+        assertThatThrownBy(() -> alertService.scanNow(otherClientId, AlertScope.project(projectId)))
                 .isInstanceOf(ProjectNotFoundException.class);
         assertThat(matcher.matchCalls).hasSize(matchCalls);
     }

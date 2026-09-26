@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAlertSettings, type AlertSettingsClient } from "../../hooks/useAlertSettings";
 import { useI18n } from "../../i18n/context";
-import type { AlertTopic } from "../../types/alerts";
+import { scopeKey, type AlertScope, type AlertTopic } from "../../types/alerts";
 import { actionButtonClass, dangerButtonClass, iconProps } from "../sidebar/iconProps";
 import AlertDialogFrame from "./AlertDialogFrame";
 import { formatDateTime } from "./format";
 
-interface ProjectAlertsDialogProps {
-  projectId: string;
-  projectName: string;
+interface AlertsDialogProps {
+  // A project's subscription or a chat's own one.
+  scope: AlertScope;
+  // The project's or conversation's name.
+  title: string;
   onClose: () => void;
   // Turning alerts on or "Check now" may have created alerts.
   onAlertsChanged?: () => void;
@@ -99,10 +101,12 @@ function TopicRow({ topic, onRename, onRemove }: TopicRowProps) {
   );
 }
 
-// A project's alert switch, its followed topics and a manual "Check now".
-function ProjectAlertsDialog({ projectId, projectName, onClose, onAlertsChanged, client }: ProjectAlertsDialogProps) {
+// A project's or chat's alert switch, its followed topics and a manual "Check now".
+function AlertsDialog({ scope, title, onClose, onAlertsChanged, client }: AlertsDialogProps) {
   const { t } = useI18n();
-  const alerts = useAlertSettings(projectId, client, { onAlertsChanged });
+  const alerts = useAlertSettings(scope, client, { onAlertsChanged });
+  const idSuffix = scopeKey(scope).replace(":", "-");
+  const isChat = scope.kind === "chat";
   const { settings } = alerts;
   const [newTopic, setNewTopic] = useState("");
   const enabled = settings?.enabled ?? false;
@@ -115,9 +119,9 @@ function ProjectAlertsDialog({ projectId, projectName, onClose, onAlertsChanged,
   };
 
   return (
-    <AlertDialogFrame title={t.alerts.settings.title} onClose={onClose} testId="project-alerts" className="max-w-md">
-      <p className="mt-2 truncate text-sm text-text-muted" title={projectName}>
-        {projectName}
+    <AlertDialogFrame title={t.alerts.settings.title} onClose={onClose} testId="scope-alerts" className="max-w-md">
+      <p className="mt-2 truncate text-sm text-text-muted" title={title}>
+        {title}
       </p>
 
       {alerts.isLoading ? (
@@ -130,16 +134,16 @@ function ProjectAlertsDialog({ projectId, projectName, onClose, onAlertsChanged,
             }`}
           >
             <div className="min-w-0 flex-1">
-              <p id={`alerts-switch-${projectId}`} className="text-sm font-semibold text-text">
-                {t.alerts.settings.switchLabel}
+              <p id={`alerts-switch-${idSuffix}`} className="text-sm font-semibold text-text">
+                {isChat ? t.alerts.settings.chatSwitchLabel : t.alerts.settings.switchLabel}
               </p>
-              <p className="text-xs text-text-muted">{enabled ? t.alerts.settings.onHint : t.alerts.settings.offHint}</p>
+              <p className="text-xs text-text-muted">{enabled ? t.alerts.settings.onHint : isChat ? t.alerts.settings.chatOffHint : t.alerts.settings.offHint}</p>
             </div>
             <button
               type="button"
               role="switch"
               aria-checked={enabled}
-              aria-labelledby={`alerts-switch-${projectId}`}
+              aria-labelledby={`alerts-switch-${idSuffix}`}
               onClick={() => void alerts.setEnabled(!enabled)}
               disabled={alerts.isSaving}
               className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-wait"
@@ -153,8 +157,8 @@ function ProjectAlertsDialog({ projectId, projectName, onClose, onAlertsChanged,
             </button>
           </div>
 
-          <section aria-labelledby={`alerts-topics-${projectId}`} className="mt-5">
-            <h3 id={`alerts-topics-${projectId}`} className="pb-1.5">
+          <section aria-labelledby={`alerts-topics-${idSuffix}`} className="mt-5">
+            <h3 id={`alerts-topics-${idSuffix}`} className="pb-1.5">
               <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
                 {t.alerts.settings.topics}
               </span>
@@ -245,4 +249,4 @@ function ProjectAlertsDialog({ projectId, projectName, onClose, onAlertsChanged,
   );
 }
 
-export default ProjectAlertsDialog;
+export default AlertsDialog;

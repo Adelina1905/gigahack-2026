@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AlertBell from "../components/alerts/AlertBell";
-import AlertOptInDialog from "../components/alerts/AlertOptInDialog";
-import ProjectAlertsDialog from "../components/alerts/ProjectAlertsDialog";
+import AlertsDialog from "../components/alerts/AlertsDialog";
+import ChatAlertPrompt, { ChatAlertNotice } from "../components/alerts/ChatAlertPrompt";
 import { CityGatesArt, TriumphalArchArt } from "../components/brand/Landmarks";
 import ChatWindow from "../components/ChatWindow";
 import Sidebar from "../components/Sidebar";
 import SiteHeader from "../components/SiteHeader";
 import { useActiveChatId } from "../hooks/useActiveChatId";
-import { useAlertOptIn } from "../hooks/useAlertOptIn";
+import { useAlertOfferPreference } from "../hooks/useAlertOfferPreference";
+import { alertScopeForChat, useAlertOptIn } from "../hooks/useAlertOptIn";
 import { useAlerts } from "../hooks/useAlerts";
 import { useChat } from "../hooks/useChat";
 import { useChats } from "../hooks/useChats";
 import { useProjects } from "../hooks/useProjects";
 import { useI18n } from "../i18n/context";
-import type { Alert } from "../types/alerts";
-import { DEFAULT_CHAT_NAME, type ProjectSummary } from "../types/chat";
+import type { Alert, AlertScope } from "../types/alerts";
+import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 function Playground() {
   const { t } = useI18n();
@@ -25,10 +26,15 @@ function Playground() {
   // The project a chat started from the empty screen will be created in.
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const alerts = useAlerts();
-  const optIn = useAlertOptIn(undefined, { onEnabled: () => void alerts.refreshUnread() });
-  const [alertsProject, setAlertsProject] = useState<ProjectSummary | null>(null);
-  // "Ask about this" sends its question once the new draft chat is open.
-  const pendingAskRef = useRef<{ projectId: string | null; text: string } | null>(null);
+  const [offerAlerts, setOfferAlerts] = useAlertOfferPreference();
+  const optIn = useAlertOptIn(undefined, { enabled: offerAlerts, onEnabled: () => void alerts.refreshUnread() });
+  // The subscription whose "Alerts & topics" dialog is open.
+  const [alertsTarget, setAlertsTarget] = useState<{ scope: AlertScope; title: string } | null>(null);
+  // "Ask about this" sends its question once the target chat is open: the
+  // alert's own conversation, or a new draft chat (in the alert's project).
+  const pendingAskRef = useRef<
+    { chatId: string; text: string } | { chatId: null; projectId: string | null; text: string } | null
+  >(null);
   const [askNonce, setAskNonce] = useState(0);
 
   const chat = useChat(activeChatId, {
@@ -97,7 +103,8 @@ function Playground() {
   };
 
   const deleteChat = (chatId: string) => {
-    void chatList.remove(chatId);
+    // The chat's own alerts go with it.
+    void chatList.remove(chatId).then(() => alerts.refreshUnread());
     chat.discard(chatId);
     if (chatId === activeChatId) {
       setDraftProjectId(null);
@@ -107,38 +114,69 @@ function Playground() {
 
   const askAboutAlert = (alert: Alert) => {
     void alerts.markRead(alert.id);
+    const text = t.alerts.askQuestion(alert.title);
+    if (alert.chatId && chatList.chats.some((candidate) => candidate.id === alert.chatId)) {
+      pendingAskRef.current = { chatId: alert.chatId, text };
+      setDraftProjectId(null);
+      openChat(alert.chatId);
+      setAskNonce((nonce) => nonce + 1);
+      return;
+    }
     const projectId = projectList.projects.some((project) => project.id === alert.projectId)
       ? alert.projectId
       : null;
-    pendingAskRef.current = { projectId, text: t.alerts.askQuestion(alert.title) };
+    pendingAskRef.current = { chatId: null, projectId, text };
     if (projectId) startNewChatInProject(projectId);
     else startNewChat();
     setAskNonce((nonce) => nonce + 1);
   };
 
   const activeChat = chatList.chats.find((candidate) => candidate.id === activeChatId);
-  const activeProjectId = activeChat?.projectId ?? null;
-  const { send } = chat;
+  const { send, isLoading: isChatLoading, isTyping } = chat;
 
   useEffect(() => {
     const pending = pendingAskRef.current;
-    if (!pending || activeChatId || draftProjectId !== pending.projectId) return;
+    if (!pending) return;
+    if (pending.chatId !== null) {
+      // Waits for the conversation to load and finish any answer in progress.
+      if (activeChatId !== pending.chatId || isChatLoading || isTyping) return;
+    } else if (activeChatId || draftProjectId !== pending.projectId) {
+      return;
+    }
     pendingAskRef.current = null;
     send(pending.text);
-  }, [askNonce, activeChatId, draftProjectId, send]);
+  }, [askNonce, activeChatId, draftProjectId, send, isChatLoading, isTyping]);
 
-  // The first answered question in a project may offer alerts for it
-  // (useAlertOptIn asks the server, and only once per project).
+  // The first answer in a chat may offer alerts: for its project when it is
+  // in one, otherwise for the chat itself (useAlertOptIn asks the server, and
+  // only once per project or chat).
   const hasAnswer = chat.messages.some(
     (message) => message.role === "assistant" && message.generationStatus === "COMPLETED" && message.content.trim(),
   );
+  const promptScope = activeChat ? alertScopeForChat(activeChat) : null;
+  const promptKind = promptScope?.kind;
+  const promptId = promptScope?.id;
   const { consider } = optIn;
   useEffect(() => {
-    if (activeProjectId && hasAnswer) void consider(activeProjectId);
-  }, [activeProjectId, hasAnswer, consider]);
-  const optInProject = optIn.offer
-    ? projectList.projects.find((project) => project.id === optIn.offer!.projectId)
-    : undefined;
+    if (!activeChatId || !promptKind || !promptId || !hasAnswer || !offerAlerts) return;
+    void consider({ kind: promptKind, id: promptId }, activeChatId);
+  }, [activeChatId, promptKind, promptId, hasAnswer, offerAlerts, consider]);
+
+  const chatTitle = (name: string) => (name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : name);
+  const offer = optIn.offer?.chatId === activeChatId ? optIn.offer : null;
+  const notice = optIn.notice?.chatId === activeChatId ? optIn.notice : null;
+  const alertPrompt = offer ? (
+    <ChatAlertPrompt
+      scopeKind={offer.scope.kind}
+      topics={offer.topics.map((topic) => topic.label)}
+      isSaving={optIn.isSaving}
+      error={optIn.error}
+      onEnable={optIn.enable}
+      onDecline={optIn.decline}
+    />
+  ) : notice ? (
+    <ChatAlertNotice message={notice.kind === "enabled" ? t.alerts.prompt.enabled : t.errors.alertsUnavailable} />
+  ) : null;
 
   const activeName = activeChat?.name;
   const breadcrumbProjectId = activeChatId ? activeChat?.projectId : draftProjectId;
@@ -153,6 +191,9 @@ function Playground() {
             alerts={alerts.alerts}
             unreadTotal={alerts.unread.total}
             projects={projectList.projects}
+            chats={chatList.chats}
+            offerAlerts={offerAlerts}
+            onOfferAlertsChange={setOfferAlerts}
             isLoading={alerts.isLoading}
             error={alerts.error}
             onOpen={() => void alerts.loadAlerts()}
@@ -182,7 +223,12 @@ function Playground() {
           onNewChatInProject={startNewChatInProject}
           unreadAlertsByProject={alerts.unread.byProject}
           onOpenProjectAlerts={(project) => {
-            setAlertsProject(project);
+            setAlertsTarget({ scope: { kind: "project", id: project.id }, title: project.name });
+            setIsSidebarOpen(false);
+          }}
+          unreadAlertsByChat={alerts.unread.byChat}
+          onOpenChatAlerts={(target) => {
+            setAlertsTarget({ scope: { kind: "chat", id: target.id }, title: chatTitle(target.name) });
             setIsSidebarOpen(false);
           }}
           isOpen={isSidebarOpen}
@@ -212,7 +258,7 @@ function Playground() {
                 </>
               )}
               <li aria-current="page" className="truncate text-text-muted">
-                {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
+                {activeName ? chatTitle(activeName) : t.sidebar.newChat}
               </li>
             </ol>
           </nav>
@@ -226,36 +272,25 @@ function Playground() {
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
-              error={chat.error ?? chatList.error ?? projectList.error ?? optIn.notice}
+              error={chat.error ?? chatList.error ?? projectList.error}
               onDismissError={() => {
                 chat.dismissError();
                 chatList.dismissError();
                 projectList.dismissError();
-                optIn.dismissNotice();
               }}
+              alertPrompt={alertPrompt}
             />
           </div>
         </div>
       </main>
 
-      {alertsProject && (
-        <ProjectAlertsDialog
-          key={alertsProject.id}
-          projectId={alertsProject.id}
-          projectName={alertsProject.name}
-          onClose={() => setAlertsProject(null)}
+      {alertsTarget && (
+        <AlertsDialog
+          key={`${alertsTarget.scope.kind}:${alertsTarget.scope.id}`}
+          scope={alertsTarget.scope}
+          title={alertsTarget.title}
+          onClose={() => setAlertsTarget(null)}
           onAlertsChanged={() => void alerts.refreshUnread()}
-        />
-      )}
-
-      {optIn.offer && (
-        <AlertOptInDialog
-          projectName={optInProject?.name ?? ""}
-          topics={optIn.offer.topics.map((topic) => topic.label)}
-          isSaving={optIn.isSaving}
-          error={optIn.error}
-          onEnable={optIn.enable}
-          onDecline={optIn.decline}
         />
       )}
     </div>
