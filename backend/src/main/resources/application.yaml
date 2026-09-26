@@ -1,6 +1,12 @@
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: backend
+  config:
+    # Lets `./mvnw spring-boot:run` from backend/ pick up the repo-root .env.
+    import: optional:file:../.env[.properties]
   autoconfigure:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
@@ -13,3 +19,11 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+
+app:
+  llm:
+    base-url: ${LLM_SERVICE_URL:http://127.0.0.1:8000}
+    connect-timeout: 5s
+    read-timeout: 180s
+    session-ttl: 30m
+    max-history: 20 # messages (user + assistant) kept per chat

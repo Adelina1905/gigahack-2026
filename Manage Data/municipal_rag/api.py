@@ -76,3 +76,16 @@ def embed(text: str, model: str, api_key: str) -> list[float]:
     if not isinstance(vector, list) or not vector:
         raise RuntimeError("Managed embedding model returned an invalid vector")
     return [float(value) for value in vector]
+
+
+def chat_text(model: str, messages: list[dict[str, str]], api_key: str, temperature: float = 0.3) -> str:
+    response = request_json("chat/completions", {"model": model, "temperature": temperature, "messages": messages}, api_key)
+    try:
+        content = response["choices"][0]["message"]["content"]
+        if isinstance(content, list):
+            content = "".join(str(item.get("text", "")) for item in content if isinstance(item, dict))
+    except (KeyError, IndexError, TypeError) as error:
+        raise RuntimeError("Managed chat model returned a malformed response") from error
+    if not isinstance(content, str):
+        raise RuntimeError("Managed chat model returned no text content")
+    return content.strip()
