@@ -127,8 +127,8 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
 
   const send = useCallback((input: string) => {
     const text = input.trim();
-    if (!text || busy.current.has(key) || hasPendingGeneration(threadsRef.current[key] ?? EMPTY)) return;
-    if (text.length > 8000) { setError("tooLong"); return; }
+    if (!text || busy.current.has(key) || hasPendingGeneration(threadsRef.current[key] ?? EMPTY)) return null;
+    if (text.length > 8000) { setError("tooLong"); return null; }
     const requestId = makeId();
     const message: ChatMessage = {
       id: requestId, requestId, chatRequestId: key === DRAFT ? makeId() : undefined,
@@ -136,6 +136,7 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
     };
     updateThread(key, thread => [...thread, message]);
     void deliver(key, message);
+    return requestId;
   }, [deliver, key, updateThread]);
 
   const regenerate = useCallback(async (assistantId: string) => {

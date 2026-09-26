@@ -9,6 +9,7 @@ import { Skyline } from "./brand/Landmarks";
 import TitleRule from "./brand/TitleRule";
 import SupportNotice from "./SupportNotice";
 import { isUnanswered } from "../utils/unanswered";
+import { useVoiceMode } from "../hooks/useVoiceMode";
 
 interface ChatWindowProps {
   // Switching chats jumps to the bottom instead of smooth-scrolling through history.
@@ -16,7 +17,7 @@ interface ChatWindowProps {
   messages: ChatMessage[];
   isTyping: boolean;
   isLoading?: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string) => string | null;
   onRetry?: (id: string) => void;
   onRegenerate?: (id: string) => void;
   error?: ErrorKey | null;
@@ -96,6 +97,7 @@ function ChatWindow({
   onDismissError,
 }: ChatWindowProps) {
   const { t } = useI18n();
+  const voice = useVoiceMode({ chatId, messages, onSend });
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef({ chatId, hadMessages: false });
 
@@ -129,7 +131,8 @@ function ChatWindow({
               m.role === "user" ? (
                 <UserMessage key={m.id} message={m} onRetry={onRetry} />
               ) : (
-                <AssistantMessage key={m.id} message={m} onRegenerate={onRegenerate} />
+                <AssistantMessage key={m.id} message={m} onRegenerate={onRegenerate}
+                  onToggleSpeech={voice.toggleSpeech} speechState={voice.speechStateFor(m)} />
               ),
             )}
             {isTyping && !messages.some(message => message.generationStatus === "PENDING") && <AssistantMessage isTyping />}
@@ -160,7 +163,7 @@ function ChatWindow({
         {noticeFor && noticeFor !== dismissedNoticeId && (
           <SupportNotice onDismiss={() => setDismissedNoticeId(noticeFor)} />
         )}
-        <ChatInput onSend={onSend} disabled={isTyping || isLoading} />
+        <ChatInput onSend={onSend} disabled={isTyping || isLoading} voice={voice} />
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}
         </p>

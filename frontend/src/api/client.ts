@@ -7,6 +7,7 @@ import type {
     ResponseCreateRequest,
     ResponseRegenerateRequest,
     ResponseView,
+    TranscriptionView,
 } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
@@ -49,7 +50,9 @@ async function apiRequest<T>(
             ...options,
             credentials: "include",
             headers: {
-                ...(options.body ? { "Content-Type": "application/json" } : {}),
+                ...(options.body && !(options.body instanceof FormData)
+                    ? { "Content-Type": "application/json" }
+                    : {}),
                 ...options.headers,
             },
         });
@@ -69,6 +72,21 @@ async function apiRequest<T>(
     }
 
     return response.json() as Promise<T>;
+}
+
+async function apiBlobRequest(path: string, options: RequestInit): Promise<Blob> {
+    let response: Response;
+    try {
+        response = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            credentials: "include",
+            headers: { ...options.headers },
+        });
+    } catch (error) {
+        throw new ApiError(error instanceof Error ? error.message : "Network error", 0);
+    }
+    if (!response.ok) throw new ApiError(await readErrorMessage(response), response.status);
+    return response.blob();
 }
 
 export function getChats(): Promise<ChatView[]> {
@@ -158,5 +176,21 @@ export function createDocument(
     return apiRequest<DocumentView>("/documents", {
         method: "POST",
         body: JSON.stringify(request),
+    });
+}
+
+export function transcribeAudio(audio: Blob, extension: string): Promise<TranscriptionView> {
+    const form = new FormData();
+    form.append("audio", audio, `recording.${extension}`);
+    return apiRequest<TranscriptionView>("/voice/transcriptions", {
+        method: "POST",
+        body: form,
+    });
+}
+
+export function getResponseSpeech(chatId: string, responseId: number): Promise<Blob> {
+    return apiBlobRequest(`/chats/${chatId}/responses/${responseId}/speech`, {
+        method: "POST",
+        headers: { Accept: "audio/mpeg" },
     });
 }

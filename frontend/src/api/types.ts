@@ -63,6 +63,12 @@ export interface ResponseRegenerateRequest {
   expectedGenerationVersion: number;
 }
 
+export interface TranscriptionView {
+    text: string;
+    language?: string | null;
+    durationSeconds?: number | null;
+}
+
 export interface DocumentCreateRequest {
   title: string;
   documentLink: string;
