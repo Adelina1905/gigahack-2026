@@ -41,6 +41,7 @@ export function useChats() {
         );
       } catch (loadError) {
         console.error("Failed to load chats", loadError);
+        if (!cancelled) setError("Can't load your chats. Check the backend connection and reload.");
       } finally {
         if (!cancelled) setIsLoaded(true);
       }

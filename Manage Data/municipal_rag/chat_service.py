@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .chat_model import ChatModel
-from .rag_service import RagService
+if TYPE_CHECKING:
+    from .chat_model import ChatModel
+    from .rag_service import RagService
 
 
 DEFAULT_SYSTEM_PROMPT = (

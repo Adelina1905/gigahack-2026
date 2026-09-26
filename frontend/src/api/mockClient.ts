@@ -179,7 +179,7 @@ export async function regenerateResponse(
   );
   if (!response) throw notFound("Response");
 
-  response.text = pickReply(response.text);
+  response.text = pickReply(response.text ?? undefined);
   response.documents = pickDocuments();
   chat.updatedAt = now();
   save(store);

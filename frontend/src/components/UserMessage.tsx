@@ -24,7 +24,7 @@ function UserMessage({ message, onRetry }: UserMessageProps) {
 
       {isError ? (
         <p className="text-xs text-danger">
-          Failed to send
+          Not saved yet
           {onRetry && (
             <>
               {" · "}

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -70,8 +71,7 @@ public class ChatController {
 
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ChatResponse createChat(
+    public ResponseEntity<ChatResponse> createChat(
             @Valid @RequestBody(required = false)
             ChatCreateRequest request,
             @CookieValue(
@@ -81,10 +81,11 @@ public class ChatController {
             HttpServletResponse response
     ) {
 
-        return chatService.createChat(
+        ChatService.CreationResult result = chatService.createIdempotent(
                 anonymousClientCookie.resolve(clientCookie, response),
                 request
         );
+        return ResponseEntity.status(result.created() ? 201 : 200).body(result.chat());
     }
 
 

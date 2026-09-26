@@ -32,9 +32,23 @@ export function toAssistantMessage(response: ResponseView): ChatMessage {
   return {
     id: String(response.id),
     role: "assistant",
-    content: response.text,
+    content: response.text ?? "",
     createdAt: toTimestamp(response.createdAt),
-    sources: (response.documents ?? []).map(toSourceDocument),
+    sources: response.aiReply
+      ? (response.aiReply.citations ?? []).map((citation) => ({
+          title: citation.title || citation.documentId || "Source",
+          link: citation.url ?? "",
+          added_date: "",
+          exactQuote: citation.exactQuote,
+          documentId: citation.documentId,
+        }))
+      : (response.documents ?? []).map(toSourceDocument),
+    requestId: response.requestId ?? undefined,
+    generationStatus: response.generationStatus ?? "COMPLETED",
+    generationVersion: response.generationVersion ?? 0,
+    errorCode: response.errorCode,
+    mode: response.aiReply?.mode,
+    clarificationChoices: (response.aiReply?.clarificationChoices ?? []).map(choice => choice.label),
   };
 }
 
@@ -50,6 +64,7 @@ export function toMessages(response: ResponseView): ChatMessage[] {
       content: response.prompt,
       createdAt: assistant.createdAt,
       status: "sent",
+      requestId: response.requestId ?? undefined,
     },
     assistant,
   ];

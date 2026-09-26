@@ -28,10 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
-// Runs against the compose Postgres; every test rolls back.
-@SpringBootTest
-@Transactional
-class ResponseServiceTest {
+// Committed transactions in an explicitly configured isolated database.
+class ResponseServiceTest extends smart_city.backend.IsolatedDatabaseTest {
 
     @TestConfiguration
     static class Fakes {
@@ -52,6 +50,9 @@ class ResponseServiceTest {
     @Autowired
     private RecordingLlmGateway gateway;
 
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired private smart_city.backend.Chat.ChatService chatService;
+
     private final UUID clientId = UUID.randomUUID();
     private UUID chatId;
 
@@ -59,6 +60,7 @@ class ResponseServiceTest {
     void setUp() {
         gateway.calls.clear();
         gateway.setFailing(false);
+        gateway.replyWith(llmReply("Answer"));
         chatId = chatRepository.save(new Chat(clientId)).getId();
     }
 
@@ -126,6 +128,7 @@ class ResponseServiceTest {
                 );
         assertThat(responseService.getAllResponses(clientId, chatId).getFirst().documents())
                 .hasSize(2);
+        assertThat(responseService.getResponse(clientId, chatId, created.id()).aiReply()).isEqualTo(created.aiReply());
     }
 
     @Test
@@ -146,15 +149,16 @@ class ResponseServiceTest {
     }
 
     @Test
-    void failedCallStoresNothing() {
+    void failedCallPreservesPromptForRetry() {
         gateway.setFailing(true);
 
-        assertThatThrownBy(() -> send("Salut"))
-                .isInstanceOf(LlmUnavailableException.class);
-
-        assertThat(responseService.getAllResponses(clientId, chatId)).isEmpty();
+        ResponseView failed = send("Salut");
+        assertThat(failed.generationStatus()).isEqualTo(GenerationStatus.FAILED);
+        assertThat(failed.text()).isNull();
+        assertThat(failed.errorCode()).isEqualTo("AI_UNAVAILABLE");
+        assertThat(responseService.getAllResponses(clientId, chatId)).hasSize(1);
         assertThat(chatRepository.findById(chatId).orElseThrow().getName())
-                .isEqualTo("New chat");
+                .isEqualTo("Salut");
     }
 
     @Test
@@ -188,5 +192,144 @@ class ResponseServiceTest {
         assertThat(responseService.getAllResponses(clientId, chatId))
                 .extracting(ResponseView::text)
                 .containsExactly("a1 again", "a2");
+    }
+
+    @Test
+    void submissionAndRetryAreIdempotent() {
+        UUID requestId = UUID.randomUUID();
+        var request = new ResponseCreateRequest("Hello", requestId);
+        gateway.setFailing(true);
+        var first = responseService.submit(clientId, chatId, request);
+        assertThat(first.created()).isTrue();
+        var replay = responseService.submit(clientId, chatId, request);
+        assertThat(replay.created()).isFalse();
+        assertThat(replay.response().id()).isEqualTo(first.response().id());
+        assertThat(gateway.calls).hasSize(1);
+        assertThatThrownBy(() -> responseService.submit(clientId, chatId, new ResponseCreateRequest("different", requestId)))
+                .isInstanceOf(smart_city.backend.config.ApiConflictException.class);
+        gateway.setFailing(false);
+        var retry = new smart_city.backend.Response.dto.RegenerateRequest(UUID.randomUUID(), first.response().generationVersion());
+        var completed = responseService.regenerateResponse(clientId, chatId, first.response().id(), retry);
+        var retriedAgain = responseService.regenerateResponse(clientId, chatId, first.response().id(), retry);
+        assertThat(retriedAgain).isEqualTo(completed);
+        assertThat(completed.generationStatus()).isEqualTo(GenerationStatus.COMPLETED);
+        assertThat(gateway.calls).hasSize(2);
+        assertThat(responseService.getAllResponses(clientId, chatId)).hasSize(1);
+        assertThatThrownBy(() -> responseService.regenerateResponse(clientId, chatId, completed.id(),
+                new smart_city.backend.Response.dto.RegenerateRequest(UUID.randomUUID(), 0)))
+                .isInstanceOf(smart_city.backend.config.ApiConflictException.class);
+    }
+
+    @Test
+    void failedRegenerationRetainsPreviousAnswerAndSources() {
+        gateway.replyWith(new LlmReply("rag", "SUPPORTED", "Original", List.of(
+                new LlmCitation("Source", "https://example.com/source", "Exact quote", "d1")), null));
+        var first = send("Question");
+        gateway.setFailing(true);
+        var failed = responseService.regenerateResponse(clientId, chatId, first.id());
+        assertThat(failed.generationStatus()).isEqualTo(GenerationStatus.FAILED);
+        assertThat(failed.text()).isEqualTo(first.text());
+        assertThat(failed.aiReply()).isEqualTo(first.aiReply());
+        assertThat(failed.documents()).extracting(DocumentView::id, DocumentView::title, DocumentView::documentLink)
+                .containsExactlyElementsOf(first.documents().stream()
+                        .map(document -> tuple(document.id(), document.title(), document.documentLink())).toList());
+        gateway.setFailing(false);
+        send("Follow-up");
+        assertThat(gateway.calls.getLast().history()).containsExactly(LlmTurn.user("Question"), LlmTurn.assistant("Original"));
+    }
+
+    @Test
+    void pendingPromptCommitsBeforeGenerationAndOnlySameChatIsBusy() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        UUID requestId = UUID.randomUUID();
+        gateway.replyUsing(message -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            if (message.equals("slow")) {
+                entered.countDown();
+                try { if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("test timed out"); }
+                catch (InterruptedException e) { throw new RuntimeException(e); }
+            }
+            return llmReply("Done");
+        });
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var result = executor.submit(() -> responseService.submit(clientId, chatId, new ResponseCreateRequest("slow", requestId)));
+            try {
+                assertThat(entered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                var pending = responseService.getAllResponses(clientId, chatId).getFirst();
+                assertThat(pending.prompt()).isEqualTo("slow");
+                assertThat(pending.generationStatus()).isEqualTo(GenerationStatus.PENDING);
+                assertThat(pending.text()).isNull();
+                assertThat(jdbc.queryForObject("select generation_status from responses where id = ?", String.class, pending.id())).isEqualTo("PENDING");
+                assertThat(responseService.submit(clientId, chatId, new ResponseCreateRequest("slow", requestId)).created()).isFalse();
+                assertThatThrownBy(() -> send("second"))
+                        .isInstanceOf(smart_city.backend.config.ApiConflictException.class).hasMessageContaining("waiting");
+                UUID other = chatRepository.save(new Chat(clientId)).getId();
+                assertThat(responseService.createResponse(clientId, other, new ResponseCreateRequest("independent")).generationStatus())
+                        .isEqualTo(GenerationStatus.COMPLETED);
+            } finally { release.countDown(); }
+            assertThat(result.get(5, java.util.concurrent.TimeUnit.SECONDS).response().generationStatus()).isEqualTo(GenerationStatus.COMPLETED);
+        }
+    }
+
+    @Test
+    void expiredAttemptCanRetryAndLateCompletionCannotOverwriteIt() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        gateway.replyUsing(message -> {
+            entered.countDown();
+            try { release.await(10, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (InterruptedException e) { throw new RuntimeException(e); }
+            return llmReply("Late old answer");
+        });
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var original = executor.submit(() -> send("Pending question"));
+            try {
+                assertThat(entered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                var pending = responseService.getAllResponses(clientId, chatId).getFirst();
+                jdbc.update("update responses set generation_expires_at = current_timestamp - interval '1 second' where id = ?", pending.id());
+                responseService.recoverExpiredGenerations();
+                assertThat(responseService.getResponse(clientId, chatId, pending.id()).errorCode()).isEqualTo("GENERATION_INTERRUPTED");
+                gateway.replyWith(llmReply("Replacement"));
+                responseService.regenerateResponse(clientId, chatId, pending.id(),
+                        new smart_city.backend.Response.dto.RegenerateRequest(UUID.randomUUID(), pending.generationVersion()));
+            } finally { release.countDown(); }
+            assertThat(original.get(5, java.util.concurrent.TimeUnit.SECONDS).text()).isEqualTo("Replacement");
+            assertThat(responseService.getAllResponses(clientId, chatId)).hasSize(1);
+        }
+    }
+
+    @Test
+    void chatCreationReplaysAfterRenameAndRejectsChangedPayload() {
+        var request = new smart_city.backend.Chat.dto.ChatCreateRequest("New chat", UUID.randomUUID());
+        var created = chatService.createIdempotent(clientId, request);
+        chatService.updateChat(clientId, created.chat().id(), new smart_city.backend.Chat.dto.ChatUpdateRequest("Renamed"));
+        var repeated = chatService.createIdempotent(clientId, request);
+        assertThat(repeated.created()).isFalse();
+        assertThat(repeated.chat().id()).isEqualTo(created.chat().id());
+        assertThat(repeated.chat().name()).isEqualTo("Renamed");
+        assertThatThrownBy(() -> chatService.createChat(clientId,
+                new smart_city.backend.Chat.dto.ChatCreateRequest("Changed", request.requestId())))
+                .isInstanceOf(smart_city.backend.config.ApiConflictException.class);
+    }
+
+    @Test
+    void ownershipAndDeletionRemainEnforced() {
+        var response = send("Private message");
+        assertThatThrownBy(() -> responseService.getResponse(UUID.randomUUID(), chatId, response.id()))
+                .isInstanceOf(smart_city.backend.Response.exceptions.ResponseNotFoundException.class);
+        assertThatThrownBy(() -> responseService.submit(UUID.randomUUID(), chatId, new ResponseCreateRequest("Intrusion")))
+                .isInstanceOf(smart_city.backend.Chat.exceptions.ChatNotFoundException.class);
+        chatService.deleteChat(clientId, chatId);
+        assertThat(jdbc.queryForObject("select count(*) from responses where chat_id = ?", Integer.class, chatId)).isZero();
+    }
+
+    @Test
+    void malformedAnswerIsDurablyFailed() {
+        gateway.replyWith(llmReply("   "));
+        assertThat(send("Hello").errorCode()).isEqualTo("INVALID_AI_REPLY");
+        gateway.replyWith(new LlmReply("rag", "NEEDS_CLARIFICATION", "Choose a document",
+                List.of(), java.util.Collections.singletonList(null)));
+        assertThat(send("Clarify").errorCode()).isEqualTo("INVALID_AI_REPLY");
     }
 }

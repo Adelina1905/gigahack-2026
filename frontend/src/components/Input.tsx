@@ -11,7 +11,7 @@ const MAX_HEIGHT_PX = 160; // ~6 lines
 function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = value.trim().length > 0 && value.trim().length <= 8000 && !disabled;
 
   // Grow with content up to MAX_HEIGHT_PX, then scroll.
   useEffect(() => {
@@ -39,6 +39,7 @@ function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" 
       <textarea
         ref={textareaRef}
         rows={1}
+        maxLength={8000}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}

@@ -78,7 +78,7 @@ function ChatWindow({
                 <AssistantMessage key={m.id} message={m} onRegenerate={onRegenerate} />
               ),
             )}
-            {isTyping && <AssistantMessage isTyping />}
+            {isTyping && !messages.some(message => message.generationStatus === "PENDING") && <AssistantMessage isTyping />}
             <div ref={bottomRef} />
           </div>
         )}
@@ -103,7 +103,7 @@ function ChatWindow({
             )}
           </div>
         )}
-        <ChatInput onSend={onSend} disabled={isTyping} />
+        <ChatInput onSend={onSend} disabled={isTyping || isLoading} />
       </div>
     </div>
   );

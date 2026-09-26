@@ -1,4 +1,7 @@
 import { useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { safeHttpUrl } from "./sources/safeLink";
 import type { ChatMessage } from "../types/chat";
 import SourceList from "./sources/SourceList";
 
@@ -25,6 +28,12 @@ function TypingDots() {
 
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false);
+  const pending = message?.generationStatus === "PENDING";
+  const failed = message?.generationStatus === "FAILED";
+  const definitions = message?.mode ? (message.sources ?? []).map((source, index) => {
+    const url = safeHttpUrl(source.link);
+    return url ? `[S${index + 1}]: <${url}>` : "";
+  }).join("\n") : "";
 
   const handleCopy = async () => {
     if (!message) return;
@@ -43,18 +52,33 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
       </div>
 
       <div className="flex max-w-[75%] flex-col gap-1">
-        <div className="whitespace-pre-wrap break-words rounded-2xl rounded-tl-sm border border-border bg-background px-4 py-2.5 text-base text-text">
+        <div className="break-words rounded-2xl rounded-tl-sm border border-border bg-background px-4 py-2.5 text-base text-text">
           {isTyping || !message ? (
             <TypingDots />
           ) : (
             <>
-              {message.content}
+              {message.mode === "demo" && <p className="mb-2 text-xs font-semibold text-text-muted">Demo response</p>}
+              {message.content && <Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={["img"]}
+                components={{
+                  a: ({ href, children }) => {
+                    const url = safeHttpUrl(href);
+                    return url ? <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{children}</a> : <span>{children}</span>;
+                  },
+                  p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc pl-5">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-5">{children}</ol>,
+                  pre: ({ children }) => <pre className="overflow-x-auto rounded bg-background-secondary p-2">{children}</pre>,
+                }}>{`${message.content}\n\n${definitions}`}</Markdown>}
               {message.sources && <SourceList sources={message.sources} />}
+              {pending && <p role="status" className="mt-2 text-sm text-text-muted">Waiting for response…</p>}
+              {failed && <p className="mt-2 text-sm text-danger">Response failed{message.content ? ". Previous answer kept." : ""}
+                {onRegenerate && <> · <button type="button" onClick={() => onRegenerate(message.id)} className="underline">Retry</button></>}
+              </p>}
             </>
           )}
         </div>
 
-        {message && !isTyping && (
+        {message && message.content && !isTyping && !pending && (
           <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             <button
               type="button"
@@ -63,7 +87,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
             >
               {copied ? "Copied" : "Copy"}
             </button>
-            {onRegenerate && (
+            {onRegenerate && !failed && (
               <button
                 type="button"
                 onClick={() => onRegenerate(message.id)}

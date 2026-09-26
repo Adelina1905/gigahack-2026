@@ -15,15 +15,17 @@ public final class RecordingLlmGateway implements LlmGateway {
     public record Call(UUID chatId, String message, List<LlmTurn> history) {
     }
 
-    public final List<Call> calls = new ArrayList<>();
-    private Function<String, LlmReply> replies = message -> new LlmReply(
+    public final List<Call> calls = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile Function<String, LlmReply> replies = message -> new LlmReply(
             "llm",
             "LLM",
             "answer to " + message,
             List.of(),
             null
     );
-    private boolean failing;
+    private volatile boolean failing;
+
+    public void replyUsing(Function<String, LlmReply> replies) { this.replies = replies; }
 
     public void replyWith(LlmReply reply) {
         replies = message -> reply;

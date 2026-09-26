@@ -21,6 +21,15 @@ public class Chat {
     @Column(name = "client_id", nullable = false)
     private UUID clientId;
 
+    @Column(name = "request_id")
+    private UUID requestId;
+
+    @Column(name = "creation_name")
+    private String creationName;
+
+    public String getCreationName() { return creationName; }
+    public void setCreationName(String creationName) { this.creationName = creationName; }
+
     @Column(nullable = false)
     private String name = "New chat";
 
@@ -62,6 +71,14 @@ public class Chat {
 
     public UUID getClientId() {
         return clientId;
+    }
+
+    public UUID getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(UUID requestId) {
+        this.requestId = requestId;
     }
 
     public String getName() {

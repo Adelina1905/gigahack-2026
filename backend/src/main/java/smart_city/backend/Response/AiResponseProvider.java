@@ -40,7 +40,8 @@ public class AiResponseProvider {
 
         for (ChatResponseMessage response : earlier) {
             // Rows stored before prompts were kept can't form a full turn.
-            if (response.getPrompt() == null || response.getPrompt().isBlank()) {
+            if (response.getPrompt() == null || response.getPrompt().isBlank()
+                    || response.getText() == null) {
                 continue;
             }
             history.add(LlmTurn.user(response.getPrompt()));
