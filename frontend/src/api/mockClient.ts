@@ -1,5 +1,16 @@
 import { ApiError } from "./client";
-import type { ChatView, DocumentView, ProjectView, ResponseView } from "./types";
+import type { AlertListQuery } from "./client";
+import type {
+  AlertScanView,
+  AlertSettingsView,
+  AlertTopicView,
+  AlertUnreadCountView,
+  AlertView,
+  ChatView,
+  DocumentView,
+  ProjectView,
+  ResponseView,
+} from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 // In-memory stand-in for the Spring Boot API, persisted to localStorage so
@@ -91,12 +102,34 @@ function pickReply(prompt: string, exclude?: string): MockReply {
 
 type StoredProject = Omit<ProjectView, "chats">;
 
+interface StoredAlertSettings {
+  enabled: boolean;
+  prompted: boolean;
+  topicsRefreshedAt: string | null;
+  lastScanAt: string | null;
+}
+
+interface StoredAlertTopic extends AlertTopicView {
+  projectId: string;
+  // Removed AUTO topics are kept so a refresh never brings them back.
+  removed: boolean;
+}
+
+interface StoredAlert extends AlertView {
+  dismissed: boolean;
+}
+
 interface MockStore {
   // Missing in stores saved before projects existed.
   projects?: StoredProject[];
   chats: ChatView[];
   responses: ResponseView[];
   nextResponseId: number;
+  // Missing in stores saved before alerts existed.
+  alertSettings?: Record<string, StoredAlertSettings>;
+  alertTopics?: StoredAlertTopic[];
+  alerts?: StoredAlert[];
+  nextAlertId?: number;
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -194,6 +227,10 @@ export async function deleteProject(projectId: string): Promise<void> {
   const store = load();
   findProject(store, projectId);
   store.projects = projectsOf(store).filter((project) => project.id !== projectId);
+  // Like ON DELETE CASCADE on the alert tables.
+  if (store.alertSettings) delete store.alertSettings[projectId];
+  store.alertTopics = alertTopicsOf(store).filter((topic) => topic.projectId !== projectId);
+  store.alerts = alertsOf(store).filter((alert) => alert.projectId !== projectId);
   for (const chat of store.chats) {
     if (chat.projectId === projectId) chat.projectId = null;
   }
@@ -322,4 +359,397 @@ export async function regenerateResponse(
   chat.updatedAt = now();
   save(store);
   return response;
+}
+
+// ---- Project alerts -------------------------------------------------------
+// A small demo feed stands in for the Python matcher: topics come from keyword
+// rules over the project's prompts, and documents match topics by shared words.
+
+interface FeedDocument {
+  documentId: string;
+  title: string;
+  url: string | null;
+  source: string | null;
+  district: string | null;
+  category: string | null;
+  publishedDate: string | null;
+  excerpt: string;
+}
+
+const DEMO_FEED: FeedDocument[] = [
+  {
+    documentId: "demo-roads-botanica-2026",
+    title: "Programul de reparație a drumurilor pentru 2026: străzile incluse din sectorul Botanica",
+    url: "https://www.chisinau.md/",
+    source: "Primăria municipiului Chișinău",
+    district: "Botanica",
+    category: "Infrastructură",
+    publishedDate: "2026-09-22",
+    excerpt: "Lucrările de reparație capitală a drumurilor vor începe pe str. Independenței și bd. Dacia. Traficul va fi deviat pe durata lucrărilor.",
+  },
+  {
+    documentId: "demo-trolleybus-schedule",
+    title: "Orar nou pentru rutele de troleibuz nr. 22 și 24 din 1 octombrie",
+    url: "https://www.chisinau.md/",
+    source: "Regia Transport Electric",
+    district: "Centru",
+    category: "Transport public",
+    publishedDate: "2026-09-24",
+    excerpt: "Intervalul de circulație a troleibuzelor pe rutele 22 și 24 se reduce la 8 minute în orele de vârf. Transportul public circulă până la ora 23:00.",
+  },
+  {
+    documentId: "demo-kindergarten-enrolment",
+    title: "Calendarul înscrierii copiilor în grădinițe pentru anul de studii 2026–2027",
+    url: "https://www.chisinau.md/",
+    source: "DGETS",
+    district: null,
+    category: "Educație",
+    publishedDate: "2026-09-20",
+    excerpt: "Înscrierea în grădinițele și școlile municipale se face online. Părinții depun cererea până la 15 octombrie.",
+  },
+  {
+    documentId: "demo-school-renovation-ciocana",
+    title: "Lucrări de renovare a unui liceu din sectorul Ciocana",
+    url: null,
+    source: "Pretura sectorului Ciocana",
+    district: "Ciocana",
+    category: "Educație",
+    publishedDate: "2026-09-18",
+    excerpt: "Renovarea sălii de sport și a blocului alimentar al școlii se încheie până la sfârșitul lunii noiembrie. Elevii învață conform orarului obișnuit.",
+  },
+  {
+    documentId: "demo-water-outage-buiucani",
+    title: "Sistarea apei potabile pe str. Alba Iulia pe 29 septembrie",
+    url: "https://www.chisinau.md/",
+    source: "Apă-Canal Chișinău",
+    district: "Buiucani",
+    category: "Utilități",
+    publishedDate: "2026-09-25",
+    excerpt: "Din cauza lucrărilor la rețeaua de apă și canalizare, furnizarea apei va fi sistată între orele 09:00 și 17:00.",
+  },
+  {
+    documentId: "demo-autumn-fair",
+    title: "Târgul de toamnă al producătorilor autohtoni în Piața Marii Adunări Naționale",
+    url: "https://www.chisinau.md/",
+    source: "Primăria municipiului Chișinău",
+    district: "Centru",
+    category: "Evenimente",
+    publishedDate: "2026-09-23",
+    excerpt: "Târgul cu produse autohtone, eco și apicole are loc în weekend. Evenimentul include concerte și un festival gastronomic.",
+  },
+  {
+    documentId: "demo-valea-morilor-park",
+    title: "Amenajarea parcului „Valea Morilor”: începe etapa a doua",
+    url: "https://www.chisinau.md/",
+    source: "Primăria municipiului Chișinău",
+    district: "Buiucani",
+    category: "Spații verzi",
+    publishedDate: "2026-09-19",
+    excerpt: "În parc vor fi plantați 300 de copaci, iar aleile și terenurile de joacă vor fi renovate.",
+  },
+  {
+    documentId: "demo-electric-buses-route-30",
+    title: "Autobuze electrice noi pe ruta 30 spre Aeroport",
+    url: "https://www.chisinau.md/",
+    source: "Parcul Urban de Autobuze",
+    district: null,
+    category: "Transport public",
+    publishedDate: "2026-09-26",
+    excerpt: "Zece autobuze electrice noi circulă pe ruta 30. Stațiile de încărcare sunt instalate la capătul traseului.",
+  },
+];
+
+// Keyword rules that stand in for LLM topic extraction; prompts may be RO, RU or EN.
+const TOPIC_RULES: Array<{ pattern: RegExp; label: string; query: string }> = [
+  { pattern: /[sș]coal|[sș]colar|liceu|gr[aă]dini|educa|dgets|school|kindergarten|школ|детск|образов/i,
+    label: "Școli și grădinițe", query: "școli grădinițe educație înscriere" },
+  { pattern: /transport|troleibuz|autobuz|rut[aăe]|traseu|bus|автобус|троллейбус|маршрут/i,
+    label: "Transport public", query: "transport public troleibuz autobuz rute" },
+  { pattern: /drum|strad|str[aă]zi|repara|asfalt|road|дорог|улиц|ремонт/i,
+    label: "Reparații de drumuri", query: "reparație drumuri străzi lucrări" },
+  { pattern: /t[aâ]rg|eveniment|festival|concert|fair|event|ярмарк|фестивал|мероприят/i,
+    label: "Evenimente și târguri", query: "târg eveniment festival" },
+  { pattern: /(?:^|\s)ap[aăe](?=$|[\s,.?!])|canaliz|water|вод[аы]|канализ/i,
+    label: "Apă și canalizare", query: "apă canalizare sistare" },
+  { pattern: /parc|spa[tț]ii verzi|copac|park|парк|сквер/i,
+    label: "Parcuri și spații verzi", query: "parc spații verzi copaci amenajare" },
+];
+
+const DEFAULT_MIN_SCORE = 0.55;
+const MANUAL_SCAN_LIMIT = 3;
+const BACKGROUND_SCAN_LIMIT = 2;
+// The real backend scans every 2 minutes; the mock does it when the counts are polled.
+const BACKGROUND_SCAN_MS = 2 * 60 * 1000;
+
+const alertTopicsOf = (store: MockStore) => (store.alertTopics ??= []);
+// One sequence for alerts and topics is enough for the mock.
+const nextAlertId = (store: MockStore) => (store.nextAlertId = (store.nextAlertId ?? 0) + 1);
+const alertsOf = (store: MockStore) => (store.alerts ??= []);
+
+function settingsOf(store: MockStore, projectId: string): StoredAlertSettings {
+  store.alertSettings ??= {};
+  return (store.alertSettings[projectId] ??= {
+    enabled: false, prompted: false, topicsRefreshedAt: null, lastScanAt: null,
+  });
+}
+
+const liveTopics = (store: MockStore, projectId: string) =>
+  alertTopicsOf(store).filter((topic) => topic.projectId === projectId && !topic.removed);
+
+const topicView = ({ id, label, query, source, minScore }: StoredAlertTopic): AlertTopicView =>
+  ({ id, label, query, source, minScore });
+
+function settingsView(store: MockStore, projectId: string): AlertSettingsView {
+  const settings = settingsOf(store, projectId);
+  return {
+    projectId,
+    enabled: settings.enabled,
+    prompted: settings.prompted,
+    topics: liveTopics(store, projectId).map(topicView),
+    lastScanAt: settings.lastScanAt,
+  };
+}
+
+const alertView = (alert: StoredAlert): AlertView => {
+  const { dismissed: _dismissed, ...view } = alert;
+  return view;
+};
+
+function findAlert(store: MockStore, alertId: number) {
+  const alert = alertsOf(store).find((candidate) => candidate.id === alertId && !candidate.dismissed);
+  if (!alert) throw notFound("Alert");
+  return alert;
+}
+
+function validTopicLabel(label: string) {
+  const trimmed = label.trim();
+  if (!trimmed || trimmed.length > 80) throw new ApiError("Invalid topic label", 400);
+  return trimmed;
+}
+
+// Lowercase without diacritics, so "școli" and "scoli" share a stem.
+const normalize = (text: string) =>
+  text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+const stems = (text: string) =>
+  new Set(normalize(text).split(/[^a-z0-9а-яё]+/).filter((word) => word.length >= 4).map((word) => word.slice(0, 5)));
+
+function scoreDocument(query: string, document: FeedDocument) {
+  const wanted = stems(query);
+  if (wanted.size === 0) return 0;
+  const found = stems(`${document.title} ${document.excerpt} ${document.category ?? ""}`);
+  const hits = [...wanted].filter((stem) => found.has(stem)).length;
+  return hits === 0 ? 0 : Math.min(0.95, 0.5 + 0.1 * hits);
+}
+
+function refreshTopics(store: MockStore, projectId: string) {
+  const chatIds = new Set(store.chats.filter((chat) => chat.projectId === projectId).map((chat) => chat.id));
+  const prompts = store.responses
+    .filter((response) => chatIds.has(response.chatId) && response.prompt)
+    .map((response) => response.prompt!);
+  // Removed topics count as existing, so they are not re-created.
+  const existing = new Set(
+    alertTopicsOf(store).filter((topic) => topic.projectId === projectId).map((topic) => topic.label.toLowerCase()),
+  );
+  let added = 0;
+  for (const rule of TOPIC_RULES) {
+    if (added >= 4 || existing.has(rule.label.toLowerCase())) continue;
+    if (!prompts.some((prompt) => rule.pattern.test(prompt))) continue;
+    alertTopicsOf(store).push({
+      id: nextAlertId(store),
+      projectId, label: rule.label, query: rule.query, source: "AUTO", minScore: null, removed: false,
+    });
+    added += 1;
+  }
+  settingsOf(store, projectId).topicsRefreshedAt = now();
+}
+
+// Adds up to `limit` alerts for documents the project was never alerted about.
+function scan(store: MockStore, projectId: string, limit: number) {
+  const topics = liveTopics(store, projectId);
+  settingsOf(store, projectId).lastScanAt = now();
+  if (topics.length === 0) return 0;
+
+  const seen = new Set(alertsOf(store).filter((alert) => alert.projectId === projectId).map((alert) => alert.documentId));
+  const matches = DEMO_FEED.filter((document) => !seen.has(document.documentId))
+    .map((document) => {
+      const best = topics
+        .map((topic) => ({ topic, score: scoreDocument(topic.query, document) }))
+        .filter(({ topic, score }) => score > 0 && score >= (topic.minScore ?? DEFAULT_MIN_SCORE))
+        .sort((a, b) => b.score - a.score)[0];
+      return best ? { document, ...best } : null;
+    })
+    .filter((match) => match !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  for (const { document, topic, score } of matches) {
+    alertsOf(store).push({
+      ...document,
+      id: nextAlertId(store),
+      projectId,
+      topicId: topic.id,
+      topicLabel: topic.label,
+      score,
+      createdAt: now(),
+      readAt: null,
+      dismissed: false,
+    });
+  }
+  return matches.length;
+}
+
+// Stands in for the scheduled task: enabled projects get new alerts over time.
+function backgroundScan(store: MockStore) {
+  let changed = false;
+  for (const project of projectsOf(store)) {
+    const settings = store.alertSettings?.[project.id];
+    if (!settings?.enabled) continue;
+    const last = settings.lastScanAt ? Date.parse(settings.lastScanAt) : 0;
+    if (Date.now() - last < BACKGROUND_SCAN_MS) continue;
+    scan(store, project.id, BACKGROUND_SCAN_LIMIT);
+    changed = true;
+  }
+  return changed;
+}
+
+const visibleAlerts = (store: MockStore) => alertsOf(store).filter((alert) => !alert.dismissed);
+
+export async function getAlerts(query: AlertListQuery = {}): Promise<AlertView[]> {
+  await wait(150);
+  return visibleAlerts(load())
+    .filter((alert) => !query.projectId || alert.projectId === query.projectId)
+    .filter((alert) => !query.unreadOnly || !alert.readAt)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
+    .slice(0, query.limit ?? 50)
+    .map(alertView);
+}
+
+export async function getAlertUnreadCount(): Promise<AlertUnreadCountView> {
+  await wait(80);
+  const store = load();
+  if (backgroundScan(store)) save(store);
+  const byProject: Record<string, number> = {};
+  for (const alert of visibleAlerts(store)) {
+    if (!alert.readAt) byProject[alert.projectId] = (byProject[alert.projectId] ?? 0) + 1;
+  }
+  return { total: Object.values(byProject).reduce((sum, count) => sum + count, 0), byProject };
+}
+
+export async function markAlertRead(alertId: number): Promise<AlertView> {
+  await wait(80);
+  const store = load();
+  const alert = findAlert(store, alertId);
+  alert.readAt ??= now();
+  save(store);
+  return alertView(alert);
+}
+
+export async function markAllAlertsRead(projectId: string | null = null): Promise<{ updated: number }> {
+  await wait(80);
+  const store = load();
+  let updated = 0;
+  for (const alert of visibleAlerts(store)) {
+    if (alert.readAt || (projectId && alert.projectId !== projectId)) continue;
+    alert.readAt = now();
+    updated += 1;
+  }
+  save(store);
+  return { updated };
+}
+
+export async function markAlertNotRelevant(alertId: number): Promise<void> {
+  await wait(80);
+  const store = load();
+  const alert = findAlert(store, alertId);
+  alert.dismissed = true;
+  alert.readAt ??= now();
+  const topic = alertTopicsOf(store).find((candidate) => candidate.id === alert.topicId);
+  if (topic) topic.minScore = Math.max(topic.minScore ?? 0, alert.score + 0.01);
+  save(store);
+}
+
+export async function getAlertSettings(projectId: string): Promise<AlertSettingsView> {
+  await wait(80);
+  const store = load();
+  findProject(store, projectId);
+  return settingsView(store, projectId);
+}
+
+export async function updateAlertSettings(projectId: string, enabled: boolean): Promise<AlertSettingsView> {
+  await wait(150);
+  const store = load();
+  findProject(store, projectId);
+  const settings = settingsOf(store, projectId);
+  const turnedOn = enabled && !settings.enabled;
+  settings.enabled = enabled;
+  settings.prompted = true;
+  if (turnedOn) {
+    if (liveTopics(store, projectId).length === 0) refreshTopics(store, projectId);
+    scan(store, projectId, MANUAL_SCAN_LIMIT);
+  }
+  save(store);
+  return settingsView(store, projectId);
+}
+
+export async function refreshAlertTopics(projectId: string): Promise<AlertSettingsView> {
+  await wait(300);
+  const store = load();
+  findProject(store, projectId);
+  refreshTopics(store, projectId);
+  save(store);
+  return settingsView(store, projectId);
+}
+
+export async function createAlertTopic(projectId: string, label: string): Promise<AlertTopicView> {
+  await wait(100);
+  const store = load();
+  findProject(store, projectId);
+  const trimmed = validTopicLabel(label);
+  // Like the backend: an existing label returns the existing topic.
+  const existing = liveTopics(store, projectId).find((topic) => topic.label.toLowerCase() === trimmed.toLowerCase());
+  if (existing) return topicView(existing);
+  const topic: StoredAlertTopic = {
+    id: nextAlertId(store),
+    projectId, label: trimmed, query: trimmed, source: "USER", minScore: null, removed: false,
+  };
+  alertTopicsOf(store).push(topic);
+  save(store);
+  return topicView(topic);
+}
+
+function findTopic(store: MockStore, projectId: string, topicId: number) {
+  const topic = liveTopics(store, projectId).find((candidate) => candidate.id === topicId);
+  if (!topic) throw notFound("Topic");
+  return topic;
+}
+
+export async function updateAlertTopic(projectId: string, topicId: number, label: string): Promise<AlertTopicView> {
+  await wait(100);
+  const store = load();
+  const topic = findTopic(store, projectId, topicId);
+  topic.label = validTopicLabel(label);
+  topic.query = topic.label;
+  topic.source = "USER";
+  save(store);
+  return topicView(topic);
+}
+
+export async function deleteAlertTopic(projectId: string, topicId: number): Promise<void> {
+  await wait(100);
+  const store = load();
+  const topic = findTopic(store, projectId, topicId);
+  if (topic.source === "AUTO") topic.removed = true;
+  else store.alertTopics = alertTopicsOf(store).filter((candidate) => candidate !== topic);
+  save(store);
+}
+
+export async function scanProjectAlerts(projectId: string): Promise<AlertScanView> {
+  await wait(400);
+  const store = load();
+  findProject(store, projectId);
+  const hasTopics = liveTopics(store, projectId).length > 0;
+  const created = scan(store, projectId, MANUAL_SCAN_LIMIT);
+  save(store);
+  return { created, matcher: hasTopics ? "lexical" : "none" };
 }

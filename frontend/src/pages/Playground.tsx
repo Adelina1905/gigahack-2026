@@ -1,14 +1,20 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import AlertBell from "../components/alerts/AlertBell";
+import AlertOptInDialog from "../components/alerts/AlertOptInDialog";
+import ProjectAlertsDialog from "../components/alerts/ProjectAlertsDialog";
 import { CityGatesArt, TriumphalArchArt } from "../components/brand/Landmarks";
 import ChatWindow from "../components/ChatWindow";
 import Sidebar from "../components/Sidebar";
 import SiteHeader from "../components/SiteHeader";
 import { useActiveChatId } from "../hooks/useActiveChatId";
+import { useAlertOptIn } from "../hooks/useAlertOptIn";
+import { useAlerts } from "../hooks/useAlerts";
 import { useChat } from "../hooks/useChat";
 import { useChats } from "../hooks/useChats";
 import { useProjects } from "../hooks/useProjects";
 import { useI18n } from "../i18n/context";
-import { DEFAULT_CHAT_NAME } from "../types/chat";
+import type { Alert } from "../types/alerts";
+import { DEFAULT_CHAT_NAME, type ProjectSummary } from "../types/chat";
 
 function Playground() {
   const { t } = useI18n();
@@ -18,6 +24,12 @@ function Playground() {
   const projectList = useProjects();
   // The project a chat started from the empty screen will be created in.
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
+  const alerts = useAlerts();
+  const optIn = useAlertOptIn(undefined, { onEnabled: () => void alerts.refreshUnread() });
+  const [alertsProject, setAlertsProject] = useState<ProjectSummary | null>(null);
+  // "Ask about this" sends its question once the new draft chat is open.
+  const pendingAskRef = useRef<{ projectId: string | null; text: string } | null>(null);
+  const [askNonce, setAskNonce] = useState(0);
 
   const chat = useChat(activeChatId, {
     draftProjectId,
@@ -93,14 +105,65 @@ function Playground() {
     }
   };
 
+  const askAboutAlert = (alert: Alert) => {
+    void alerts.markRead(alert.id);
+    const projectId = projectList.projects.some((project) => project.id === alert.projectId)
+      ? alert.projectId
+      : null;
+    pendingAskRef.current = { projectId, text: t.alerts.askQuestion(alert.title) };
+    if (projectId) startNewChatInProject(projectId);
+    else startNewChat();
+    setAskNonce((nonce) => nonce + 1);
+  };
+
   const activeChat = chatList.chats.find((candidate) => candidate.id === activeChatId);
+  const activeProjectId = activeChat?.projectId ?? null;
+  const { send } = chat;
+
+  useEffect(() => {
+    const pending = pendingAskRef.current;
+    if (!pending || activeChatId || draftProjectId !== pending.projectId) return;
+    pendingAskRef.current = null;
+    send(pending.text);
+  }, [askNonce, activeChatId, draftProjectId, send]);
+
+  // The first answered question in a project may offer alerts for it
+  // (useAlertOptIn asks the server, and only once per project).
+  const hasAnswer = chat.messages.some(
+    (message) => message.role === "assistant" && message.generationStatus === "COMPLETED" && message.content.trim(),
+  );
+  const { consider } = optIn;
+  useEffect(() => {
+    if (activeProjectId && hasAnswer) void consider(activeProjectId);
+  }, [activeProjectId, hasAnswer, consider]);
+  const optInProject = optIn.offer
+    ? projectList.projects.find((project) => project.id === optIn.offer!.projectId)
+    : undefined;
+
   const activeName = activeChat?.name;
   const breadcrumbProjectId = activeChatId ? activeChat?.projectId : draftProjectId;
   const breadcrumbProject = projectList.projects.find((project) => project.id === breadcrumbProjectId);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      <SiteHeader onOpenMenu={() => setIsSidebarOpen(true)} />
+      <SiteHeader
+        onOpenMenu={() => setIsSidebarOpen(true)}
+        actions={
+          <AlertBell
+            alerts={alerts.alerts}
+            unreadTotal={alerts.unread.total}
+            projects={projectList.projects}
+            isLoading={alerts.isLoading}
+            error={alerts.error}
+            onOpen={() => void alerts.loadAlerts()}
+            onMarkRead={(alertId) => void alerts.markRead(alertId)}
+            onMarkAllRead={() => void alerts.markAllRead(null)}
+            onNotRelevant={(alertId) => void alerts.notRelevant(alertId)}
+            onAsk={askAboutAlert}
+            onDismissError={alerts.dismissError}
+          />
+        }
+      />
 
       <main className="flex min-h-0 flex-1">
         <Sidebar
@@ -118,6 +181,11 @@ function Playground() {
           onRenameProject={(projectId, name) => void projectList.rename(projectId, name)}
           onDeleteProject={(projectId) => void deleteProject(projectId)}
           onNewChatInProject={startNewChatInProject}
+          unreadAlertsByProject={alerts.unread.byProject}
+          onOpenProjectAlerts={(project) => {
+            setAlertsProject(project);
+            setIsSidebarOpen(false);
+          }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
@@ -159,16 +227,38 @@ function Playground() {
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
-              error={chat.error ?? chatList.error ?? projectList.error}
+              error={chat.error ?? chatList.error ?? projectList.error ?? optIn.notice}
               onDismissError={() => {
                 chat.dismissError();
                 chatList.dismissError();
                 projectList.dismissError();
+                optIn.dismissNotice();
               }}
             />
           </div>
         </div>
       </main>
+
+      {alertsProject && (
+        <ProjectAlertsDialog
+          key={alertsProject.id}
+          projectId={alertsProject.id}
+          projectName={alertsProject.name}
+          onClose={() => setAlertsProject(null)}
+          onAlertsChanged={() => void alerts.refreshUnread()}
+        />
+      )}
+
+      {optIn.offer && (
+        <AlertOptInDialog
+          projectName={optInProject?.name ?? ""}
+          topics={optIn.offer.topics.map((topic) => topic.label)}
+          isSaving={optIn.isSaving}
+          error={optIn.error}
+          onEnable={optIn.enable}
+          onDecline={optIn.decline}
+        />
+      )}
     </div>
   );
 }

@@ -25,6 +25,9 @@ interface SidebarProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onNewChatInProject: (projectId: string) => void;
+  // Unread alerts per project id.
+  unreadAlertsByProject?: Record<string, number>;
+  onOpenProjectAlerts?: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -90,6 +93,8 @@ function Sidebar({
   onRenameProject,
   onDeleteProject,
   onNewChatInProject,
+  unreadAlertsByProject,
+  onOpenProjectAlerts,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -229,6 +234,8 @@ function Sidebar({
                     onRenameChat={onRename}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
+                    unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
+                    onOpenAlerts={onOpenProjectAlerts}
                   />
                 ))}
               </ul>

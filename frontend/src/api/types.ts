@@ -96,3 +96,69 @@ export interface DocumentCreateRequest {
   title: string;
   documentLink: string;
 }
+
+// Alert/dto/AlertView.java — one matched document for one project.
+export interface AlertView {
+  id: number;
+  projectId: string; // UUID
+  topicId: number | null; // null once the topic was deleted
+  topicLabel: string; // the topic's label when the alert was created
+  documentId: string;
+  title: string;
+  url: string | null;
+  source: string | null;
+  district: string | null;
+  category: string | null;
+  publishedDate: string | null; // YYYY-MM-DD
+  excerpt: string;
+  score: number;
+  createdAt: string; // ISO 8601
+  readAt: string | null; // ISO 8601
+}
+
+export interface AlertUnreadCountView {
+  total: number;
+  byProject: Record<string, number>; // project UUID -> unread alerts
+}
+
+export interface AlertTopicView {
+  id: number;
+  label: string;
+  query: string;
+  source: "AUTO" | "USER";
+  minScore: number | null;
+}
+
+export interface AlertSettingsView {
+  projectId: string; // UUID
+  enabled: boolean;
+  // True once the one-time opt-in was answered either way.
+  prompted: boolean;
+  topics: AlertTopicView[]; // not removed, oldest first
+  lastScanAt: string | null; // ISO 8601
+}
+
+export interface AlertReadAllRequest {
+  projectId: string | null; // null marks every project's alerts
+}
+
+export interface AlertReadAllView {
+  updated: number;
+}
+
+export interface AlertFeedbackRequest {
+  value: "NOT_RELEVANT";
+}
+
+export interface AlertSettingsUpdateRequest {
+  enabled: boolean;
+}
+
+export interface AlertTopicRequest {
+  label: string;
+}
+
+export interface AlertScanView {
+  created: number;
+  matcher: string;
+}

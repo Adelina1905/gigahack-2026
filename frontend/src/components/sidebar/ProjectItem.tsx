@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useI18n } from "../../i18n/context";
 import type { ChatSummary, ProjectSummary } from "../../types/chat";
 import ChatItem from "./ChatItem";
@@ -19,6 +20,9 @@ interface ProjectItemProps {
   onRenameChat: (chatId: string, name: string) => void;
   onDeleteChat: (chatId: string) => void;
   onMoveChat: (chatId: string, projectId: string | null) => void;
+  unreadAlerts?: number;
+  // Opens the project's "Alerts & topics" dialog; the action is hidden without it.
+  onOpenAlerts?: (project: ProjectSummary) => void;
 }
 
 function ProjectItem({
@@ -36,8 +40,11 @@ function ProjectItem({
   onRenameChat,
   onDeleteChat,
   onMoveChat,
+  unreadAlerts = 0,
+  onOpenAlerts,
 }: ProjectItemProps) {
   const { t } = useI18n();
+  const unreadId = useId();
 
   const handleDelete = () => {
     if (window.confirm(t.projects.confirmRemove(project.name))) onDelete(project.id);
@@ -50,8 +57,9 @@ function ProjectItem({
           type="button"
           onClick={() => onToggle(project.id)}
           aria-expanded={isExpanded}
+          aria-describedby={unreadAlerts > 0 ? unreadId : undefined}
           title={project.name}
-          className={`flex w-full cursor-pointer items-center gap-2 rounded-sm py-2 pl-2 pr-[5.5rem] text-left text-sm font-medium transition-colors hover:bg-background-secondary ${
+          className={`flex w-full cursor-pointer items-center gap-2 rounded-sm py-2 pl-2 ${onOpenAlerts ? "pr-[7.25rem]" : "pr-[5.5rem]"} text-left text-sm font-medium transition-colors hover:bg-background-secondary ${
             isDraftTarget ? "text-primary-700" : "text-text"
           }`}
         >
@@ -66,7 +74,21 @@ function ProjectItem({
             <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
           </svg>
           <span className="truncate">{project.name}</span>
+          {unreadAlerts > 0 && (
+            <span
+              aria-hidden="true"
+              data-testid="project-alert-badge"
+              className="ml-auto flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold leading-none text-primary-900"
+            >
+              {unreadAlerts > 99 ? "99+" : unreadAlerts}
+            </span>
+          )}
         </button>
+        {unreadAlerts > 0 && (
+          <span id={unreadId} className="sr-only">
+            {t.alerts.projectUnread(unreadAlerts)}
+          </span>
+        )}
 
         <div className="absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           <button
@@ -79,6 +101,19 @@ function ProjectItem({
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
+          {onOpenAlerts && (
+            <button
+              type="button"
+              onClick={() => onOpenAlerts(project)}
+              aria-label={t.alerts.settings.open(project.name)}
+              title={t.alerts.settings.title}
+              className={actionButtonClass}
+            >
+              <svg {...iconProps} className="h-3.5 w-3.5">
+                <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onRename(project)}

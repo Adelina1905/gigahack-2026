@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
+from .alerts import AlertService, TopicQuery, create_alert_service
 from .api import ManagedAudioApiError
 from .chat_service import ChatReply, ChatService, LlmUnavailableError
 from .config import load_config, load_dotenv
@@ -88,9 +89,57 @@ class SpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
 
 
+Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+
+
+class AlertTopicsRequest(BaseModel):
+    questions: list[Question] = Field(min_length=1, max_length=50)
+    existingLabels: list[str] = Field(default_factory=list, max_length=50)
+
+
+class AlertTopic(BaseModel):
+    label: str
+    query: str
+
+
+class AlertTopicsResponse(BaseModel):
+    topics: list[AlertTopic]
+
+
+class AlertTopicIn(BaseModel):
+    id: str = Field(min_length=1, max_length=128)
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    minScore: float | None = None
+
+
+class AlertMatchRequest(BaseModel):
+    topics: list[AlertTopicIn] = Field(min_length=1, max_length=50)
+    excludedDocumentIds: list[str] = Field(default_factory=list)
+    limit: int = Field(default=20, ge=1, le=50)
+
+
+class AlertMatchOut(BaseModel):
+    topicId: str
+    documentId: str
+    title: str
+    url: str | None = None
+    source: str | None = None
+    district: str | None = None
+    category: str | None = None
+    publishedDate: str | None = None
+    excerpt: str
+    score: float
+
+
+class AlertMatchResponse(BaseModel):
+    matcher: Literal["embedding", "lexical"]
+    matches: list[AlertMatchOut]
+
+
 def create_app(chat_service: ReplyService, rag: RagService | None, llm_configured: bool,
                *, mode: Literal["live", "demo"] = "live",
-               voice_service: OpenRouterVoiceService | None = None) -> FastAPI:
+               voice_service: OpenRouterVoiceService | None = None,
+               alert_service: AlertService | None = None) -> FastAPI:
     app = FastAPI(title="Municipal chat service")
 
     @app.get("/health", response_model=HealthResponse)
@@ -134,6 +183,25 @@ def create_app(chat_service: ReplyService, rag: RagService | None, llm_configure
         return Response(content=result.data, media_type=result.content_type,
                         headers={"Cache-Control": "no-store"})
 
+    @app.post("/v1/alerts/topics", response_model=AlertTopicsResponse)
+    def alert_topics(request: AlertTopicsRequest) -> AlertTopicsResponse:
+        if alert_service is None:
+            raise HTTPException(status_code=503, detail="Alert service is unavailable")
+        topics = alert_service.topics(request.questions, request.existingLabels)
+        return AlertTopicsResponse(topics=[AlertTopic(label=item.label, query=item.query) for item in topics])
+
+    @app.post("/v1/alerts/match", response_model=AlertMatchResponse)
+    def alert_match(request: AlertMatchRequest) -> AlertMatchResponse:
+        if alert_service is None:
+            raise HTTPException(status_code=503, detail="Alert service is unavailable")
+        result = alert_service.match([TopicQuery(item.id, item.query, item.minScore) for item in request.topics],
+                                     request.excludedDocumentIds, request.limit)
+        return AlertMatchResponse(matcher=result.matcher, matches=[AlertMatchOut(
+            topicId=item.topic_id, documentId=item.document.document_id, title=item.document.title,
+            url=item.document.url, source=item.document.source, district=item.document.district,
+            category=item.document.category, publishedDate=item.document.published_date,
+            excerpt=item.document.excerpt, score=item.score) for item in result.matches])
+
     return app
 
 
@@ -145,7 +213,8 @@ def create_default_app() -> FastAPI:
         from .demo_service import DemoChatService
 
         LOGGER.info("Chat service starting in explicit demo mode; no AI or Qdrant calls")
-        return create_app(DemoChatService(), None, llm_configured=False, mode="demo")
+        return create_app(DemoChatService(), None, llm_configured=False, mode="demo",
+                          alert_service=create_alert_service("", "", "", use_ai=False))
     if mode != "live":
         raise ValueError("CHAT_MODE must be 'live' or 'demo'")
     return _create_live_app()
@@ -172,5 +241,6 @@ def _create_live_app() -> FastAPI:
         os.environ.get("OPENROUTER_TTS_VOICE", "en-US-Harper:MAI-Voice-2").strip(),
     )
     LOGGER.info("Chat service starting: llmConfigured=%s qdrant=%s", bool(api_key), qdrant_url)
+    alerts = create_alert_service(api_key, config.embedding_model, config.generator_model)
     return create_app(ChatService(rag, llm), rag, llm_configured=bool(api_key),
-                      voice_service=voice)
+                      voice_service=voice, alert_service=alerts)

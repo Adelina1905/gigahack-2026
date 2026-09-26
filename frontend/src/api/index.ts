@@ -21,5 +21,19 @@ export const api = {
   regenerateResponse: realClient.regenerateResponse,
   transcribeAudio: realClient.transcribeAudio,
   getResponseSpeech: realClient.getResponseSpeech,
+  getAlerts: realClient.getAlerts,
+  getAlertUnreadCount: realClient.getAlertUnreadCount,
+  markAlertRead: realClient.markAlertRead,
+  markAllAlertsRead: realClient.markAllAlertsRead,
+  markAlertNotRelevant: realClient.markAlertNotRelevant,
+  getAlertSettings: realClient.getAlertSettings,
+  updateAlertSettings: realClient.updateAlertSettings,
+  refreshAlertTopics: realClient.refreshAlertTopics,
+  createAlertTopic: realClient.createAlertTopic,
+  updateAlertTopic: realClient.updateAlertTopic,
+  deleteAlertTopic: realClient.deleteAlertTopic,
+  scanProjectAlerts: realClient.scanProjectAlerts,
   ...(import.meta.env.VITE_USE_MOCK === "true" ? mockClient : {}),
 };
+
+export type Api = typeof api;
