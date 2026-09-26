@@ -8,6 +8,7 @@ import type {
     ResponseRegenerateRequest,
     ResponseView,
 } from "./types";
+import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "/api";
@@ -78,7 +79,7 @@ export function getChat(chatId: string): Promise<ChatView> {
     return apiRequest<ChatView>(`/chats/${chatId}`);
 }
 
-export function createChat(name = "New chat", requestId?: string): Promise<ChatView> {
+export function createChat(name = DEFAULT_CHAT_NAME, requestId?: string): Promise<ChatView> {
     const request: ChatCreateRequest = { name, requestId };
 
     return apiRequest<ChatView>("/chats", {

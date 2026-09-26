@@ -1,15 +1,20 @@
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderRaw, screen } from "@testing-library/react";
 import AssistantMessage from "../src/components/AssistantMessage";
 import UserMessage from "../src/components/UserMessage";
 import { toMessages } from "../src/api/mappers";
 import { hasPendingGeneration, mergeWithServer, restoreCached } from "../src/hooks/chatState";
 import { safeHttpUrl } from "../src/components/sources/safeLink";
+import { I18nContext } from "../src/i18n/context";
+import { MESSAGES } from "../src/i18n/messages";
 import type { ResponseView } from "../src/api/types";
 import type { ChatMessage } from "../src/types/chat";
 
 afterEach(cleanup);
+const en = MESSAGES.en;
+const render = (ui: React.ReactElement) =>
+  renderRaw(<I18nContext.Provider value={{ locale: "en", setLocale: () => {}, t: en }}>{ui}</I18nContext.Provider>);
 const row: ResponseView = { id: 1, chatId: "chat", prompt: "Hello", text: null,
   requestId: "request", generationVersion: 1, generationStatus: "PENDING", createdAt: "2026-09-26T10:00:00Z" };
 
@@ -30,7 +35,7 @@ describe("durable chat rendering", () => {
   });
   it("labels unsaved outbox messages", () => {
     render(<UserMessage message={{ id: "draft", role: "user", content: "Offline draft", createdAt: 1, status: "error" }} />);
-    expect(screen.getByText("Not saved yet")).toBeTruthy();
+    expect(screen.getByText(en.message.failed)).toBeTruthy();
   });
   it("retains demo labels and ordered citation quotes from persisted metadata", () => {
     const [, assistant] = toMessages({ ...row, text: "Read [S1].", generationStatus: "COMPLETED", aiReply: {
@@ -40,7 +45,9 @@ describe("durable chat rendering", () => {
     } });
     render(<AssistantMessage message={assistant} />);
     expect(screen.getByText("Demo response")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "S1" }).getAttribute("href")).toBe("https://example.com/two");
+    // Citation markers are stripped from the text; the numbered pills and sources link instead.
+    expect(screen.getByText("Read.")).toBeTruthy();
+    expect(screen.getAllByRole("link")[0].getAttribute("href")).toBe("https://example.com/two");
     expect(screen.getByText("Exact second quote")).toBeTruthy();
     expect(assistant.sources?.map(source => source.documentId)).toEqual(["2", "1"]);
   });

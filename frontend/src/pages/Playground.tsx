@@ -1,11 +1,16 @@
 import { useCallback, useState } from "react";
+import { CityGatesArt, TriumphalArchArt } from "../components/brand/Landmarks";
 import ChatWindow from "../components/ChatWindow";
 import Sidebar from "../components/Sidebar";
+import SiteHeader from "../components/SiteHeader";
 import { useActiveChatId } from "../hooks/useActiveChatId";
 import { useChat } from "../hooks/useChat";
 import { useChats } from "../hooks/useChats";
+import { useI18n } from "../i18n/context";
+import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 function Playground() {
+  const { t } = useI18n();
   const [activeChatId, navigate] = useActiveChatId();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const chatList = useChats();
@@ -46,52 +51,61 @@ function Playground() {
   const activeName = chatList.chats.find((candidate) => candidate.id === activeChatId)?.name;
 
   return (
-    <main className="flex h-screen bg-background">
-      <Sidebar
-        chats={chatList.chats}
-        activeChatId={activeChatId}
-        isLoaded={chatList.isLoaded}
-        onNewChat={startNewChat}
-        onSelect={openChat}
-        onRename={(chatId, name) => void chatList.rename(chatId, name)}
-        onDelete={deleteChat}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
+    <div className="flex h-dvh flex-col bg-background">
+      <SiteHeader onOpenMenu={() => setIsSidebarOpen(true)} />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b border-border px-3 py-2 md:hidden">
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            aria-label="Open chat history"
-            className="rounded-lg p-2 text-text-muted hover:bg-background-secondary"
+      <main className="flex min-h-0 flex-1">
+        <Sidebar
+          chats={chatList.chats}
+          activeChatId={activeChatId}
+          isLoaded={chatList.isLoaded}
+          onNewChat={startNewChat}
+          onSelect={openChat}
+          onRename={(chatId, name) => void chatList.rename(chatId, name)}
+          onDelete={deleteChat}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+
+        <div className="relative flex min-w-0 flex-1 flex-col bg-background-canvas">
+          {/* Landmarks in the margins, like the page background of chisinau.md. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 hidden items-end justify-between px-6 text-primary opacity-[0.09] xl:flex"
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <span className="truncate text-sm font-medium text-text">{activeName ?? "New chat"}</span>
-        </header>
+            <TriumphalArchArt className="h-40 2xl:h-52" />
+            <CityGatesArt className="h-48 2xl:h-64" />
+          </div>
 
-        <div className="mx-auto min-h-0 w-full max-w-2xl flex-1">
-          <ChatWindow
-            chatId={activeChatId}
-            messages={chat.messages}
-            isTyping={chat.isTyping}
-            isLoading={chat.isLoading}
-            onSend={chat.send}
-            onRetry={chat.retry}
-            onRegenerate={chat.regenerate}
-            error={chat.error ?? chatList.error}
-            onDismissError={() => {
-              chat.dismissError();
-              chatList.dismissError();
-            }}
-          />
+          <nav aria-label={t.breadcrumb} className="relative border-b border-border bg-background/70 px-4 py-2.5">
+            <ol className="mx-auto flex max-w-3xl items-center gap-2 px-4 text-sm">
+              <li className="shrink-0 text-primary">{t.sidebar.title}</li>
+              <li aria-hidden="true" className="text-text-subtle">/</li>
+              <li aria-current="page" className="truncate text-text-muted">
+                {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
+              </li>
+            </ol>
+          </nav>
+
+          <div className="relative mx-auto min-h-0 w-full max-w-3xl flex-1">
+            <ChatWindow
+              chatId={activeChatId}
+              messages={chat.messages}
+              isTyping={chat.isTyping}
+              isLoading={chat.isLoading}
+              onSend={chat.send}
+              onRetry={chat.retry}
+              onRegenerate={chat.regenerate}
+              error={chat.error ?? chatList.error}
+              onDismissError={() => {
+                chat.dismissError();
+                chatList.dismissError();
+              }}
+            />
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 

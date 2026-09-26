@@ -2,15 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../api";
 import { toChatSummary, toMessages } from "../api/mappers";
 import * as cache from "../db/cache";
-import type { ChatMessage, ChatSummary } from "../types/chat";
+import type { ErrorKey } from "../i18n/messages";
+import { DEFAULT_CHAT_NAME, type ChatMessage, type ChatSummary } from "../types/chat";
 import { DRAFT, hasPendingGeneration, mergeWithServer, restoreCached, settleTurn } from "./chatState";
 
 const EMPTY: ChatMessage[] = [];
 const makeId = () => crypto.randomUUID();
-const isMissingChat = (error: unknown) => error instanceof ApiError && error.status === 404;
-const describeError = (error: unknown) => error instanceof ApiError
-  ? error.status === 0 ? "Can't reach the server. Your message is kept here for retry." : error.message
-  : "Something went wrong. Please try again.";
+// A malformed chat id in the URL is rejected with 400, so it counts as missing too.
+const isMissingChat = (error: unknown) =>
+  error instanceof ApiError && (error.status === 404 || error.status === 400);
+const describeError = (error: unknown): ErrorKey => {
+  if (error instanceof ApiError && error.status === 0) return "offline";
+  if (error instanceof ApiError && error.status === 404) return "chatMissing";
+  return "generic";
+};
 
 interface UseChatOptions {
   onChatCreated?: (chat: ChatSummary, isActive: boolean) => void;
@@ -23,7 +28,7 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
   const [threads, setThreads] = useState<Record<string, ChatMessage[]>>({});
   const [inFlight, setInFlight] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorKey | null>(null);
   const threadsRef = useRef(threads);
   const activeRef = useRef(key);
   const optionsRef = useRef(options);
@@ -94,7 +99,7 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
       // The durable outbox is written before either chat creation or submission.
       await cache.saveMessages(target, threadsRef.current[target] ?? [message]);
       if (target === DRAFT) {
-        const chat = await api.createChat("New chat", message.chatRequestId);
+        const chat = await api.createChat(DEFAULT_CHAT_NAME, message.chatRequestId);
         target = chat.id;
         const draft = threadsRef.current[DRAFT] ?? [message];
         const next = { ...threadsRef.current, [target]: draft };
@@ -123,7 +128,7 @@ export function useChat(chatId: string | null, options: UseChatOptions = {}) {
   const send = useCallback((input: string) => {
     const text = input.trim();
     if (!text || busy.current.has(key) || hasPendingGeneration(threadsRef.current[key] ?? EMPTY)) return;
-    if (text.length > 8000) { setError("Messages can contain up to 8,000 characters."); return; }
+    if (text.length > 8000) { setError("tooLong"); return; }
     const requestId = makeId();
     const message: ChatMessage = {
       id: requestId, requestId, chatRequestId: key === DRAFT ? makeId() : undefined,

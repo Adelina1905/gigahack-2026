@@ -1,13 +1,15 @@
 package smart_city.backend;
 
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-/** Database tests never fall back to the application's database or .env. */
+/**
+ * Database tests never fall back to the application's database or .env.
+ * JUnit conditions are not inherited, so each subclass carries
+ * {@code @EnabledIfEnvironmentVariable(named = "CHAT_TEST_JDBC_URL", matches = "jdbc:postgresql:.*")}.
+ */
 @SpringBootTest(properties = "spring.config.import=")
-@EnabledIfEnvironmentVariable(named = "CHAT_TEST_JDBC_URL", matches = "jdbc:postgresql:.*")
 public abstract class IsolatedDatabaseTest {
     @DynamicPropertySource
     static void isolatedDatabase(DynamicPropertyRegistry properties) {

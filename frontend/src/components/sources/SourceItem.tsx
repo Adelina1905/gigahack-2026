@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
 import { safeHttpUrl } from "./safeLink";
 
@@ -15,20 +16,21 @@ const getHostname = (link: string) => {
   }
 };
 
-const formatDate = (iso: string) => {
+const formatDate = (iso: string, locale: string) => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
 };
 
 function SourceItem({ source, index }: SourceItemProps) {
+  const { t } = useI18n();
   const link = safeHttpUrl(source.link);
   const hostname = link ? getHostname(link) : "";
-  const addedDate = formatDate(source.added_date);
+  const addedDate = formatDate(source.added_date, t.meta.intl);
 
   const content = (
     <>
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-primary text-xs font-semibold text-text-inverted">
         {index + 1}
       </span>
 
@@ -41,7 +43,7 @@ function SourceItem({ source, index }: SourceItemProps) {
           <span className="truncate text-xs text-text-subtle">
             {hostname}
             {hostname && addedDate && " · "}
-            {addedDate && `Added ${addedDate}`}
+            {addedDate && t.message.added(addedDate)}
           </span>
         )}
       </span>
@@ -51,7 +53,7 @@ function SourceItem({ source, index }: SourceItemProps) {
   // Sources without a URL are shown as plain text rather than a broken link.
   if (!link) {
     return (
-      <li title={source.title} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+      <li title={source.title} className="flex items-center gap-3 rounded-sm px-2 py-1.5">
         {content}
       </li>
     );
@@ -64,7 +66,7 @@ function SourceItem({ source, index }: SourceItemProps) {
         target="_blank"
         rel="noopener noreferrer"
         title={source.title}
-        className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-background-secondary focus-visible:bg-background-secondary focus-visible:outline-none"
+        className="flex items-center gap-3 rounded-sm px-2 py-1.5 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:outline-none"
       >
         {content}
 

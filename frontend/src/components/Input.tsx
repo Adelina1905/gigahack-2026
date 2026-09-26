@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useI18n } from "../i18n/context";
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -8,7 +9,8 @@ interface ChatInputProps {
 
 const MAX_HEIGHT_PX = 160; // ~6 lines
 
-function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" }: ChatInputProps) {
+function ChatInput({ onSend, disabled = false, placeholder }: ChatInputProps) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canSend = value.trim().length > 0 && value.trim().length <= 8000 && !disabled;
@@ -35,7 +37,7 @@ function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" 
   };
 
   return (
-    <div className="flex items-end gap-2 rounded-4xl border border-border bg-background px-4 py-2 shadow-sm transition-colors focus-within:border-border-strong">
+    <div className="flex items-end gap-2 rounded-sm border border-border-strong bg-background py-2 pr-2 pl-4 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
       <textarea
         ref={textareaRef}
         rows={1}
@@ -43,15 +45,15 @@ function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" 
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t.chat.placeholder}
         className="max-h-40 flex-1 resize-none bg-transparent py-1.5 text-base text-text placeholder:text-text-subtle focus:outline-none"
       />
       <button
         type="button"
         onClick={submit}
         disabled={!canSend}
-        aria-label="Send message"
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+        aria-label={t.chat.send}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm transition-colors ${
           canSend
             ? "bg-primary text-text-inverted hover:bg-primary-dark"
             : "cursor-not-allowed bg-background-secondary text-text-subtle"

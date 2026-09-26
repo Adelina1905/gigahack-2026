@@ -36,6 +36,10 @@ export interface ChatMessage {
   retryOperation?: RetryOperation;
 }
 
+// The backend renames a chat still called this after its first prompt, so it is
+// stored as-is and only translated for display.
+export const DEFAULT_CHAT_NAME = "New chat";
+
 // A chat as listed in the sidebar.
 export interface ChatSummary {
   id: string;
