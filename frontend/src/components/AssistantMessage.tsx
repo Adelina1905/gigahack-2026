@@ -23,6 +23,19 @@ function TypingDots() {
   );
 }
 
+// Only **bold** is supported; an unmatched "**" stays as literal text.
+function renderBold(text: string) {
+  return text.split(/\*\*(.+?)\*\*/gs).map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false);
 
@@ -48,7 +61,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
             <TypingDots />
           ) : (
             <>
-              {message.content}
+              {renderBold(message.content)}
               {message.sources && <SourceList sources={message.sources} />}
             </>
           )}
