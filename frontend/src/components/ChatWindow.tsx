@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "../types/chat";
 import ChatInput from "./Input";
 import UserMessage from "./UserMessage";
 import AssistantMessage from "./AssistantMessage";
+import SupportNotice from "./SupportNotice";
+import { isUnanswered } from "../utils/unanswered";
 
 interface ChatWindowProps {
   // Switching chats jumps to the bottom instead of smooth-scrolling through history.
@@ -45,6 +47,12 @@ function ChatWindow({
   }, [chatId, messages, isTyping]);
 
   const isEmpty = messages.length === 0 && !isTyping;
+
+  // Offer the support line when the latest reply couldn't answer; dismissing hides it for that reply only.
+  const [dismissedNoticeId, setDismissedNoticeId] = useState<string | null>(null);
+  const lastMessage = messages.at(-1);
+  const noticeFor =
+    !isTyping && lastMessage?.role === "assistant" && isUnanswered(lastMessage.content) ? lastMessage.id : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -102,6 +110,9 @@ function ChatWindow({
               </button>
             )}
           </div>
+        )}
+        {noticeFor && noticeFor !== dismissedNoticeId && (
+          <SupportNotice onDismiss={() => setDismissedNoticeId(noticeFor)} />
         )}
         <ChatInput onSend={onSend} disabled={isTyping} />
       </div>
