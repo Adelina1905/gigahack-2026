@@ -28,59 +28,12 @@ async function readErrorMessage(response: Response): Promise<string> {
     const body = await response.text().catch(() => "");
     if (!body) return fallback;
 
-<<<<<<< HEAD
-export interface Document {
-    id: number;
-    title: string;
-    documentLink: string;
-    addedAt: string;
-}
-
-<<<<<<< HEAD
-=======
-export interface LlmSource {
-    title: string;
-    link: string | null;
-    quote: string | null;
-}
-
-export interface LlmMessageResponse {
-    chatId: string;
-    text: string;
-    mode: "rag" | "llm";
-    status: string;
-    sources: LlmSource[];
-    createdAt: string;
-}
-
-interface LlmMessageRequest {
-    text: string;
-}
-
->>>>>>> 14aa45ddf1c6c8e935f1772504fc1ac1ff14be79
-interface CreateChatRequest {
-    name: string;
-}
-
-interface UpdateChatRequest {
-    name: string;
-}
-
-interface CreateResponseRequest {
-    text: string;
-}
-
-interface CreateDocumentRequest {
-    title: string;
-    documentLink: string;
-=======
     try {
         const json = JSON.parse(body) as { message?: string; error?: string };
         return json.message || json.error || fallback;
     } catch {
         return body;
     }
->>>>>>> 1476d29b6fd73781a2c0d69909bb75d5f21c51bf
 }
 
 async function apiRequest<T>(
@@ -203,32 +156,3 @@ export function createDocument(
         body: JSON.stringify(request),
     });
 }
-<<<<<<< HEAD
-
-<<<<<<< HEAD
-=======
-
-export function sendLlmMessage(
-    chatId: string,
-    text: string,
-): Promise<LlmMessageResponse> {
-    const request: LlmMessageRequest = { text };
-
-    return apiRequest<LlmMessageResponse>(`/llm/chats/${chatId}/messages`, {
-        method: "POST",
-        body: JSON.stringify(request),
-    });
-}
-
-export function clearLlmChat(
-    chatId: string,
-    options: { keepalive?: boolean } = {},
-): Promise<void> {
-    return apiRequest<void>(`/llm/chats/${chatId}`, {
-        method: "DELETE",
-        keepalive: options.keepalive,
-    });
-}
->>>>>>> 14aa45ddf1c6c8e935f1772504fc1ac1ff14be79
-=======
->>>>>>> 1476d29b6fd73781a2c0d69909bb75d5f21c51bf
