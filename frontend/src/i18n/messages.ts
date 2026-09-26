@@ -68,6 +68,12 @@ const ro = {
     retry: "Reîncearcă",
     sources: "Surse",
     added: (date: string) => `Adăugat ${date}`,
+    citedIn: "Surse citate în acest răspuns",
+    noLink: "Link indisponibil",
+  },
+  support: {
+    prefix: "Pentru mai multe informații, contactați serviciul de asistență la",
+    dismiss: "Închide",
   },
   errors: {
     offline: "Serverul nu poate fi accesat. Verificați conexiunea și încercați din nou.",
@@ -146,6 +152,12 @@ const ru: Messages = {
     retry: "Повторить",
     sources: "Источники",
     added: (date) => `Добавлено ${date}`,
+    citedIn: "Источники в этом ответе",
+    noLink: "Ссылка недоступна",
+  },
+  support: {
+    prefix: "Для получения дополнительной информации обратитесь в службу поддержки по номеру",
+    dismiss: "Закрыть",
   },
   errors: {
     offline: "Не удаётся связаться с сервером. Проверьте подключение и попробуйте ещё раз.",
@@ -219,6 +231,12 @@ const en: Messages = {
     retry: "Retry",
     sources: "Sources",
     added: (date) => `Added ${date}`,
+    citedIn: "Cited in this answer",
+    noLink: "No link available",
+  },
+  support: {
+    prefix: "For more information, contact support at",
+    dismiss: "Dismiss",
   },
   errors: {
     offline: "Can't reach the server. Check your connection and try again.",

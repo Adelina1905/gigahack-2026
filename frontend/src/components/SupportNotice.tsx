@@ -1,3 +1,5 @@
+import { useI18n } from "../i18n/context";
+
 interface SupportNoticeProps {
   onDismiss: () => void;
 }
@@ -5,6 +7,8 @@ interface SupportNoticeProps {
 const SUPPORT_NUMBER = "14 04";
 
 function SupportNotice({ onDismiss }: SupportNoticeProps) {
+  const { t } = useI18n();
+
   return (
     <div
       role="status"
@@ -15,7 +19,7 @@ function SupportNotice({ onDismiss }: SupportNoticeProps) {
         <path d="M12 11v5M12 8h.01" />
       </svg>
       <span className="flex-1">
-        For more information, contact support at{" "}
+        {t.support.prefix}{" "}
         <a href={`tel:${SUPPORT_NUMBER.replace(/\s/g, "")}`} className="font-semibold whitespace-nowrap hover:underline">
           {SUPPORT_NUMBER}
         </a>
@@ -23,7 +27,7 @@ function SupportNotice({ onDismiss }: SupportNoticeProps) {
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Dismiss"
+        aria-label={t.support.dismiss}
         className="shrink-0 rounded-full p-1 text-primary-400 transition-colors hover:bg-primary-100/70 hover:text-primary-700"
       >
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" aria-hidden="true">
