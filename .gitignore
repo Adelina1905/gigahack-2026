@@ -1,4 +1,5 @@
 .env
+<<<<<<< HEAD
 .env.*
 !.env.example
 
@@ -20,3 +21,10 @@ backend/target/
 .DS_Store
 Thumbs.db
 
+=======
+**/.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tmp/
+>>>>>>> main
