@@ -50,6 +50,7 @@ def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         result.append({"id": f"S{len(result)+1}", "evidenceId": key, "documentId": item.get("documentId"),
             "versionId": item.get("versionId"), "evidenceKind": item.get("evidenceKind"),
             "exactQuote": item.get("citationText"), "title": meta.get("title"), "url": meta.get("sourceUrl"),
+            "sourceFile": meta.get("sourceFile"),
             "locator": item.get("sourceLocator") or ((item.get("citations") or [{}])[0].get("locator")),
             "retrieval": item.get("retrieval")})
     return result

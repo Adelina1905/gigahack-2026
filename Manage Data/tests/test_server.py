@@ -21,9 +21,11 @@ from chat_fakes import RecordingLlm, RecordingRag
 from municipal_rag.chat_service import ChatService
 
 
-def client_for(rag: RecordingRag, llm: RecordingLlm, llm_configured: bool = True) -> "TestClient":
+def client_for(rag: RecordingRag, llm: RecordingLlm, llm_configured: bool = True,
+               source_preview_service=None) -> "TestClient":
     from municipal_rag.server import create_app
-    return TestClient(create_app(ChatService(rag, llm), rag, llm_configured))
+    return TestClient(create_app(ChatService(rag, llm), rag, llm_configured,
+                                 source_preview_service=source_preview_service))
 
 
 @unittest.skipIf(TestClient is None, "requirements-server.txt is not installed")
@@ -53,8 +55,43 @@ class ServerTests(unittest.TestCase):
         response = client_for(rag, RecordingLlm()).post("/v1/chat", json=self.body())
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"mode": "rag", "status": "PARTIAL", "answer": "Parțial [S1]",
-            "citations": [{"title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1"}],
+            "citations": [{"id": "S1", "evidenceId": None, "versionId": None, "title": "Doc",
+                "url": None, "exactQuote": "citat", "documentId": "d1", "sourceFile": None,
+                "locator": {}}],
             "clarificationChoices": None})
+
+    def test_source_preview_forwards_only_known_identifiers(self) -> None:
+        class PreviewService:
+            calls = []
+
+            def preview(self, document_id, version_id, focus_evidence_id, start, limit):
+                self.calls.append((document_id, version_id, focus_evidence_id, start, limit))
+                return {
+                    "documentId": document_id, "versionId": version_id, "title": "Document",
+                    "sourceUrl": "https://example.com/doc.pdf", "sourceKind": "pdf",
+                    "totalSections": 1, "start": 0, "focusIndex": 0,
+                    "focusSectionId": "p1", "hasPrevious": False, "hasNext": False,
+                    "sections": [{"id": "p1", "order": 0, "headingPath": ["Intro"],
+                                  "text": "Safe stored text", "locator": {"page": 2}}],
+                }
+
+        service = PreviewService()
+        client = client_for(RecordingRag(False), RecordingLlm(), source_preview_service=service)
+        response = client.get("/v1/sources/doc-1/preview",
+                              params={"versionId": "v1", "focusEvidenceId": "e1", "limit": 12})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(service.calls, [("doc-1", "v1", "e1", None, 12)])
+        self.assertEqual(response.json()["sections"][0]["text"], "Safe stored text")
+
+    def test_source_preview_validates_bounds_and_is_unavailable_without_service(self) -> None:
+        client = client_for(RecordingRag(False), RecordingLlm())
+        self.assertEqual(client.get("/v1/sources/doc/preview").status_code, 503)
+        class PreviewService:
+            def preview(self, *_args):
+                raise AssertionError("invalid requests must not reach the service")
+        client = client_for(RecordingRag(False), RecordingLlm(), source_preview_service=PreviewService())
+        self.assertEqual(client.get("/v1/sources/doc/preview?start=-1").status_code, 400)
+        self.assertEqual(client.get("/v1/sources/doc/preview?limit=101").status_code, 400)
 
     def test_chat_clarification_choices(self) -> None:
         rag = RecordingRag(True, {"status": "NEEDS_CLARIFICATION", "clarificationQuestion": "Care?",
