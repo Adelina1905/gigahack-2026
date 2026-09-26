@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@media (min-width: 1024px) {
+  body:has([data-source-panel]) [data-chat-main] {
+    margin-right: var(--source-panel-width, 440px);
+  }
+}
+
 /* Tailwind v4 doesn't pick up JS/TS config files automatically — load ours explicitly. */
 @config "../tailwind.config.ts";
 

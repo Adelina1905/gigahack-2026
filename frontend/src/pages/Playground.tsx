@@ -190,7 +190,7 @@ function Playground() {
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        <div className="relative flex min-w-0 flex-1 flex-col bg-background-canvas">
+        <div data-chat-main className="relative flex min-w-0 flex-1 flex-col bg-background-canvas transition-[margin] duration-200">
           {/* Landmarks in the margins, like the page background of chisinau.md. */}
           <div
             aria-hidden="true"

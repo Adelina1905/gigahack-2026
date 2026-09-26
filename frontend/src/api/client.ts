@@ -21,6 +21,7 @@ import type {
     ResponseCreateRequest,
     ResponseRegenerateRequest,
     ResponseView,
+    SourcePreviewView,
     TranscriptionView,
 } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
@@ -234,6 +235,21 @@ export function createDocument(
         method: "POST",
         body: JSON.stringify(request),
     });
+}
+
+export function getSourcePreview(
+    documentId: string,
+    options: { versionId?: string | null; focusEvidenceId?: string | null; start?: number; limit?: number; signal?: AbortSignal } = {},
+): Promise<SourcePreviewView> {
+    const params = new URLSearchParams();
+    if (options.versionId) params.set("versionId", options.versionId);
+    if (options.focusEvidenceId) params.set("focusEvidenceId", options.focusEvidenceId);
+    if (options.start !== undefined) params.set("start", String(options.start));
+    params.set("limit", String(options.limit ?? 40));
+    return apiRequest<SourcePreviewView>(
+        `/sources/${encodeURIComponent(documentId)}/preview?${params}`,
+        { signal: options.signal },
+    );
 }
 
 // language is the UI language when the recording is sent; the speech-to-text

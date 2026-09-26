@@ -3,11 +3,16 @@ export type MessageStatus = "sending" | "sent" | "error";
 
 // A document the model's answer was grounded on, as sent by the backend.
 export interface SourceDocument {
+  id?: string | null;
+  evidenceId?: string | null;
+  versionId?: string | null;
   title: string;
   link: string;
   added_date: string; // ISO 8601
   exactQuote?: string | null;
   documentId?: string | null;
+  sourceFile?: string | null;
+  locator?: Record<string, unknown> | null;
 }
 
 export interface RetryOperation {

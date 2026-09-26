@@ -45,8 +45,8 @@ describe("durable chat rendering", () => {
     } });
     render(<AssistantMessage message={assistant} onSelectSource={() => {}} />);
     expect(screen.getByText("Demo response")).toBeTruthy();
-    // Citation markers are stripped from the text; numbered pills open the shared preview.
-    expect(screen.getByText("Read.")).toBeTruthy();
+    // Citation markers remain as accessible inline controls; pills open the same preview.
+    expect(screen.getByRole("button", { name: /Source 1 of 2: Second document ID/i })).toBeTruthy();
     expect(screen.getAllByRole("button").some(button => button.textContent?.includes("example.com"))).toBe(true);
     expect(assistant.sources?.map(source => source.documentId)).toEqual(["2", "1"]);
   });
