@@ -116,7 +116,12 @@ describe("source preview", () => {
     expect(websitePreview.getAttribute("loading")).toBe("lazy");
     expect(websitePreview.getAttribute("referrerpolicy")).toBe("no-referrer");
     expect(websitePreview.getAttribute("sandbox")).toBe("allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts");
+    expect(websitePreview.className).toContain("h-[55dvh]");
+    expect(websitePreview.className).toContain("lg:h-[65dvh]");
     expect(screen.getByText(en.message.websitePreviewHint)).toBeTruthy();
+    const quote = screen.getByText(en.message.supportingQuote).parentElement!;
+    const previewSection = screen.getByText(en.message.websitePreview).closest("section")!;
+    expect(quote.compareDocumentPosition(previewSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("navigates in order and never links an unsafe or unavailable URL", () => {

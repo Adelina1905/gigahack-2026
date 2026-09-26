@@ -133,11 +133,14 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   }, [cacheKey, load]);
 
   useEffect(() => {
-    if (!preview?.focusSectionId) return;
+    // When a website is available, keep the panel at the top so the supporting
+    // quotation and embedded preview are visible immediately. Stored-only
+    // sources still jump to their focused extracted section.
+    if (link || !preview?.focusSectionId) return;
     requestAnimationFrame(() => Array.from(panelRef.current?.querySelectorAll<HTMLElement>("[data-source-section]") ?? [])
       .find(element => element.dataset.sourceSection === preview.focusSectionId)
       ?.scrollIntoView({ block: "center" }));
-  }, [preview?.focusSectionId]);
+  }, [link, preview?.focusSectionId]);
 
   useEffect(() => {
     if (!preview || loading || typeof IntersectionObserver === "undefined") return;
@@ -235,6 +238,11 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
             {hostname && <span>{hostname}</span>}{addedDate && <span>{addedDate}</span>}{source.documentId && <span className="truncate">{source.documentId}</span>}
           </div>}
 
+          {source.exactQuote && <div className="mb-5">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.supportingQuote}</p>
+            <blockquote className="break-words border-l-4 border-accent bg-background-secondary px-4 py-3 text-sm leading-relaxed text-text">{source.exactQuote}</blockquote>
+          </div>}
+
           {link && <section className="mb-5 overflow-hidden rounded-sm border border-border bg-background-secondary">
             <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.websitePreview}</h3>
@@ -249,17 +257,12 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
               loading="lazy"
               referrerPolicy="no-referrer"
               sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-              className="h-56 w-full border-0 bg-white"
+              className="h-[55dvh] min-h-96 w-full border-0 bg-white lg:h-[65dvh] lg:min-h-[32rem]"
             />
             <p className="border-t border-border px-3 py-2 text-xs leading-relaxed text-text-subtle">
               {t.message.websitePreviewHint}
             </p>
           </section>}
-
-          {source.exactQuote && <div className="mb-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.supportingQuote}</p>
-            <blockquote className="break-words border-l-4 border-accent bg-background-secondary px-4 py-3 text-sm leading-relaxed text-text">{source.exactQuote}</blockquote>
-          </div>}
 
           {loading && !preview && <div role="status" className="space-y-3" aria-label={t.message.loadingSource}>
             {[0, 1, 2, 3].map(item => <div key={item} className="h-16 animate-pulse rounded-sm bg-background-secondary" />)}
