@@ -10,6 +10,7 @@ import TitleRule from "./brand/TitleRule";
 import SupportNotice from "./SupportNotice";
 import { isUnanswered } from "../utils/unanswered";
 import { useVoiceMode } from "../hooks/useVoiceMode";
+import SourcePreview from "./sources/SourcePreview";
 
 interface ChatWindowProps {
   // Switching chats jumps to the bottom instead of smooth-scrolling through history.
@@ -22,6 +23,14 @@ interface ChatWindowProps {
   onRegenerate?: (id: string) => void;
   error?: ErrorKey | null;
   onDismissError?: () => void;
+}
+
+const SOURCE_PANEL_ID = "source-preview-panel";
+
+interface SourcePreviewSelection {
+  messageId: string;
+  sourceIndex: number;
+  trigger: HTMLButtonElement | null;
 }
 
 
@@ -98,6 +107,7 @@ function ChatWindow({
 }: ChatWindowProps) {
   const { t, locale } = useI18n();
   const voice = useVoiceMode({ chatId, messages, onSend, language: locale });
+  const [sourcePreview, setSourcePreview] = useState<SourcePreviewSelection | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef({ chatId, hadMessages: false });
 
@@ -108,6 +118,15 @@ function ChatWindow({
     bottomRef.current?.scrollIntoView({ behavior: jump ? "auto" : "smooth" });
   }, [chatId, messages, isTyping]);
 
+  // A preview belongs to one chat turn. Never carry it into another chat or
+  // keep it open after polling/regeneration removes that source.
+  useEffect(() => { setSourcePreview(null); }, [chatId]);
+  useEffect(() => {
+    if (!sourcePreview) return;
+    const selectedMessage = messages.find(message => message.id === sourcePreview.messageId);
+    if (!selectedMessage?.sources?.[sourcePreview.sourceIndex]) setSourcePreview(null);
+  }, [messages, sourcePreview]);
+
   const isEmpty = messages.length === 0 && !isTyping;
 
   // Offer the support line when the latest reply couldn't answer; dismissing hides it for that reply only.
@@ -115,6 +134,10 @@ function ChatWindow({
   const lastMessage = messages.at(-1);
   const noticeFor =
     !isTyping && lastMessage?.role === "assistant" && isUnanswered(lastMessage.content) ? lastMessage.id : null;
+  const previewMessage = sourcePreview
+    ? messages.find(message => message.id === sourcePreview.messageId)
+    : undefined;
+  const previewSources = previewMessage?.sources;
 
   return (
     <div className="flex h-full flex-col">
@@ -132,7 +155,12 @@ function ChatWindow({
                 <UserMessage key={m.id} message={m} onRetry={onRetry} />
               ) : (
                 <AssistantMessage key={m.id} message={m} onRegenerate={onRegenerate}
-                  onToggleSpeech={voice.toggleSpeech} speechState={voice.speechStateFor(m)} />
+                  onToggleSpeech={voice.toggleSpeech} speechState={voice.speechStateFor(m)}
+                  activeSourceIndex={sourcePreview?.messageId === m.id ? sourcePreview.sourceIndex : null}
+                  sourcePanelId={SOURCE_PANEL_ID}
+                  onSelectSource={(message, sourceIndex, trigger) => {
+                    setSourcePreview({ messageId: message.id, sourceIndex, trigger });
+                  }} />
               ),
             )}
             {isTyping && !messages.some(message => message.generationStatus === "PENDING") && <AssistantMessage isTyping />}
@@ -168,6 +196,19 @@ function ChatWindow({
           {t.chat.disclaimer}
         </p>
       </div>
+
+      {sourcePreview && previewSources?.[sourcePreview.sourceIndex] && (
+        <SourcePreview
+          id={SOURCE_PANEL_ID}
+          sources={previewSources}
+          activeIndex={sourcePreview.sourceIndex}
+          trigger={sourcePreview.trigger}
+          onSelect={(sourceIndex) => setSourcePreview(current => current
+            ? { ...current, sourceIndex }
+            : current)}
+          onClose={() => setSourcePreview(null)}
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { useI18n } from "../i18n/context";
 import { safeHttpUrl } from "./sources/safeLink";
 import type { ChatMessage } from "../types/chat";
 import { CityEmblem } from "./brand/Landmarks";
-import SourceList from "./sources/SourceList";
 import CitationPills from "./CitationPills";
 import type { SpeechState } from "../hooks/useVoiceMode";
 
@@ -16,6 +15,9 @@ interface AssistantMessageProps {
   onRegenerate?: (id: string) => void;
   onToggleSpeech?: (message: ChatMessage) => void;
   speechState?: SpeechState;
+  activeSourceIndex?: number | null;
+  sourcePanelId?: string;
+  onSelectSource?: (message: ChatMessage, index: number, trigger: HTMLButtonElement) => void;
 }
 
 function TypingDots() {
@@ -38,7 +40,8 @@ function TypingDots() {
 const stripCitationMarkers = (text: string) => text.replace(/[ \t]*\[S\d+\]/g, "");
 
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
-  onToggleSpeech, speechState = "idle" }: AssistantMessageProps) {
+  onToggleSpeech, speechState = "idle", activeSourceIndex = null,
+  sourcePanelId = "source-preview-panel", onSelectSource }: AssistantMessageProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const pending = message?.generationStatus === "PENDING";
@@ -78,8 +81,14 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
                   ol: ({ children }) => <ol className="list-decimal pl-5">{children}</ol>,
                   pre: ({ children }) => <pre className="overflow-x-auto rounded-sm bg-background-secondary p-2">{children}</pre>,
                 }}>{stripCitationMarkers(message.content)}</Markdown>}
-              {message.sources && <CitationPills sources={message.sources} />}
-              {message.sources && <SourceList sources={message.sources} />}
+              {message.sources && message.sources.length > 0 && onSelectSource && (
+                <CitationPills
+                  sources={message.sources}
+                  activeIndex={activeSourceIndex}
+                  controlsId={sourcePanelId}
+                  onSelect={(index, trigger) => onSelectSource(message, index, trigger)}
+                />
+              )}
               {pending && <p role="status" className="mt-2 text-sm text-text-muted">{t.message.pending}</p>}
               {failed && <p className="mt-2 text-sm text-danger">{message.content ? t.message.generationFailedKept : t.message.generationFailed}
                 {onRegenerate && <> · <button type="button" onClick={() => onRegenerate(message.id)} className="underline">{t.message.retry}</button></>}
