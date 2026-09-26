@@ -5,15 +5,13 @@
 
 @layer base {
   html {
-    @apply font-inter text-base text-text bg-background antialiased;
+    @apply font-sans text-base text-text bg-background antialiased;
+    /* Raleway defaults to old-style figures; dates and times read better as lining. */
+    font-variant-numeric: lining-nums;
   }
+}
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-railway;
-  }
+/* Landmark line drawings keep a hairline stroke at any size. */
+.line-art * {
+  vector-effect: non-scaling-stroke;
 }

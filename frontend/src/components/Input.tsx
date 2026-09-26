@@ -8,7 +8,7 @@ interface ChatInputProps {
 
 const MAX_HEIGHT_PX = 160; // ~6 lines
 
-function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" }: ChatInputProps) {
+function ChatInput({ onSend, disabled = false, placeholder = "Ask about Chișinău…" }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canSend = value.trim().length > 0 && !disabled;
@@ -35,7 +35,7 @@ function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" 
   };
 
   return (
-    <div className="flex items-end gap-2 rounded-4xl border border-border bg-background px-4 py-2 shadow-sm transition-colors focus-within:border-border-strong">
+    <div className="flex items-end gap-2 rounded-sm border border-border-strong bg-background py-2 pr-2 pl-4 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
       <textarea
         ref={textareaRef}
         rows={1}
@@ -50,7 +50,7 @@ function ChatInput({ onSend, disabled = false, placeholder = "Ask something…" 
         onClick={submit}
         disabled={!canSend}
         aria-label="Send message"
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm transition-colors ${
           canSend
             ? "bg-primary text-text-inverted hover:bg-primary-dark"
             : "cursor-not-allowed bg-background-secondary text-text-subtle"

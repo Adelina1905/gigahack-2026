@@ -15,9 +15,9 @@ function UserMessage({ message, onRetry }: UserMessageProps) {
   return (
     <div className="flex flex-col items-end gap-1">
       <div
-        className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-[#EBEBEB] px-4 py-2.5 text-base text-text transition-opacity ${
+        className={`max-w-[85%] whitespace-pre-wrap break-words rounded-sm bg-primary px-4 py-2.5 text-[0.9375rem] leading-relaxed text-text-inverted transition-opacity ${
           isSending ? "opacity-60" : ""
-        } ${isError ? "border border-danger" : ""}`}
+        } ${isError ? "ring-2 ring-danger ring-offset-2 ring-offset-background-canvas" : ""}`}
       >
         {message.content}
       </div>

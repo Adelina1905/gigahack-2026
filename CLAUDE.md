@@ -61,7 +61,8 @@ npm run dev | lint | typecheck | build
 - Single page: `App.jsx` → `pages/Playground.tsx`, which composes `components/Sidebar.tsx` (the chat list from `hooks/useChats.ts`), `components/ChatWindow.tsx` and `hooks/useChat.ts` (per-chat threads, optimistic send, retry, regenerate). The open chat is in the URL (`?chat=<uuid>`, `hooks/useActiveChatId.ts`), and a chat is created on the first message.
 - `src/api/client.ts` holds the fetch calls (base `VITE_API_BASE_URL`, default `http://localhost:8081/api`; `ApiError.status` is 0 on network failure). `api/types.ts` mirrors the Java DTOs, `api/mappers.ts` is the only place they are mapped to UI types, and `api/index.ts` switches to `api/mockClient.ts` when `VITE_USE_MOCK=true`.
 - `db/cache.ts` is a best-effort IndexedDB (Dexie) cache of chats and messages, used for instant paint and to keep unsent messages; the server remains the source of truth.
-- `vite.config.js` proxies `/api` to 8081 and allows the staging host, so `VITE_API_BASE_URL=/api npm run dev -- --host 0.0.0.0` serves everything same-origin.
+- `vite.config.js` proxies `/api` to `http://localhost:${SERVER_PORT}` (8081 by default; `API_PROXY_TARGET` overrides) and listens on `FRONTEND_PORT` (5173; strict when set). Both are read from the root `.env` or the shell. It allows the staging hosts, so `VITE_API_BASE_URL=/api npm run dev -- --host 0.0.0.0` serves everything same-origin. A second stack (staging2) differs only in env: `SERVER_PORT`, `FRONTEND_PORT` and `FRONTEND_ORIGINS`.
+- The visual language follows chisinau.md: Raleway for UI, Lora/Georgia for headlines, the `primary`/`accent` blues and yellow, `rounded-sm` corners, and the long-plus-short title rule (`components/brand/TitleRule.tsx`). The landmark line art (Nativity Cathedral, Triumphal Arch, City Gates) lives in `components/brand/Landmarks.tsx`.
 
 ### Other Python prototypes
 - `test.py` (root): standalone FastAPI + Ollama prototype, not used by the system.

@@ -10,8 +10,8 @@ function SourceList({ sources }: SourceListProps) {
 
   return (
     <div className="mt-3 border-t border-border pt-2 whitespace-normal">
-      <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-text-subtle">
-        Sources ({sources.length})
+      <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-primary">
+        Sources <span className="font-medium text-text-subtle">({sources.length})</span>
       </p>
       <ul className="flex flex-col">
         {sources.map((source, i) => (
