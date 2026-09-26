@@ -6,6 +6,7 @@ export interface ChatView {
   id: string; // UUID
   name: string;
   createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601, bumped on every new or regenerated reply
 }
 
 // Document/dto/DocumentView.java
@@ -20,6 +21,8 @@ export interface DocumentView {
 export interface ResponseView {
   id: number;
   chatId: string;
+  // The user message this response answers; null for rows stored before V3.
+  prompt: string | null;
   text: string;
   createdAt: string; // ISO 8601
   // Not sent by the backend yet; populated once response_documents is exposed.

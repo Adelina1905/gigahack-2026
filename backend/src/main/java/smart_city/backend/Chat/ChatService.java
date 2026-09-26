@@ -25,7 +25,7 @@ public class ChatService {
     public List<ChatResponse> getAllChats(UUID clientId) {
 
         return chatRepository
-                .findAllByClientIdOrderByCreatedAtDesc(clientId)
+                .findAllByClientIdOrderByUpdatedAtDesc(clientId)
                 .stream()
                 .map(ChatResponse::from)
                 .toList();

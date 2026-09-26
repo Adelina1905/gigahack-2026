@@ -8,6 +8,7 @@ import java.util.UUID;
 public record ResponseView(
         Long id,
         UUID chatId,
+        String prompt,
         String text,
         OffsetDateTime createdAt
 ) {
@@ -16,6 +17,7 @@ public record ResponseView(
         return new ResponseView(
                 response.getId(),
                 response.getChat().getId(),
+                response.getPrompt(),
                 response.getText(),
                 response.getCreatedAt()
         );

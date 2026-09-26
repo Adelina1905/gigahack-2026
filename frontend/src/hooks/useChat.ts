@@ -1,98 +1,225 @@
-import { useCallback, useRef, useState } from "react";
-import { ApiError, createChat, createResponse } from "../api/client";
-import { toAssistantMessage } from "../api/mappers";
-import type { ChatMessage, MessageStatus } from "../types/chat";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError, api } from "../api";
+import { toAssistantMessage, toChatSummary, toMessages } from "../api/mappers";
+import * as cache from "../db/cache";
+import type { ChatMessage, ChatSummary } from "../types/chat";
+
+// Messages typed before the backend chat exists live under this key.
+const DRAFT = "draft";
+const EMPTY: ChatMessage[] = [];
+// A cached unsent message is considered delivered if the server holds the
+// same prompt stored no earlier than this before the message was sent.
+const DELIVERY_MATCH_WINDOW_MS = 60_000;
 
 const makeId = () => crypto.randomUUID();
+
+const isMissingChat = (error: unknown) =>
+  error instanceof ApiError && (error.status === 404 || error.status === 400);
 
 const describeError = (error: unknown) => {
   if (error instanceof ApiError && error.status === 0) {
     return "Can't reach the server. Check your connection and try again.";
   }
+  if (isMissingChat(error)) {
+    return "This chat no longer exists. Start a new chat to continue.";
+  }
   return "Something went wrong. Please try again.";
 };
 
-export function useChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const chatIdRef = useRef<string | null>(null);
-  const chatCreationRef = useRef<Promise<string> | null>(null);
+const isUnsent = (message: ChatMessage) =>
+  message.role === "user" &&
+  (message.status === "sending" || message.status === "error");
 
-  const setStatus = useCallback((id: string, status: MessageStatus) => {
-    setMessages((current) =>
-      current.map((message) =>
-        message.id === id ? { ...message, status } : message,
-      ),
-    );
-  }, []);
-
-  const getOrCreateChatId = useCallback(async () => {
-    if (chatIdRef.current) return chatIdRef.current;
-
-    if (!chatCreationRef.current) {
-      chatCreationRef.current = createChat().then((chat) => {
-        chatIdRef.current = chat.id;
-        return chat.id;
-      });
-    }
-
-    try {
-      return await chatCreationRef.current;
-    } catch (error) {
-      chatCreationRef.current = null;
-      throw error;
-    }
-  }, []);
-
-  // Posts the user's text and returns the assistant reply. If the chat no
-  // longer exists server-side (deleted, or the client cookie changed), start
-  // a fresh chat once and resend.
-  const requestReply = useCallback(
-    async (userInput: string) => {
-      const chatId = await getOrCreateChatId();
-
-      try {
-        return toAssistantMessage(await createResponse(chatId, userInput));
-      } catch (error) {
-        if (!(error instanceof ApiError) || error.status !== 404) throw error;
-
-        chatIdRef.current = null;
-        chatCreationRef.current = null;
-        const freshChatId = await getOrCreateChatId();
-        return toAssistantMessage(await createResponse(freshChatId, userInput));
-      }
-    },
-    [getOrCreateChatId],
+// After a reload nothing is in flight anymore, so pending sends become retryable.
+const restoreCached = (messages: ChatMessage[]) =>
+  messages.map((message) =>
+    message.status === "sending" ? { ...message, status: "error" as const } : message,
   );
 
+// The server's history wins; local messages it doesn't know about yet
+// (in flight or failed) are kept at the end.
+function mergeWithServer(server: ChatMessage[], local: ChatMessage[]) {
+  const delivered = server.filter((message) => message.role === "user");
+  const unsent = local.filter(
+    (message) =>
+      isUnsent(message) &&
+      !delivered.some(
+        (prompt) =>
+          prompt.content === message.content &&
+          prompt.createdAt >= message.createdAt - DELIVERY_MATCH_WINDOW_MS,
+      ),
+  );
+  return [...server, ...unsent];
+}
+
+// Swaps the optimistic user message for the stored turn. If a server refetch
+// already brought the turn in, leave the thread as it is.
+function settleTurn(thread: ChatMessage[], messageId: string, turn: ChatMessage[]) {
+  const index = thread.findIndex((message) => message.id === messageId);
+
+  // A response without a stored prompt (older backend) only carries the
+  // answer; keep the user's own message instead of dropping it.
+  if (index !== -1 && !turn.some((message) => message.role === "user")) {
+    turn = [{ ...thread[index], status: "sent" }, ...turn];
+  }
+
+  const turnIds = new Set(turn.map((message) => message.id));
+  const others = thread.filter(
+    (message) => message.id !== messageId && !turnIds.has(message.id),
+  );
+
+  if (index === -1) {
+    return thread.some((message) => turnIds.has(message.id))
+      ? thread
+      : [...thread, ...turn];
+  }
+  return [...others.slice(0, index), ...turn, ...others.slice(index)];
+}
+
+interface UseChatOptions {
+  // A first message created the backend chat; isActive is false if the user
+  // navigated elsewhere while it was being created.
+  onChatCreated?: (chat: ChatSummary, isActive: boolean) => void;
+  // A reply was stored, so the chat's title or activity time may have changed.
+  onReply?: (chatId: string) => void;
+  // The chat in the URL doesn't exist for this browser (deleted, or the
+  // client cookie was cleared).
+  onChatMissing?: (chatId: string) => void;
+}
+
+// Messages for every opened chat, keyed by chat id, so a reply that arrives
+// after switching chats lands in the right one.
+export function useChat(chatId: string | null, options: UseChatOptions = {}) {
+  const key = chatId ?? DRAFT;
+
+  const [threads, setThreads] = useState<Record<string, ChatMessage[]>>({});
+  const [typing, setTyping] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const keyRef = useRef(key);
+  const threadsRef = useRef(threads);
+  const optionsRef = useRef(options);
+  const savedRef = useRef<Record<string, ChatMessage[]>>({});
+
+  useEffect(() => {
+    keyRef.current = key;
+    threadsRef.current = threads;
+    optionsRef.current = options;
+  });
+
+  const updateThread = useCallback(
+    (threadKey: string, update: (thread: ChatMessage[]) => ChatMessage[]) =>
+      setThreads((current) => ({
+        ...current,
+        [threadKey]: update(current[threadKey] ?? EMPTY),
+      })),
+    [],
+  );
+
+  const setFlag = (
+    setter: typeof setTyping,
+    threadKey: string,
+    value: boolean,
+  ) => setter((current) => ({ ...current, [threadKey]: value }));
+
+  // Write every changed thread through to the cache.
+  useEffect(() => {
+    for (const [threadKey, thread] of Object.entries(threads)) {
+      if (threadKey === DRAFT || savedRef.current[threadKey] === thread) continue;
+      savedRef.current[threadKey] = thread;
+      void cache.saveMessages(threadKey, thread);
+    }
+  }, [threads]);
+
+  // Opening a chat: paint from memory or cache, then revalidate from the server.
+  useEffect(() => {
+    setError(null);
+    if (!chatId) return;
+
+    void (async () => {
+      if (!threadsRef.current[chatId]) {
+        setFlag(setLoading, chatId, true);
+        const cached = await cache.loadMessages(chatId);
+        if (cached) {
+          updateThread(chatId, (current) =>
+            current.length > 0 ? current : restoreCached(cached),
+          );
+        }
+      }
+
+      try {
+        const responses = await api.getResponses(chatId);
+        updateThread(chatId, (current) =>
+          mergeWithServer(responses.flatMap(toMessages), current),
+        );
+      } catch (loadError) {
+        if (isMissingChat(loadError)) {
+          optionsRef.current.onChatMissing?.(chatId);
+        } else if (keyRef.current === chatId) {
+          console.error("Failed to load chat history", loadError);
+          setError(describeError(loadError));
+        }
+      } finally {
+        setFlag(setLoading, chatId, false);
+      }
+    })();
+  }, [chatId, updateThread]);
+
+  const moveDraft = useCallback((targetChatId: string) => {
+    setThreads(({ [DRAFT]: draft = EMPTY, ...rest }) => ({
+      ...rest,
+      [targetChatId]: [...(rest[targetChatId] ?? EMPTY), ...draft],
+    }));
+    setTyping(({ [DRAFT]: _draft, ...rest }) => ({ ...rest, [targetChatId]: true }));
+  }, []);
+
   const deliver = useCallback(
-    async (messageId: string, userInput: string) => {
-      setIsTyping(true);
+    async (threadKey: string, messageId: string, userInput: string) => {
+      let target = threadKey;
+      setFlag(setTyping, threadKey, true);
       setError(null);
 
       try {
-        const reply = await requestReply(userInput);
+        if (target === DRAFT) {
+          const chat = await api.createChat();
+          target = chat.id;
+          moveDraft(chat.id);
+          optionsRef.current.onChatCreated?.(
+            toChatSummary(chat),
+            keyRef.current === DRAFT,
+          );
+        }
 
-        setStatus(messageId, "sent");
-        setMessages((current) => [...current, reply]);
-      } catch (error) {
-        console.error("Failed to send chat message", error);
-        setStatus(messageId, "error");
-        setError(describeError(error));
+        const response = await api.createResponse(target, userInput);
+        updateThread(target, (thread) =>
+          settleTurn(thread, messageId, toMessages(response)),
+        );
+        optionsRef.current.onReply?.(target);
+      } catch (sendError) {
+        console.error("Failed to send chat message", sendError);
+        updateThread(target, (thread) =>
+          thread.map((message) =>
+            message.id === messageId ? { ...message, status: "error" } : message,
+          ),
+        );
+        if (keyRef.current === target || keyRef.current === threadKey) {
+          setError(describeError(sendError));
+        }
       } finally {
-        setIsTyping(false);
+        setFlag(setTyping, target, false);
+        if (target !== threadKey) setFlag(setTyping, threadKey, false);
       }
     },
-    [requestReply, setStatus],
+    [moveDraft, updateThread],
   );
 
   const send = useCallback(
     (userInput: string) => {
       const messageId = makeId();
 
-      setMessages((current) => [
-        ...current,
+      updateThread(key, (thread) => [
+        ...thread,
         {
           id: messageId,
           role: "user",
@@ -102,73 +229,83 @@ export function useChat() {
         },
       ]);
 
-      void deliver(messageId, userInput);
+      void deliver(key, messageId, userInput);
     },
-    [deliver],
+    [deliver, key, updateThread],
   );
 
   const retry = useCallback(
     (messageId: string) => {
-      const message = messages.find(
-        (candidate) =>
-          candidate.id === messageId && candidate.role === "user",
+      const message = threads[key]?.find(
+        (candidate) => candidate.id === messageId && candidate.role === "user",
       );
+      if (!message || typing[key]) return;
 
-      if (!message) return;
-
-      setStatus(messageId, "sending");
-      void deliver(messageId, message.content);
+      updateThread(key, (thread) =>
+        thread.map((candidate) =>
+          candidate.id === messageId ? { ...candidate, status: "sending" } : candidate,
+        ),
+      );
+      void deliver(key, messageId, message.content);
     },
-    [deliver, messages, setStatus],
+    [deliver, key, threads, typing, updateThread],
   );
 
-  const replaceReply = useCallback(
-    async (assistantId: string, userInput: string) => {
-      setIsTyping(true);
+  // Asks the backend to answer the same prompt again; it replaces the stored
+  // reply, so the history keeps one answer per question.
+  const regenerate = useCallback(
+    async (assistantId: string) => {
+      const responseId = Number(assistantId);
+      if (!chatId || typing[chatId] || !Number.isInteger(responseId)) return;
+
+      setFlag(setTyping, chatId, true);
       setError(null);
 
       try {
-        const reply = await requestReply(userInput);
-
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId ? reply : message,
-          ),
+        const reply = toAssistantMessage(
+          await api.regenerateResponse(chatId, responseId),
         );
-      } catch (error) {
-        console.error("Failed to regenerate chat message", error);
-        setError(describeError(error));
+        updateThread(chatId, (thread) =>
+          thread.map((message) => (message.id === assistantId ? reply : message)),
+        );
+        optionsRef.current.onReply?.(chatId);
+      } catch (regenerateError) {
+        console.error("Failed to regenerate chat message", regenerateError);
+        if (keyRef.current === chatId) setError(describeError(regenerateError));
       } finally {
-        setIsTyping(false);
+        setFlag(setTyping, chatId, false);
       }
     },
-    [requestReply],
+    [chatId, typing, updateThread],
   );
 
-  // Re-asks the user message that preceded this assistant reply and swaps the
-  // reply in place. The backend has no regenerate endpoint, so this stores an
-  // extra response row for the chat.
-  const regenerate = useCallback(
-    (assistantId: string) => {
-      if (isTyping) return;
+  // Clears an unsent draft when starting a new chat.
+  const resetDraft = useCallback(() => {
+    if (typing[DRAFT]) return;
+    setThreads(({ [DRAFT]: _draft, ...rest }) => rest);
+    setError(null);
+  }, [typing]);
 
-      const index = messages.findIndex(
-        (candidate) =>
-          candidate.id === assistantId && candidate.role === "assistant",
-      );
-      const prompt = messages
-        .slice(0, index)
-        .reverse()
-        .find((candidate) => candidate.role === "user");
-
-      if (index === -1 || !prompt) return;
-
-      void replaceReply(assistantId, prompt.content);
-    },
-    [isTyping, messages, replaceReply],
-  );
+  // Drops a deleted chat from memory.
+  const discard = useCallback((targetChatId: string) => {
+    delete savedRef.current[targetChatId];
+    setThreads(({ [targetChatId]: _thread, ...rest }) => rest);
+  }, []);
 
   const dismissError = useCallback(() => setError(null), []);
 
-  return { messages, isTyping, error, send, retry, regenerate, dismissError };
+  const messages = threads[key] ?? EMPTY;
+
+  return {
+    messages,
+    isTyping: Boolean(typing[key]),
+    isLoading: Boolean(loading[key]) && messages.length === 0,
+    error,
+    send,
+    retry,
+    regenerate: (assistantId: string) => void regenerate(assistantId),
+    resetDraft,
+    discard,
+    dismissError,
+  };
 }

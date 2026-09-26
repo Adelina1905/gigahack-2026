@@ -26,6 +26,9 @@ public class ChatResponseMessage {
     @JoinColumn(name = "chat_id", nullable = false)
     private Chat chat;
 
+    @Column(columnDefinition = "text")
+    private String prompt;
+
     @Column(nullable = false, columnDefinition = "text")
     private String text;
 
@@ -35,8 +38,9 @@ public class ChatResponseMessage {
     protected ChatResponseMessage() {
     }
 
-    public ChatResponseMessage(Chat chat, String text) {
+    public ChatResponseMessage(Chat chat, String prompt, String text) {
         this.chat = chat;
+        this.prompt = prompt;
         this.text = text;
         this.createdAt = OffsetDateTime.now();
     }
@@ -49,8 +53,16 @@ public class ChatResponseMessage {
         return chat;
     }
 
+    public String getPrompt() {
+        return prompt;
+    }
+
     public String getText() {
         return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
     }
 
     public OffsetDateTime getCreatedAt() {

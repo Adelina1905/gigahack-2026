@@ -18,3 +18,10 @@ export interface ChatMessage {
   // Only used for assistant messages.
   sources?: SourceDocument[];
 }
+
+// A chat as listed in the sidebar.
+export interface ChatSummary {
+  id: string;
+  name: string;
+  updatedAt: number;
+}

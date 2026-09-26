@@ -5,8 +5,11 @@ import UserMessage from "./UserMessage";
 import AssistantMessage from "./AssistantMessage";
 
 interface ChatWindowProps {
+  // Switching chats jumps to the bottom instead of smooth-scrolling through history.
+  chatId?: string | null;
   messages: ChatMessage[];
   isTyping: boolean;
+  isLoading?: boolean;
   onSend: (text: string) => void;
   onRetry?: (id: string) => void;
   onRegenerate?: (id: string) => void;
@@ -21,8 +24,10 @@ const SUGGESTIONS = [
 ];
 
 function ChatWindow({
+  chatId = null,
   messages,
   isTyping,
+  isLoading = false,
   onSend,
   onRetry,
   onRegenerate,
@@ -30,17 +35,25 @@ function ChatWindow({
   onDismissError,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrolledRef = useRef({ chatId, hadMessages: false });
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+    const previous = scrolledRef.current;
+    const jump = previous.chatId !== chatId || !previous.hadMessages;
+    scrolledRef.current = { chatId, hadMessages: messages.length > 0 };
+    bottomRef.current?.scrollIntoView({ behavior: jump ? "auto" : "smooth" });
+  }, [chatId, messages, isTyping]);
 
   const isEmpty = messages.length === 0 && !isTyping;
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto px-4 py-6">
-        {isEmpty ? (
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center text-sm text-text-subtle">
+            Loading conversation…
+          </div>
+        ) : isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
             <h2 className="text-2xl font-semibold text-text">How can I help you today?</h2>
             <div className="flex flex-wrap justify-center gap-2">

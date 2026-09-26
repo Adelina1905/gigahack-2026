@@ -126,6 +126,17 @@ export function createResponse(
     });
 }
 
+// Re-asks the AI with the stored prompt and replaces the answer in place.
+export function regenerateResponse(
+    chatId: string,
+    responseId: number,
+): Promise<ResponseView> {
+    return apiRequest<ResponseView>(
+        `/chats/${chatId}/responses/${responseId}`,
+        { method: "PUT" },
+    );
+}
+
 export function getDocuments(): Promise<DocumentView[]> {
     return apiRequest<DocumentView[]>("/documents");
 }
