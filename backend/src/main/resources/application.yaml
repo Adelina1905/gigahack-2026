@@ -5,8 +5,9 @@ spring:
   application:
     name: backend
   config:
-    # Lets `./mvnw spring-boot:run` from backend/ pick up the repo-root .env.
-    import: optional:file:../.env[.properties]
+    # The repo-root .env is shared by every component; an optional backend/.env
+    # (see backend/.env.example) is imported last, so it overrides it.
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
   autoconfigure:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
