@@ -1,5 +1,15 @@
-import type { ChatMessage, ChatSummary, SourceDocument } from "../types/chat";
-import type { ChatView, DocumentView, ResponseView } from "./types";
+import type { ChatMessage, ChatSummary, ProjectSummary, SourceDocument } from "../types/chat";
+import type { Alert, AlertSettings, AlertTopic, UnreadAlertCounts } from "../types/alerts";
+import type {
+  AlertSettingsView,
+  AlertTopicView,
+  AlertUnreadCountView,
+  AlertView,
+  ChatView,
+  DocumentView,
+  ProjectView,
+  ResponseView,
+} from "./types";
 
 // The only place backend field names are translated into UI types.
 
@@ -16,7 +26,16 @@ export function toChatSummary(chat: ChatView): ChatSummary {
   return {
     id: chat.id,
     name: chat.name,
+    projectId: chat.projectId ?? null,
     updatedAt: toTimestamp(chat.updatedAt ?? chat.createdAt),
+  };
+}
+
+export function toProjectSummary(project: ProjectView): ProjectSummary {
+  return {
+    id: project.id,
+    name: project.name,
+    updatedAt: toTimestamp(project.updatedAt ?? project.createdAt),
   };
 }
 
@@ -68,4 +87,48 @@ export function toMessages(response: ResponseView): ChatMessage[] {
     },
     assistant,
   ];
+}
+
+export function toAlert(alert: AlertView): Alert {
+  return {
+    id: alert.id,
+    projectId: alert.projectId,
+    topicId: alert.topicId ?? null,
+    topicLabel: alert.topicLabel,
+    documentId: alert.documentId,
+    title: alert.title,
+    url: alert.url ?? null,
+    source: alert.source ?? null,
+    district: alert.district ?? null,
+    category: alert.category ?? null,
+    publishedDate: alert.publishedDate ?? null,
+    excerpt: alert.excerpt ?? "",
+    score: alert.score,
+    createdAt: toTimestamp(alert.createdAt),
+    isRead: Boolean(alert.readAt),
+  };
+}
+
+export function toUnreadAlertCounts(counts: AlertUnreadCountView): UnreadAlertCounts {
+  return { total: counts.total ?? 0, byProject: { ...(counts.byProject ?? {}) } };
+}
+
+export function toAlertTopic(topic: AlertTopicView): AlertTopic {
+  return {
+    id: topic.id,
+    label: topic.label,
+    query: topic.query,
+    isAuto: topic.source === "AUTO",
+    minScore: topic.minScore ?? null,
+  };
+}
+
+export function toAlertSettings(settings: AlertSettingsView): AlertSettings {
+  return {
+    projectId: settings.projectId,
+    enabled: settings.enabled,
+    prompted: settings.prompted,
+    topics: (settings.topics ?? []).map(toAlertTopic),
+    lastScanAt: settings.lastScanAt ? toTimestamp(settings.lastScanAt) : null,
+  };
 }

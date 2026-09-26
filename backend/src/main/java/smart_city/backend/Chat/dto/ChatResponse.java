@@ -8,6 +8,7 @@ import java.util.UUID;
 public record ChatResponse(
         UUID id,
         String name,
+        UUID projectId,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -17,6 +18,7 @@ public record ChatResponse(
         return new ChatResponse(
                 chat.getId(),
                 chat.getName(),
+                chat.getProjectId(),
                 chat.getCreatedAt(),
                 chat.getUpdatedAt()
         );

@@ -1,5 +1,6 @@
 package smart_city.backend.Voice;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,8 @@ import static org.springframework.http.HttpStatus.*;
 @Component
 public class VoiceServiceClient {
     static final long MAX_AUDIO_BYTES = 10L * 1024 * 1024;
+    // Speech-to-text language hints: the UI's languages, as ISO-639-1 codes.
+    private static final Set<String> LANGUAGES = Set.of("ro", "ru", "en");
     private static final Set<String> FORMATS = Set.of("aac", "flac", "m4a", "mp3", "mp4", "ogg", "wav", "webm");
     private static final Map<String, String> MIME_FORMATS = Map.ofEntries(
             Map.entry("audio/aac", "aac"),
@@ -42,7 +45,7 @@ public class VoiceServiceClient {
         this.llmRestClient = llmRestClient;
     }
 
-    public TranscriptionView transcribe(MultipartFile audio) {
+    public TranscriptionView transcribe(MultipartFile audio, String language) {
         if (audio == null || audio.isEmpty()) {
             throw new ResponseStatusException(BAD_REQUEST, "Audio recording is empty");
         }
@@ -50,6 +53,7 @@ public class VoiceServiceClient {
             throw new ResponseStatusException(PAYLOAD_TOO_LARGE, "Audio recording exceeds 10 MB");
         }
         String format = resolveFormat(audio);
+        String languageHint = resolveLanguage(language);
         try {
             byte[] bytes = audio.getBytes();
             return llmRestClient.post()
@@ -57,7 +61,8 @@ public class VoiceServiceClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
                     .body(new TranscriptionRequest(
-                            new InputAudio(Base64.getEncoder().encodeToString(bytes), format)))
+                            new InputAudio(Base64.getEncoder().encodeToString(bytes), format),
+                            languageHint))
                     .retrieve()
                     .body(TranscriptionView.class);
         } catch (IOException exception) {
@@ -108,6 +113,16 @@ public class VoiceServiceClient {
         throw new ResponseStatusException(UNSUPPORTED_MEDIA_TYPE, "Unsupported audio format");
     }
 
+    // Blank means no hint; the speech provider then detects the language itself.
+    private String resolveLanguage(String language) {
+        if (language == null || language.isBlank()) return null;
+        String normalized = language.trim().toLowerCase(Locale.ROOT);
+        if (!LANGUAGES.contains(normalized)) {
+            throw new ResponseStatusException(BAD_REQUEST, "Unsupported language");
+        }
+        return normalized;
+    }
+
     private ResponseStatusException providerFailure(RestClientResponseException exception) {
         int status = exception.getStatusCode().value();
         var mapped = switch (status) {
@@ -129,7 +144,8 @@ public class VoiceServiceClient {
     }
 
     private record InputAudio(String data, String format) {}
-    private record TranscriptionRequest(InputAudio inputAudio) {}
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record TranscriptionRequest(InputAudio inputAudio, String language) {}
     private record SpeechRequest(String text) {}
     public record SpeechResult(byte[] data, String contentType) {}
 }

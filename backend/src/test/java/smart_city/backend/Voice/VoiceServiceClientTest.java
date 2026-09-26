@@ -39,10 +39,38 @@ class VoiceServiceClientTest {
                         """, MediaType.APPLICATION_JSON));
 
         TranscriptionView result = client.transcribe(
-                new MockMultipartFile("audio", "recording.webm", "audio/webm;codecs=opus", bytes));
+                new MockMultipartFile("audio", "recording.webm", "audio/webm;codecs=opus", bytes), null);
 
         server.verify();
         assertThat(result).isEqualTo(new TranscriptionView("Salut", "ro", 1.25));
+    }
+
+    @Test
+    void forwardsTheUiLanguageAsTheTranscriptionHint() {
+        byte[] bytes = "recording".getBytes(StandardCharsets.UTF_8);
+        server.expect(requestTo("http://llm.test/v1/audio/transcriptions"))
+                .andExpect(content().json("""
+                        {"inputAudio":{"data":"%s","format":"webm"},"language":"ru"}
+                        """.formatted(Base64.getEncoder().encodeToString(bytes)), JsonCompareMode.STRICT))
+                .andRespond(withSuccess("""
+                        {"text":"Привет","language":"ru","durationSeconds":1.0}
+                        """, MediaType.APPLICATION_JSON));
+
+        TranscriptionView result = client.transcribe(
+                new MockMultipartFile("audio", "recording.webm", "audio/webm", bytes), " RU ");
+
+        server.verify();
+        assertThat(result.text()).isEqualTo("Привет");
+    }
+
+    @Test
+    void rejectsAnUnsupportedLanguageWithoutCallingTheService() {
+        var file = new MockMultipartFile("audio", "recording.webm", "audio/webm", new byte[]{1});
+
+        assertThatThrownBy(() -> client.transcribe(file, "fr"))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode().value()).isEqualTo(400));
+        server.verify();
     }
 
     @Test
@@ -61,18 +89,18 @@ class VoiceServiceClientTest {
 
     @Test
     void validatesEmptyOversizedAndUnsupportedAudioBeforeNetwork() {
-        assertThatThrownBy(() -> client.transcribe(new MockMultipartFile("audio", new byte[0])))
+        assertThatThrownBy(() -> client.transcribe(new MockMultipartFile("audio", new byte[0]), null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode().value())
                 .isEqualTo(400);
         assertThatThrownBy(() -> client.transcribe(new MockMultipartFile(
                 "audio", "recording.bin", "application/octet-stream",
-                new byte[(int) VoiceServiceClient.MAX_AUDIO_BYTES + 1])))
+                new byte[(int) VoiceServiceClient.MAX_AUDIO_BYTES + 1]), null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode().value())
                 .isEqualTo(413);
         assertThatThrownBy(() -> client.transcribe(new MockMultipartFile(
-                "audio", "recording.bin", "application/octet-stream", new byte[]{1})))
+                "audio", "recording.bin", "application/octet-stream", new byte[]{1}), null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode().value())
                 .isEqualTo(415);

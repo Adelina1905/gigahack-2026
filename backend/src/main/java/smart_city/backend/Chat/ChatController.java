@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import smart_city.backend.Chat.dto.ChatCreateRequest;
+import smart_city.backend.Chat.dto.ChatProjectRequest;
 import smart_city.backend.Chat.dto.ChatResponse;
 import smart_city.backend.Chat.dto.ChatUpdateRequest;
 
@@ -101,6 +103,25 @@ public class ChatController {
     ) {
 
         return chatService.updateChat(
+                anonymousClientCookie.resolve(clientCookie, response),
+                chatId,
+                request
+        );
+    }
+
+
+    @PutMapping("/{chatId}/project")
+    public ChatResponse moveChat(
+            @PathVariable UUID chatId,
+            @RequestBody ChatProjectRequest request,
+            @CookieValue(
+                    name = AnonymousClientCookie.COOKIE_NAME,
+                    required = false
+            ) String clientCookie,
+            HttpServletResponse response
+    ) {
+
+        return chatService.moveChat(
                 anonymousClientCookie.resolve(clientCookie, response),
                 chatId,
                 request

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { ChatMessage, ChatSummary } from "../types/chat";
+import type { ChatMessage, ChatSummary, ProjectSummary } from "../types/chat";
 
 // IndexedDB copy of the sidebar and chat histories. It lets a reload paint
 // instantly before the server answers, and keeps unsent messages around.
@@ -14,11 +14,16 @@ interface CachedMessage extends ChatMessage {
 const db = new Dexie("smart-city-chat") as Dexie & {
   chats: EntityTable<ChatSummary, "id">;
   messages: EntityTable<CachedMessage, "id">;
+  projects: EntityTable<ProjectSummary, "id">;
 };
 
 db.version(1).stores({
   chats: "id, updatedAt",
   messages: "id, chatId, [chatId+position]",
+});
+// Chats cached by version 1 have no projectId; readers treat it as null.
+db.version(2).stores({
+  projects: "id, updatedAt",
 });
 
 async function safely<T>(action: () => Promise<T>, fallback: T): Promise<T> {
@@ -32,7 +37,10 @@ async function safely<T>(action: () => Promise<T>, fallback: T): Promise<T> {
 }
 
 export function loadChats(): Promise<ChatSummary[]> {
-  return safely(() => db.chats.orderBy("updatedAt").reverse().toArray(), []);
+  return safely(async () => {
+    const chats = await db.chats.orderBy("updatedAt").reverse().toArray();
+    return chats.map((chat) => ({ ...chat, projectId: chat.projectId ?? null }));
+  }, []);
 }
 
 export function saveChats(chats: ChatSummary[]): Promise<void> {
@@ -41,6 +49,21 @@ export function saveChats(chats: ChatSummary[]): Promise<void> {
       db.transaction("rw", db.chats, async () => {
         await db.chats.clear();
         await db.chats.bulkPut(chats);
+      }),
+    undefined,
+  );
+}
+
+export function loadProjects(): Promise<ProjectSummary[]> {
+  return safely(() => db.projects.orderBy("updatedAt").reverse().toArray(), []);
+}
+
+export function saveProjects(projects: ProjectSummary[]): Promise<void> {
+  return safely(
+    () =>
+      db.transaction("rw", db.projects, async () => {
+        await db.projects.clear();
+        await db.projects.bulkPut(projects);
       }),
     undefined,
   );

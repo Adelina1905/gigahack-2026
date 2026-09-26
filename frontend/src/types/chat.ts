@@ -44,5 +44,14 @@ export const DEFAULT_CHAT_NAME = "New chat";
 export interface ChatSummary {
   id: string;
   name: string;
+  // The project the chat is filed under; null keeps it in the date-grouped list.
+  projectId: string | null;
+  updatedAt: number;
+}
+
+// A project as listed in the sidebar. Its chats come from the chat list.
+export interface ProjectSummary {
+  id: string;
+  name: string;
   updatedAt: number;
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useI18n } from "../i18n/context";
 import { CityEmblem } from "./brand/Landmarks";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -5,11 +6,13 @@ import LanguageSwitcher from "./LanguageSwitcher";
 interface SiteHeaderProps {
   // Opens the chat-history drawer; the button only shows below md.
   onOpenMenu: () => void;
+  // Controls at the right end of the masthead, such as the alerts bell.
+  actions?: ReactNode;
 }
 
 // The utility strip and white masthead follow the chisinau.md header; the strip also shows
 // on phones so the language picker has a quiet home there too.
-function SiteHeader({ onOpenMenu }: SiteHeaderProps) {
+function SiteHeader({ onOpenMenu, actions }: SiteHeaderProps) {
   const { t } = useI18n();
 
   return (
@@ -60,6 +63,8 @@ function SiteHeader({ onOpenMenu }: SiteHeaderProps) {
             ))}
           </span>
         </div>
+
+        {actions && <div className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>}
       </div>
     </header>
   );

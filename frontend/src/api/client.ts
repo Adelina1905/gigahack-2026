@@ -1,9 +1,23 @@
 import type {
+    AlertFeedbackRequest,
+    AlertReadAllRequest,
+    AlertReadAllView,
+    AlertScanView,
+    AlertSettingsUpdateRequest,
+    AlertSettingsView,
+    AlertTopicRequest,
+    AlertTopicView,
+    AlertUnreadCountView,
+    AlertView,
     ChatCreateRequest,
+    ChatProjectRequest,
     ChatUpdateRequest,
     ChatView,
     DocumentCreateRequest,
     DocumentView,
+    ProjectCreateRequest,
+    ProjectUpdateRequest,
+    ProjectView,
     ResponseCreateRequest,
     ResponseRegenerateRequest,
     ResponseView,
@@ -97,8 +111,12 @@ export function getChat(chatId: string): Promise<ChatView> {
     return apiRequest<ChatView>(`/chats/${chatId}`);
 }
 
-export function createChat(name = DEFAULT_CHAT_NAME, requestId?: string): Promise<ChatView> {
-    const request: ChatCreateRequest = { name, requestId };
+export function createChat(
+    name = DEFAULT_CHAT_NAME,
+    requestId?: string,
+    projectId?: string | null,
+): Promise<ChatView> {
+    const request: ChatCreateRequest = { name, requestId, projectId: projectId ?? undefined };
 
     return apiRequest<ChatView>("/chats", {
         method: "POST",
@@ -117,6 +135,45 @@ export function updateChat(chatId: string, name: string): Promise<ChatView> {
 
 export function deleteChat(chatId: string): Promise<void> {
     return apiRequest<void>(`/chats/${chatId}`, {
+        method: "DELETE",
+    });
+}
+
+// null takes the chat out of its project.
+export function setChatProject(chatId: string, projectId: string | null): Promise<ChatView> {
+    const request: ChatProjectRequest = { projectId };
+
+    return apiRequest<ChatView>(`/chats/${chatId}/project`, {
+        method: "PUT",
+        body: JSON.stringify(request),
+    });
+}
+
+export function getProjects(): Promise<ProjectView[]> {
+    return apiRequest<ProjectView[]>("/projects");
+}
+
+export function createProject(name: string): Promise<ProjectView> {
+    const request: ProjectCreateRequest = { name };
+
+    return apiRequest<ProjectView>("/projects", {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function updateProject(projectId: string, name: string): Promise<ProjectView> {
+    const request: ProjectUpdateRequest = { name };
+
+    return apiRequest<ProjectView>(`/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(request),
+    });
+}
+
+// The project's chats are kept and move back to the ungrouped list.
+export function deleteProject(projectId: string): Promise<void> {
+    return apiRequest<void>(`/projects/${projectId}`, {
         method: "DELETE",
     });
 }
@@ -179,9 +236,12 @@ export function createDocument(
     });
 }
 
-export function transcribeAudio(audio: Blob, extension: string): Promise<TranscriptionView> {
+// language is the UI language when the recording is sent; the speech-to-text
+// service uses it as a hint instead of guessing between Romanian and Russian.
+export function transcribeAudio(audio: Blob, extension: string, language?: string): Promise<TranscriptionView> {
     const form = new FormData();
     form.append("audio", audio, `recording.${extension}`);
+    if (language) form.append("language", language);
     return apiRequest<TranscriptionView>("/voice/transcriptions", {
         method: "POST",
         body: form,
@@ -193,4 +253,93 @@ export function getResponseSpeech(chatId: string, responseId: number): Promise<B
         method: "POST",
         headers: { Accept: "audio/mpeg" },
     });
+}
+
+export interface AlertListQuery {
+    projectId?: string | null;
+    unreadOnly?: boolean;
+    limit?: number;
+}
+
+// Newest first; alerts marked "not relevant" are never listed.
+export function getAlerts(query: AlertListQuery = {}): Promise<AlertView[]> {
+    const params = new URLSearchParams();
+    if (query.projectId) params.set("projectId", query.projectId);
+    if (query.unreadOnly) params.set("unreadOnly", "true");
+    if (query.limit) params.set("limit", String(query.limit));
+    const search = params.toString();
+    return apiRequest<AlertView[]>(`/alerts${search ? `?${search}` : ""}`);
+}
+
+export function getAlertUnreadCount(): Promise<AlertUnreadCountView> {
+    return apiRequest<AlertUnreadCountView>("/alerts/unread-count");
+}
+
+export function markAlertRead(alertId: number): Promise<AlertView> {
+    return apiRequest<AlertView>(`/alerts/${alertId}/read`, { method: "POST" });
+}
+
+// null marks the alerts of every project as read.
+export function markAllAlertsRead(projectId: string | null = null): Promise<AlertReadAllView> {
+    const request: AlertReadAllRequest = { projectId };
+    return apiRequest<AlertReadAllView>("/alerts/read-all", {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+// Dismisses the alert for good and makes its topic stricter.
+export function markAlertNotRelevant(alertId: number): Promise<void> {
+    const request: AlertFeedbackRequest = { value: "NOT_RELEVANT" };
+    return apiRequest<void>(`/alerts/${alertId}/feedback`, {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function getAlertSettings(projectId: string): Promise<AlertSettingsView> {
+    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-settings`);
+}
+
+// Also records that the opt-in was answered; turning alerts on runs a first scan.
+export function updateAlertSettings(projectId: string, enabled: boolean): Promise<AlertSettingsView> {
+    const request: AlertSettingsUpdateRequest = { enabled };
+    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-settings`, {
+        method: "PUT",
+        body: JSON.stringify(request),
+    });
+}
+
+// Extracts topics from all of the project's questions.
+export function refreshAlertTopics(projectId: string): Promise<AlertSettingsView> {
+    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-topics/refresh`, {
+        method: "POST",
+    });
+}
+
+export function createAlertTopic(projectId: string, label: string): Promise<AlertTopicView> {
+    const request: AlertTopicRequest = { label };
+    return apiRequest<AlertTopicView>(`/projects/${projectId}/alert-topics`, {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function updateAlertTopic(projectId: string, topicId: number, label: string): Promise<AlertTopicView> {
+    const request: AlertTopicRequest = { label };
+    return apiRequest<AlertTopicView>(`/projects/${projectId}/alert-topics/${topicId}`, {
+        method: "PATCH",
+        body: JSON.stringify(request),
+    });
+}
+
+export function deleteAlertTopic(projectId: string, topicId: number): Promise<void> {
+    return apiRequest<void>(`/projects/${projectId}/alert-topics/${topicId}`, {
+        method: "DELETE",
+    });
+}
+
+// Looks for new matching documents now, even while alerts are off.
+export function scanProjectAlerts(projectId: string): Promise<AlertScanView> {
+    return apiRequest<AlertScanView>(`/projects/${projectId}/alerts/scan`, { method: "POST" });
 }

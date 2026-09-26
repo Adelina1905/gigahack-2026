@@ -1,18 +1,33 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { useI18n } from "../i18n/context";
 import type { ChatGroup } from "../i18n/messages";
-import { DEFAULT_CHAT_NAME, type ChatSummary } from "../types/chat";
+import type { ChatSummary, ProjectSummary } from "../types/chat";
 import { CathedralArt } from "./brand/Landmarks";
 import TitleRule from "./brand/TitleRule";
+import ProjectDialog from "./ProjectDialog";
+import ChatItem from "./sidebar/ChatItem";
+import ProjectItem from "./sidebar/ProjectItem";
+import { iconProps } from "./sidebar/iconProps";
 
 interface SidebarProps {
   chats: ChatSummary[];
+  projects: ProjectSummary[];
   activeChatId: string | null;
+  // The project the open draft chat will be created in, if any.
+  draftProjectId: string | null;
   isLoaded: boolean;
   onNewChat: () => void;
   onSelect: (chatId: string) => void;
   onRename: (chatId: string, name: string) => void;
   onDelete: (chatId: string) => void;
+  onMoveChat: (chatId: string, projectId: string | null) => void;
+  onCreateProject: (name: string) => Promise<ProjectSummary | null>;
+  onRenameProject: (projectId: string, name: string) => void;
+  onDeleteProject: (projectId: string) => void;
+  onNewChatInProject: (projectId: string) => void;
+  // Unread alerts per project id.
+  unreadAlertsByProject?: Record<string, number>;
+  onOpenProjectAlerts?: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -45,136 +60,85 @@ function groupChats(chats: ChatSummary[]) {
   }));
 }
 
-const iconProps = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
+// A chat whose project isn't known (not loaded yet, or gone) stays ungrouped.
+function splitByProject(chats: ChatSummary[], projects: ProjectSummary[]) {
+  const known = new Set(projects.map((project) => project.id));
+  const byProject = new Map<string, ChatSummary[]>();
+  const ungrouped: ChatSummary[] = [];
 
-interface ChatItemProps {
-  chat: ChatSummary;
-  isActive: boolean;
-  onSelect: (chatId: string) => void;
-  onRename: (chatId: string, name: string) => void;
-  onDelete: (chatId: string) => void;
-}
-
-function ChatItem({ chat, isActive, onSelect, onRename, onDelete }: ChatItemProps) {
-  const { t } = useI18n();
-  const title = chat.name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : chat.name;
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(chat.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-  // Escape unmounts the input, which can fire a blur; don't save on that one.
-  const cancelledRef = useRef(false);
-
-  useEffect(() => {
-    if (isEditing) inputRef.current?.select();
-  }, [isEditing]);
-
-  const startEditing = () => {
-    setDraft(chat.name);
-    cancelledRef.current = false;
-    setIsEditing(true);
-  };
-
-  const commit = () => {
-    if (cancelledRef.current) return;
-    setIsEditing(false);
-    if (draft.trim() && draft.trim() !== chat.name) onRename(chat.id, draft);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") commit();
-    if (e.key === "Escape") {
-      cancelledRef.current = true;
-      setIsEditing(false);
+  for (const chat of chats) {
+    if (chat.projectId && known.has(chat.projectId)) {
+      byProject.set(chat.projectId, [...(byProject.get(chat.projectId) ?? []), chat]);
+    } else {
+      ungrouped.push(chat);
     }
-  };
-
-  const handleDelete = () => {
-    if (window.confirm(t.sidebar.confirmRemove(title))) onDelete(chat.id);
-  };
-
-  if (isEditing) {
-    return (
-      <li>
-        <input
-          ref={inputRef}
-          value={draft}
-          maxLength={255}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={handleKeyDown}
-          aria-label={t.sidebar.chatName}
-          className="w-full rounded-sm border border-primary bg-background px-3 py-2 text-sm text-text focus:outline-none"
-        />
-      </li>
-    );
   }
-
-  return (
-    <li className="group relative">
-      <button
-        type="button"
-        onClick={() => onSelect(chat.id)}
-        aria-current={isActive ? "page" : undefined}
-        title={title}
-        className={`w-full cursor-pointer truncate rounded-r-sm border-l-[3px] py-2 pl-3 pr-16 text-left text-sm transition-colors ${
-          isActive
-            ? "border-primary bg-primary-50 font-semibold text-primary-700"
-            : "border-transparent text-text-muted hover:bg-background-secondary hover:text-text"
-        }`}
-      >
-        {title}
-      </button>
-
-      <div
-        className={`absolute inset-y-0 right-1 flex items-center gap-0.5 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
-          isActive ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={startEditing}
-          aria-label={t.sidebar.rename(title)}
-          className="cursor-pointer rounded-sm p-1.5 text-text-subtle hover:bg-background hover:text-primary"
-        >
-          <svg {...iconProps} className="h-3.5 w-3.5">
-            <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={handleDelete}
-          aria-label={t.sidebar.remove(title)}
-          className="cursor-pointer rounded-sm p-1.5 text-text-subtle hover:bg-danger-light hover:text-danger"
-        >
-          <svg {...iconProps} className="h-3.5 w-3.5">
-            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
-          </svg>
-        </button>
-      </div>
-    </li>
-  );
+  return { byProject, ungrouped };
 }
+
+type DialogState = { mode: "create" } | { mode: "rename"; project: ProjectSummary } | null;
 
 function Sidebar({
   chats,
+  projects,
   activeChatId,
+  draftProjectId,
   isLoaded,
   onNewChat,
   onSelect,
   onRename,
   onDelete,
+  onMoveChat,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject,
+  onNewChatInProject,
+  unreadAlertsByProject,
+  onOpenProjectAlerts,
   isOpen,
   onClose,
 }: SidebarProps) {
   const { t } = useI18n();
-  const groups = groupChats(chats);
+  const { byProject, ungrouped } = splitByProject(chats, projects);
+  const groups = groupChats(ungrouped);
+  const [dialog, setDialog] = useState<DialogState>(null);
+
+  // The project holding the open chat (or the draft) is always shown expanded
+  // when it changes; otherwise projects open and close on click.
+  const currentProjectId = activeChatId
+    ? (chats.find((chat) => chat.id === activeChatId)?.projectId ?? null)
+    : draftProjectId;
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
+    () => new Set(currentProjectId ? [currentProjectId] : []),
+  );
+  const [seenProjectId, setSeenProjectId] = useState(currentProjectId);
+  if (currentProjectId !== seenProjectId) {
+    setSeenProjectId(currentProjectId);
+    if (currentProjectId && !expanded.has(currentProjectId)) {
+      setExpanded(new Set([...expanded, currentProjectId]));
+    }
+  }
+
+  const toggle = (projectId: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(projectId)) next.add(projectId);
+      return next;
+    });
+
+  const closeDialog = () => setDialog(null);
+
+  const submitDialog = (name: string) => {
+    const current = dialog;
+    setDialog(null);
+    if (current?.mode === "rename") {
+      onRenameProject(current.project.id, name);
+      return;
+    }
+    void onCreateProject(name).then((project) => {
+      if (project) setExpanded((open) => new Set([...open, project.id]));
+    });
+  };
 
   return (
     <>
@@ -229,13 +193,62 @@ function Sidebar({
         </div>
 
         <nav className="relative flex-1 overflow-y-auto px-4 pb-4">
-          {groups.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-text-subtle">
+          <section aria-labelledby="sidebar-projects-title" className="mt-2">
+            <div className="flex items-center justify-between gap-2 pb-1.5">
+              <h3 id="sidebar-projects-title">
+                <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
+                  {t.projects.title}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDialog({ mode: "create" })}
+                className="flex cursor-pointer items-center gap-1 rounded-sm px-1.5 py-1 text-xs font-semibold text-primary hover:bg-primary-50"
+              >
+                <svg {...iconProps} className="h-3.5 w-3.5" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                {t.projects.newProject}
+              </button>
+            </div>
+
+            {projects.length > 0 && (
+              <ul className="flex flex-col gap-0.5">
+                {projects.map((project) => (
+                  <ProjectItem
+                    key={project.id}
+                    project={project}
+                    chats={byProject.get(project.id) ?? []}
+                    projects={projects}
+                    activeChatId={activeChatId}
+                    isDraftTarget={!activeChatId && draftProjectId === project.id}
+                    isExpanded={expanded.has(project.id)}
+                    onToggle={toggle}
+                    onNewChat={(projectId) => {
+                      setExpanded((open) => new Set([...open, projectId]));
+                      onNewChatInProject(projectId);
+                    }}
+                    onRename={(target) => setDialog({ mode: "rename", project: target })}
+                    onDelete={onDeleteProject}
+                    onSelectChat={onSelect}
+                    onRenameChat={onRename}
+                    onDeleteChat={onDelete}
+                    onMoveChat={onMoveChat}
+                    unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
+                    onOpenAlerts={onOpenProjectAlerts}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {chats.length === 0 ? (
+            <p className="mt-4 px-1 py-2 text-sm text-text-subtle">
               {isLoaded ? t.sidebar.empty : t.sidebar.loading}
             </p>
           ) : (
             groups.map((group) => (
-              <section key={group.label} className="mt-4 first:mt-2">
+              <section key={group.label} className="mt-4">
                 {/* Outlined like the date stamps on chisinau.md news cards. */}
                 <h3 className="pb-1.5">
                   <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
@@ -248,9 +261,11 @@ function Sidebar({
                       key={chat.id}
                       chat={chat}
                       isActive={chat.id === activeChatId}
+                      projects={projects}
                       onSelect={onSelect}
                       onRename={onRename}
                       onDelete={onDelete}
+                      onMove={onMoveChat}
                     />
                   ))}
                 </ul>
@@ -259,6 +274,16 @@ function Sidebar({
           )}
         </nav>
       </aside>
+
+      {dialog && (
+        <ProjectDialog
+          title={dialog.mode === "rename" ? t.projects.renameTitle : t.projects.newProject}
+          submitLabel={dialog.mode === "rename" ? t.projects.save : t.projects.create}
+          initialName={dialog.mode === "rename" ? dialog.project.name : ""}
+          onSubmit={submitDialog}
+          onCancel={closeDialog}
+        />
+      )}
     </>
   );
 }

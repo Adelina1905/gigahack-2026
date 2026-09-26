@@ -7,10 +7,15 @@ public record ChatCreateRequest(
 
         @Size(max = 255)
         String name,
-        UUID requestId
+        UUID requestId,
+        UUID projectId
 
 ) {
     public ChatCreateRequest(String name) {
-        this(name, null);
+        this(name, null, null);
+    }
+
+    public ChatCreateRequest(String name, UUID requestId) {
+        this(name, requestId, null);
     }
 }

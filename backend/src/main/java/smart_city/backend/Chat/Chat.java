@@ -24,6 +24,10 @@ public class Chat {
     @Column(name = "request_id")
     private UUID requestId;
 
+    // Plain column: the database clears it (ON DELETE SET NULL) when the project is deleted.
+    @Column(name = "project_id")
+    private UUID projectId;
+
     @Column(name = "creation_name")
     private String creationName;
 
@@ -79,6 +83,14 @@ public class Chat {
 
     public void setRequestId(UUID requestId) {
         this.requestId = requestId;
+    }
+
+    public UUID getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(UUID projectId) {
+        this.projectId = projectId;
     }
 
     public String getName() {
