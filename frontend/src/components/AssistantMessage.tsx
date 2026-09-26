@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ChatMessage } from "../types/chat";
+import { CityEmblem } from "./brand/Landmarks";
 import SourceList from "./sources/SourceList";
 import CitationPills from "./CitationPills";
 
@@ -16,7 +17,7 @@ function TypingDots() {
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
-          className="h-2 w-2 animate-bounce rounded-full bg-text-subtle"
+          className="h-2 w-2 animate-bounce rounded-full bg-primary/60"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -55,14 +56,12 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
 
   return (
     <div className="group flex items-start gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background-secondary text-text-muted">
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-          <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
-        </svg>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-primary text-text-inverted">
+        <CityEmblem className="h-6 w-6" />
       </div>
 
-      <div className="flex max-w-[75%] flex-col gap-1">
-        <div className="whitespace-pre-wrap break-words rounded-2xl rounded-tl-sm border border-border bg-background px-4 py-2.5 text-base text-text">
+      <div className="flex min-w-0 max-w-[85%] flex-col gap-1">
+        <div className="whitespace-pre-wrap break-words rounded-sm border border-border bg-background px-4 py-3 text-[0.9375rem] leading-relaxed text-text shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
           {isTyping || !message ? (
             <TypingDots />
           ) : (
@@ -79,7 +78,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
             <button
               type="button"
               onClick={handleCopy}
-              className="rounded-md px-2 py-1 text-xs text-text-subtle hover:bg-background-secondary hover:text-text-muted"
+              className="rounded-sm px-2 py-1 text-xs text-text-subtle hover:bg-background hover:text-primary"
             >
               {copied ? "Copied" : "Copy"}
             </button>
@@ -87,7 +86,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
               <button
                 type="button"
                 onClick={() => onRegenerate(message.id)}
-                className="rounded-md px-2 py-1 text-xs text-text-subtle hover:bg-background-secondary hover:text-text-muted"
+                className="rounded-sm px-2 py-1 text-xs text-text-subtle hover:bg-background hover:text-primary"
               >
                 Regenerate
               </button>
