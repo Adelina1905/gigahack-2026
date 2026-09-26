@@ -154,7 +154,13 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
           onClick={() => onSelect(chat.id)}
           aria-current={isActive ? "page" : undefined}
           title={title}
-          className={`w-full cursor-pointer truncate rounded-r-sm border-l-[3px] py-2 pl-3 pr-[5.5rem] text-left text-sm transition-colors ${
+          // The title gives way to the action buttons only while they show: always on
+          // the active chat, on hover or keyboard focus for the others.
+          className={`w-full cursor-pointer truncate rounded-r-sm border-l-[3px] py-2 pl-3 text-left text-sm transition-colors ${
+            isActive || isMoving
+              ? "pr-24"
+              : "pr-3 group-focus-within:pr-24 group-hover:pr-24"
+          } ${
             isActive
               ? "border-primary bg-primary-50 font-semibold text-primary-700"
               : "border-transparent text-text-muted hover:bg-background-secondary hover:text-text"
