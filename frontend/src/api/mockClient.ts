@@ -7,38 +7,87 @@ import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 const STORAGE_KEY = "smart-city-mock-api";
 
-const CANNED_REPLIES = [
-  "Sure! Here's a quick overview of how that works.",
-  "Good question. Let me break it down step by step:\n1. First, upload your file.\n2. Then I'll extract the text.\n3. Finally, you can ask me anything about it.",
-  "I'm a mock assistant for now, but the real answer will appear right here.",
+// Replies shaped like the real gateway output (see Manage Data/municipal_rag):
+// grounded RAG answers are one claim per line ending in "[S1]" markers, with the
+// cited corpus documents attached; LLM fallback answers carry no documents; a
+// clarification lists its choices as "- " lines. Titles and links are real corpus sources.
+type MockReply = { text: string; documents: DocumentView[] };
+
+const EVENTS_DOCUMENT: DocumentView = {
+  id: 1,
+  title: "Evenimente municipale",
+  // This corpus source has no URL, so the backend stores an empty link.
+  documentLink: "",
+  addedAt: "2026-09-25T19:27:11Z",
+};
+
+const SCHOOL_EVALUATION_DOCUMENT: DocumentView = {
+  id: 2,
+  title:
+    "Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
+  documentLink:
+    "https://detsciocana.educ.md/evaluarea-institutiilor-de-invatamant-primar-si-secundar-ciclul-i-si-ii-catre-debutul-anului-de-studii-2024-2025/",
+  addedAt: "2026-09-25T19:26:50Z",
+};
+
+const DGETS_SCAN_DOCUMENT: DocumentView = {
+  id: 3,
+  title: "Scan DGETS 2025-09-30",
+  documentLink: "https://chisinauedu.dgets.md/storage/attestations/1775034260_scan-2025-09-30-10-13-39-485.pdf",
+  addedAt: "2026-09-25T19:27:30Z",
+};
+
+const EVENTS_REPLY: MockReply = {
+  text: [
+    "Târgurile micilor antreprenori și ale producătorilor locali cu produse autohtone eco și apicole au loc pe teritoriul sectoarelor în perioadele 04-06.09, 11-13.09, 18-20.09 și 25-27.09.2026. [S1]",
+    "Târgul mămicilor „Mami&Co Fair” are loc în Scuarul „Mezon” din bd. Moscova pe 13.09 și 27.09.2026. [S1]",
+    "Festivalul etniilor „Unitate prin diversitate” are loc în Grădina Publică „Ștefan cel Mare și Sfânt” pe 20.09.2026. [S1]",
+  ].join("\n"),
+  documents: [EVENTS_DOCUMENT],
+};
+
+const SCHOOLS_REPLY: MockReply = {
+  text: [
+    "Pe parcursul a 3 zile (20, 21 și 22 august 2024), 5 echipe de verificare create prin ordinul DGETS s-au deplasat la instituțiile de învățământ primar și secundar, ciclul I și II, din municipiu. [S1]",
+    "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar 2024-2025. [S1] [S2]",
+  ].join("\n"),
+  documents: [SCHOOL_EVALUATION_DOCUMENT, DGETS_SCAN_DOCUMENT],
+};
+
+const CLARIFICATION_REPLY: MockReply = {
+  text: "La care document vă referiți?\n- Evenimente municipale\n- Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
+  documents: [],
+};
+
+// Plain LLM fallback, used when the corpus has no answer.
+const LLM_REPLIES: MockReply[] = [
+  {
+    text: "Nu dispun de informații oficiale despre acest subiect. Vă recomand să verificați pe **chisinau.md** sau să contactați Primăria municipiului Chișinău.",
+    documents: [],
+  },
+  {
+    text: "Pentru majoritatea serviciilor municipale puteți depune o cerere la **Centrul de Servicii Publice** sau online, pe portalul primăriei. Nu am însă detalii oficiale despre termenele exacte.",
+    documents: [],
+  },
 ];
 
-const MOCK_DOCUMENTS: DocumentView[] = [
-  {
-    id: 1,
-    title: "Urban Mobility Plan 2030 — Public Transport Strategy",
-    documentLink: "https://en.wikipedia.org/wiki/Public_transport",
-    addedAt: "2026-08-14T09:30:00Z",
-  },
-  {
-    id: 2,
-    title: "Smart City Open Data Portal: Air Quality Measurements",
-    documentLink: "https://www.who.int/health-topics/air-pollution",
-    addedAt: "2026-09-02T14:10:00Z",
-  },
-  {
-    id: 3,
-    title: "Municipal Waste Management Annual Report",
-    documentLink: "https://www.eea.europa.eu/en/topics/in-depth/waste-and-recycling",
-    addedAt: "2026-07-21T08:00:00Z",
-  },
-  {
-    id: 4,
-    title: "Guidelines for Citizen Service Requests",
-    documentLink: "https://developer.mozilla.org/en-US/docs/Web/HTTP",
-    addedAt: "2026-09-20T17:45:00Z",
-  },
-];
+const LLM_REPLY_RU: MockReply = {
+  text: "У меня нет официальной информации по этому вопросу. Рекомендую уточнить на сайте **chisinau.md** или обратиться в Примэрию муниципия Кишинэу.",
+  documents: [],
+};
+
+const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, ...LLM_REPLIES];
+
+// Keywords steer the reply like retrieval would; anything else gets a random one.
+function pickReply(prompt: string, exclude?: string): MockReply {
+  const text = prompt.toLowerCase();
+  if (/[а-яё]/.test(text)) return LLM_REPLY_RU;
+  if (/t[aâ]rg|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
+  if (/[sș]coal|[sș]colar|educa|[iî]nv[aă][tț]|dgets|school/.test(text)) return SCHOOLS_REPLY;
+  if (/document/.test(text)) return CLARIFICATION_REPLY;
+  const pool = ALL_REPLIES.filter((reply) => reply.text !== exclude);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 interface MockStore {
   chats: ChatView[];
@@ -49,17 +98,6 @@ interface MockStore {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => new Date().toISOString();
 const notFound = (what: string) => new ApiError(`${what} not found`, 404);
-
-// Picks 0–4 random sources so both the empty and populated states show up.
-const pickDocuments = () =>
-  [...MOCK_DOCUMENTS]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, Math.floor(Math.random() * 5));
-
-const pickReply = (exclude?: string) => {
-  const pool = CANNED_REPLIES.filter((reply) => reply !== exclude);
-  return pool[Math.floor(Math.random() * pool.length)];
-};
 
 const titleFrom = (text: string) => {
   const singleLine = text.replace(/\s+/g, " ").trim();
@@ -152,13 +190,14 @@ export async function createResponse(chatId: string, text: string): Promise<Resp
 
   const store = load();
   const chat = findChat(store, chatId);
+  const reply = pickReply(text);
   const response: ResponseView = {
     id: store.nextResponseId++,
     chatId,
     prompt: text.trim(),
-    text: pickReply(),
+    text: reply.text,
     createdAt: now(),
-    documents: pickDocuments(),
+    documents: reply.documents,
   };
 
   store.responses.push(response);
@@ -180,8 +219,10 @@ export async function regenerateResponse(
   );
   if (!response) throw notFound("Response");
 
-  response.text = pickReply(response.text);
-  response.documents = pickDocuments();
+  // The real backend reruns the same prompt, which usually retrieves the same sources.
+  const reply = pickReply(response.prompt ?? "", response.text);
+  response.text = reply.text;
+  response.documents = reply.documents;
   chat.updatedAt = now();
   save(store);
   return response;

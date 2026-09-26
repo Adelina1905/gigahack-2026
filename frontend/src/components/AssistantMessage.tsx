@@ -3,6 +3,7 @@ import { useI18n } from "../i18n/context";
 import type { ChatMessage } from "../types/chat";
 import { CityEmblem } from "./brand/Landmarks";
 import SourceList from "./sources/SourceList";
+import CitationPills from "./CitationPills";
 
 interface AssistantMessageProps {
   message?: ChatMessage;
@@ -26,14 +27,32 @@ function TypingDots() {
   );
 }
 
+// The RAG answer ends each claim with markers like "[S1] [S2]"; the cited documents
+// are shown as pills under the text instead.
+const stripCitationMarkers = (text: string) => text.replace(/[ \t]*\[S\d+\]/g, "");
+
+// Only **bold** is supported; an unmatched "**" stays as literal text.
+function renderBold(text: string) {
+  return text.split(/\*\*(.+?)\*\*/gs).map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: AssistantMessageProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     if (!message) return;
-    if (onCopy) onCopy(message.content);
-    else await navigator.clipboard.writeText(message.content);
+    const text = stripCitationMarkers(message.content);
+    if (onCopy) onCopy(text);
+    else await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -50,7 +69,8 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate }: A
             <TypingDots />
           ) : (
             <>
-              {message.content}
+              {renderBold(stripCitationMarkers(message.content))}
+              {message.sources && <CitationPills sources={message.sources} />}
               {message.sources && <SourceList sources={message.sources} />}
             </>
           )}
