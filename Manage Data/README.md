@@ -197,6 +197,61 @@ python run_all.py --collect --execute
 
 Use `--collect-max-documents 5` for a bounded collection test.
 
+## Fast vectorization of an already prepared run
+
+Use `vectorize_prepared_data.py` after stages 1–6 have completed. Unlike the
+legacy per-document embedding runner, it scans old embedding JSONL files once,
+stores reusable vectors in a compact SQLite cache, batches chunks across
+documents, and imports each completed wave into Qdrant immediately.
+
+First perform a zero-cost plan:
+
+```powershell
+python vectorize_prepared_data.py `
+  --run-manifest "data/09_review/<run-id>/run-manifest.json" `
+  --plan-only
+```
+
+For a large corpus, start the local Qdrant server first. The named Docker volume
+keeps the database on this computer while avoiding Qdrant Local's in-memory
+collection limit:
+
+```powershell
+docker compose -f docker-compose.qdrant.yml up -d
+Invoke-RestMethod http://127.0.0.1:6333
+```
+
+Then run the four-hour vectorization window against a new server collection:
+
+```powershell
+python vectorize_prepared_data.py `
+  --run-manifest "data/09_review/<run-id>/run-manifest.json" `
+  --qdrant-url "http://127.0.0.1:6333" `
+  --collection "municipal_evidence_server_<run-id>" `
+  --embedding-workers 16 `
+  --batch-inputs 128 `
+  --batch-tokens 16000 `
+  --wave-chunks 2048 `
+  --upsert-points 256 `
+  --max-runtime-minutes 240 `
+  --finalize-minutes 20
+```
+
+The terminal reports every embedding batch, every completed document, chunks,
+tokens, cache hits, generated vectors, per-document seconds, rolling throughput,
+and ETA. State is saved under `data/10_vectorize/<run-id>/`; rerun the identical
+command after interruption to resume without repeating completed documents or
+embedding calls. A complete consistent run publishes the production aliases. A
+deadline-limited partial collection is retained but only published when
+`--publish-partial` is explicitly provided.
+
+Server collections created by this command use on-disk dense vectors, an
+on-disk sparse index, on-disk payloads, two shards, and gRPC uploads. Never use
+the embedded `data/08_qdrant` mode for the full municipal corpus; Qdrant Local is
+intended for small collections and loads dense vectors into the Python process.
+Set `QDRANT_URL=http://127.0.0.1:6333` in `.env`, or pass `--qdrant-url`, when
+running `10_answer_question.py` against the completed server database.
+
 ## Output directories
 
 | Directory | Meaning |
@@ -209,7 +264,7 @@ Use `--collect-max-documents 5` for a bounded collection test.
 | `05_validated` | Quality report and indexing decision |
 | `06_chunks` | JSONL records ready for embeddings or review |
 | `07_embeddings` | Cached vectors matching the prepared chunks |
-| `08_qdrant` | Persistent local vector database |
+| `08_qdrant` | Legacy embedded Qdrant data; large production runs use the Docker volume |
 | `09_review/<run-id>` | Durable summary, manifest, and per-problem reports |
 
 ## Review reports and retries
@@ -234,8 +289,8 @@ Only chunks whose `indexingStatus` is `READY` belong in the production Qdrant
 collection. Keep review chunks in a separate collection or do not embed them.
 
 The database builder generates only missing embeddings, caches their relationship
-to the chunk files, and imports every prepared document into persistent local
-Qdrant storage. Step 7 uses OpenRouter's Qwen3 Embedding 8B model. Keep the key
+to the chunk files, and imports every prepared document into persistent Qdrant
+server storage. Step 7 uses OpenRouter's Qwen3 Embedding 8B model. Keep the key
 outside source code in the `OPENROUTER_API_KEY` environment variable:
 
 ```powershell
@@ -245,9 +300,9 @@ python prepare_ai_database.py `
   --execute
 ```
 
-The default collection is `municipal_documents` in `data/08_qdrant`. No separate
-Qdrant server is required. To use a remote Qdrant instance instead, pass
-`--qdrant-url` and set `QDRANT_API_KEY` when the server requires it.
+Small tests may use the embedded database in `data/08_qdrant`. Production corpus
+builds must use the Docker Qdrant server via `--qdrant-url`. Set `QDRANT_API_KEY`
+when connecting to a server that requires authentication.
 
 For a connectivity test that makes no OpenRouter request, use a strictly isolated
 mock collection:

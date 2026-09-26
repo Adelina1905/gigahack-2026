@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config" / "rag.v3.json"
 
 
-def load_dotenv(path: Path = ROOT.parent / ".env") -> None:
+def load_dotenv(path: Path = ROOT / ".env") -> None:
     if not path.is_file():
         return
     for raw in path.read_text(encoding="utf-8-sig").splitlines():
@@ -55,10 +55,10 @@ class RagConfig:
     def preview_collection(self) -> str:
         return self.raw["collections"].get("previewCollection", "municipal_source_previews")
 
+
 def load_config(path: Path | None = None) -> RagConfig:
     source = (path or DEFAULT_CONFIG).expanduser().resolve()
     value = json.loads(source.read_text(encoding="utf-8"))
     if value.get("schemaVersion") != "3.0":
         raise ValueError(f"Unsupported RAG config schema in {source}")
     return RagConfig(value)
-

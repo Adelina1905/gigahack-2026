@@ -3,7 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useI18n } from "../i18n/context";
 import { safeHttpUrl } from "./sources/safeLink";
-import type { ChatMessage } from "../types/chat";
+import type { ChatMessage, ClarificationChoice } from "../types/chat";
 import { CityEmblem } from "./brand/Landmarks";
 import CitationPills from "./CitationPills";
 import type { SpeechState } from "../hooks/useVoiceMode";
@@ -18,6 +18,7 @@ interface AssistantMessageProps {
   activeSourceIndex?: number | null;
   sourcePanelId?: string;
   onSelectSource?: (message: ChatMessage, index: number, trigger: HTMLButtonElement) => void;
+  onSelectClarification?: (choice: ClarificationChoice) => void;
 }
 
 function TypingDots() {
@@ -42,7 +43,8 @@ const citationMarkdown = (text: string) => text.replace(/\[S(\d+)\]/g, "[$1](cit
 
 function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
   onToggleSpeech, speechState = "idle", activeSourceIndex = null,
-  sourcePanelId = "source-preview-panel", onSelectSource }: AssistantMessageProps) {
+  sourcePanelId = "source-preview-panel", onSelectSource,
+  onSelectClarification }: AssistantMessageProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const pending = message?.generationStatus === "PENDING";
@@ -115,6 +117,21 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
                   controlsId={sourcePanelId}
                   onSelect={(index, trigger) => onSelectSource(message, index, trigger)}
                 />
+              )}
+              {message.clarificationChoices && message.clarificationChoices.length > 0 && (
+                <div className="mt-3 flex flex-col gap-2" role="group" aria-label={message.content}>
+                  {message.clarificationChoices.map((choice) => (
+                    <button
+                      key={choice.documentId}
+                      type="button"
+                      disabled={!onSelectClarification}
+                      onClick={() => onSelectClarification?.(choice)}
+                      className="rounded-sm border border-primary-200 bg-primary-50 px-3 py-2 text-left text-sm text-primary transition hover:border-primary hover:bg-primary-100 disabled:cursor-default disabled:opacity-70"
+                    >
+                      {choice.label}
+                    </button>
+                  ))}
+                </div>
               )}
               {pending && <p role="status" className="mt-2 text-sm text-text-muted">{t.message.pending}</p>}
               {failed && <p className="mt-2 text-sm text-danger">{message.content ? t.message.generationFailedKept : t.message.generationFailed}

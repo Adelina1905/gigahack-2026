@@ -1,0 +1,15 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    container_name: municipal-qdrant
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+    volumes:
+      - municipal_qdrant_storage:/qdrant/storage
+
+volumes:
+  municipal_qdrant_storage:
+    external: true
+    name: municipal_qdrant_storage

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ DEFAULT_SYSTEM_PROMPT = (
     "and never invent municipal facts, dates or numbers."
 )
 
-RAG_STATUSES = {"SUPPORTED", "PARTIAL", "CONTRADICTION", "NEEDS_CLARIFICATION"}
+RAG_STATUSES = {"SUPPORTED", "PARTIAL", "NOT_FOUND", "CONTRADICTION", "NEEDS_CLARIFICATION"}
 HISTORY_ROLES = {"user", "assistant"}
 
 
@@ -42,11 +43,29 @@ class ChatService:
 
     def reply(self, message: str, history: list[dict[str, str]]) -> ChatReply:
         if self._rag.is_available():
-            result = self._rag.answer(message)
+            question = self._clarified_question(message, history)
+            result = self._rag.answer(question)
             status = str(result.get("status") or "")
             if status in RAG_STATUSES:
                 return self._rag_reply(status, result)
+            if status == "UNAVAILABLE":
+                reasons = (result.get("confidence") or {}).get("reasons") or []
+                raise LlmUnavailableError(str(reasons[0]) if reasons else "RAG service unavailable")
         return self._llm_reply(message, history)
+
+    @staticmethod
+    def _clarified_question(message: str, history: list[dict[str, str]]) -> str:
+        """Restore the original question when the user selects a clarification choice."""
+        if len(history) < 2 or history[-1].get("role") != "assistant" or history[-2].get("role") != "user":
+            return message
+        choices = [value.strip() for value in re.findall(r"(?m)^-\s+(.+?)\s*$", history[-1].get("content", ""))]
+        selected = message.strip()
+        if selected not in choices:
+            return message
+        original = history[-2].get("content", "").strip()
+        if not original:
+            return message
+        return f'{original}\nDocument selectat pentru clarificare: "{selected}"'
 
     @staticmethod
     def _rag_reply(status: str, result: dict[str, Any]) -> ChatReply:

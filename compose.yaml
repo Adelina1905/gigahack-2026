@@ -37,4 +37,5 @@ volumes:
   postgres_data:
     name: gigahack-postgres18-data
   qdrant_data:
-    name: gigahack-qdrant-data
+    external: true
+    name: municipal_qdrant_storage

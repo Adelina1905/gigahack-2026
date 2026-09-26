@@ -138,7 +138,9 @@ public class ChatResponseMessage {
     }
 
     public void completeGeneration(LlmReply reply, List<StoredDocument> documents) {
-        text = reply.displayText();
+        // Keep the visible answer clean. Clarification choices remain structured
+        // in aiReply and are rendered as buttons by the frontend.
+        text = reply.answer();
         aiReply = reply;
         setDocuments(documents);
         generationStatus = GenerationStatus.COMPLETED;

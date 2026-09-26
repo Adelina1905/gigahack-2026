@@ -20,6 +20,11 @@ export interface RetryOperation {
   expectedGenerationVersion: number;
 }
 
+export interface ClarificationChoice {
+  documentId: string;
+  label: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
@@ -36,7 +41,7 @@ export interface ChatMessage {
   generationVersion?: number;
   errorCode?: string | null;
   mode?: "rag" | "llm" | "demo";
-  clarificationChoices?: string[];
+  clarificationChoices?: ClarificationChoice[];
   // Retained until the result of a retry/regeneration is known.
   retryOperation?: RetryOperation;
 }

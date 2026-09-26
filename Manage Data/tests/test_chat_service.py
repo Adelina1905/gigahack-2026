@@ -50,20 +50,32 @@ class ChatServiceTests(unittest.TestCase):
         self.assertEqual(reply.clarification_choices, choices)
         self.assertEqual(llm.calls, [])
 
-    def test_not_found_falls_back_to_llm(self) -> None:
+    def test_not_found_is_returned_without_uncited_llm_fallback(self) -> None:
         rag = RecordingRag(True, {"status": "NOT_FOUND", "answer": "Informația nu a fost găsită", "citations": []})
         llm = RecordingLlm("fallback")
         reply = ChatService(rag, llm).reply("Q", [])
         self.assertEqual(rag.questions, ["Q"])
-        self.assertEqual((reply.mode, reply.status, reply.answer), ("llm", "LLM", "fallback"))
+        self.assertEqual((reply.mode, reply.status, reply.answer), ("rag", "NOT_FOUND", "Informația nu a fost găsită"))
+        self.assertEqual(llm.calls, [])
 
-    def test_unavailable_falls_back_to_llm(self) -> None:
+    def test_unavailable_fails_closed_without_llm_fallback(self) -> None:
         rag = RecordingRag(True, {"status": "UNAVAILABLE", "answer": None, "citations": [],
                                   "confidence": {"reasons": ["boom"]}})
         llm = RecordingLlm("fallback")
-        reply = ChatService(rag, llm).reply("Q", [])
-        self.assertEqual((reply.mode, reply.answer), ("llm", "fallback"))
-        self.assertEqual(len(llm.calls), 1)
+        with self.assertRaisesRegex(LlmUnavailableError, "boom"):
+            ChatService(rag, llm).reply("Q", [])
+        self.assertEqual(llm.calls, [])
+
+    def test_selected_clarification_restores_original_question(self) -> None:
+        rag = RecordingRag(True, {"status": "NOT_FOUND", "answer": "Nu există", "citations": []})
+        history = [
+            {"role": "user", "content": "Ce târguri au loc în septembrie?"},
+            {"role": "assistant", "content": "La care proiect vă referiți?\n- Proiect A\n- Proiect B"},
+        ]
+        ChatService(rag, RecordingLlm()).reply("Proiect B", history)
+        self.assertEqual(rag.questions, [
+            'Ce târguri au loc în septembrie?\nDocument selectat pentru clarificare: "Proiect B"'
+        ])
 
     def test_llm_error_becomes_llm_unavailable(self) -> None:
         llm = RecordingLlm(error=RuntimeError("OPENROUTER_API_KEY is not configured"))

@@ -50,6 +50,17 @@ describe("durable chat rendering", () => {
     expect(screen.getAllByRole("button").some(button => button.textContent?.includes("example.com"))).toBe(true);
     expect(assistant.sources?.map(source => source.documentId)).toEqual(["2", "1"]);
   });
+  it("renders structured clarification choices as actions", () => {
+    const [, assistant] = toMessages({ ...row, text: "Which project?", generationStatus: "COMPLETED", aiReply: {
+      mode: "rag", status: "NEEDS_CLARIFICATION", answer: "Which project?", citations: [],
+      clarificationChoices: [{ documentId: "doc-a", label: "Project A" }],
+    } });
+    let selected = "";
+    render(<AssistantMessage message={assistant}
+      onSelectClarification={(choice) => { selected = choice.documentId; }} />);
+    screen.getByRole("button", { name: "Project A" }).click();
+    expect(selected).toBe("doc-a");
+  });
   it("links plain URLs and Markdown without enabling unsafe protocols or raw HTML", () => {
     render(<AssistantMessage message={{ id: "1", role: "assistant", createdAt: 1,
       content: "https://example.com [Website](https://example.org/path) [Unsafe](javascript:alert) <script>bad()</script>",

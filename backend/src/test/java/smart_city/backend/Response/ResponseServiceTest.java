@@ -134,7 +134,7 @@ class ResponseServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     }
 
     @Test
-    void clarificationChoicesAreListedUnderTheAnswer() {
+    void clarificationChoicesRemainStructuredWithoutDuplicatingTheVisibleAnswer() {
         gateway.replyWith(new LlmReply(
                 "rag",
                 "NEEDS_CLARIFICATION",
@@ -146,8 +146,11 @@ class ResponseServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                 )
         ));
 
-        assertThat(send("Taxa?").text())
-                .isEqualTo("Care document?\n- Decizia A\n- Decizia B");
+        ResponseView response = send("Taxa?");
+        assertThat(response.text()).isEqualTo("Care document?");
+        assertThat(response.aiReply().clarificationChoices())
+                .extracting(LlmClarificationChoice::label)
+                .containsExactly("Decizia A", "Decizia B");
     }
 
     @Test

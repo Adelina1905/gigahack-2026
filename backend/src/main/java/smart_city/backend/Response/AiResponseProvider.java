@@ -45,7 +45,12 @@ public class AiResponseProvider {
                 continue;
             }
             history.add(LlmTurn.user(response.getPrompt()));
-            history.add(LlmTurn.assistant(response.getText()));
+            // The UI renders clarification choices separately, but the internal
+            // RAG service needs them in history to recognize the selected title.
+            String assistantText = response.getAiReply() == null
+                    ? response.getText()
+                    : response.getAiReply().displayText();
+            history.add(LlmTurn.assistant(assistantText));
         }
 
         int from = Math.max(0, history.size() - maxHistory);

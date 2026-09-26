@@ -132,6 +132,9 @@ function ChatWindow({
   // Offer the support line when the latest reply couldn't answer; dismissing hides it for that reply only.
   const [dismissedNoticeId, setDismissedNoticeId] = useState<string | null>(null);
   const lastMessage = messages.at(-1);
+  const latestAssistantId = messages.slice().reverse().find(
+    (message: ChatMessage) => message.role === "assistant",
+  )?.id;
   const noticeFor =
     !isTyping && lastMessage?.role === "assistant" && isUnanswered(lastMessage.content) ? lastMessage.id : null;
   const previewMessage = sourcePreview
@@ -155,6 +158,9 @@ function ChatWindow({
                 <UserMessage key={m.id} message={m} onRetry={onRetry} />
               ) : (
                 <AssistantMessage key={m.id} message={m} onRegenerate={onRegenerate}
+                  onSelectClarification={m.id === latestAssistantId && !isTyping
+                    ? (choice) => { onSend(choice.label); }
+                    : undefined}
                   onToggleSpeech={voice.toggleSpeech} speechState={voice.speechStateFor(m)}
                   activeSourceIndex={sourcePreview?.messageId === m.id ? sourcePreview.sourceIndex : null}
                   sourcePanelId={SOURCE_PANEL_ID}

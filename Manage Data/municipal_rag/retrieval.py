@@ -24,9 +24,14 @@ def interpret_query(question: str, config: RagConfig, api_key: str) -> dict[str,
     if not normalized:
         raise RuntimeError("Query interpreter returned no Romanian retrieval query")
     historical = bool(re.search(r"\b(?:19|20)\d{2}\b|\b(?:istoric|istorică|versiunea din|la data de|în anul|историческ\w*|по состоянию)\b", question, re.I))
-    multiple_projects = bool(re.search(r"\b(?:compară|comparați|proiectele|documentele|mai multe proiecte|сравн(?:и|ите)|проекты|документы)\b", question, re.I))
+    locations = parsed.get("locations", [])
+    unique_locations = {_location.casefold().strip() for _location in map(str, locations) if _location.strip()}
+    multiple_projects = len(unique_locations) > 1 or bool(re.search(
+        r"\b(?:compară|comparați|proiectele|documentele|mai multe proiecte|сравн(?:и|ите)|проекты|документы)\b",
+        question, re.I,
+    ))
     return {"language": language, "normalizedRomanianQuery": normalized, "constraints": {
-        "entities": parsed.get("entities", []), "locations": parsed.get("locations", []),
+        "entities": parsed.get("entities", []), "locations": locations,
         "dates": parsed.get("dates", []), "factTypes": parsed.get("factTypes", []),
         "multipleProjects": multiple_projects,
         "historicalIntent": historical,
@@ -78,8 +83,16 @@ def rerank(query: str, candidates: list[dict[str, Any]], config: RagConfig, api_
 
 
 def client_for(path: Path | None, url: str | None) -> QdrantClient:
+    url = url or os.environ.get("QDRANT_URL", "").strip() or (
+        "http://127.0.0.1:6333" if path is None else None
+    )
     if url:
-        return QdrantClient(url=url, api_key=os.environ.get("QDRANT_API_KEY") or None, timeout=30)
+        return QdrantClient(
+            url=url,
+            api_key=os.environ.get("QDRANT_API_KEY") or None,
+            timeout=30,
+            prefer_grpc=True,
+        )
     return QdrantClient(path=str((path or Path(__file__).resolve().parents[1] / "data" / "08_qdrant").resolve()))
 
 

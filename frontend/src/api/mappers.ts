@@ -72,7 +72,10 @@ export function toAssistantMessage(response: ResponseView): ChatMessage {
     generationVersion: response.generationVersion ?? 0,
     errorCode: response.errorCode,
     mode: response.aiReply?.mode,
-    clarificationChoices: (response.aiReply?.clarificationChoices ?? []).map(choice => choice.label),
+    clarificationChoices: (response.aiReply?.clarificationChoices ?? []).map(choice => ({
+      documentId: choice.documentId,
+      label: choice.label,
+    })),
   };
 }
 

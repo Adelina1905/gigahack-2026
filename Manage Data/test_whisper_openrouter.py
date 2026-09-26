@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Small OpenRouter Whisper transcription smoke test.
 
 Uses only the Python standard library. The API key is read from the
