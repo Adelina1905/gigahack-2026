@@ -1,5 +1,6 @@
 import { ApiError } from "./client";
 import type { ChatView, DocumentView, ResponseView } from "./types";
+import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 // In-memory stand-in for the Spring Boot API, persisted to localStorage so
 // reloads behave like the real backend. Enabled with VITE_USE_MOCK=true.
@@ -102,7 +103,7 @@ export async function getChat(chatId: string): Promise<ChatView> {
   return findChat(load(), chatId);
 }
 
-export async function createChat(name = "New chat"): Promise<ChatView> {
+export async function createChat(name = DEFAULT_CHAT_NAME): Promise<ChatView> {
   await wait(100);
   const store = load();
   const timestamp = now();
@@ -161,7 +162,7 @@ export async function createResponse(chatId: string, text: string): Promise<Resp
   };
 
   store.responses.push(response);
-  if (chat.name === "New chat") chat.name = titleFrom(text);
+  if (chat.name === DEFAULT_CHAT_NAME) chat.name = titleFrom(text);
   chat.updatedAt = response.createdAt;
   save(store);
   return response;

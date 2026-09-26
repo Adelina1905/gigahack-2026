@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
 import SourceItem from "./SourceItem";
 
@@ -6,12 +7,13 @@ interface SourceListProps {
 }
 
 function SourceList({ sources }: SourceListProps) {
+  const { t } = useI18n();
   if (sources.length === 0) return null;
 
   return (
     <div className="mt-3 border-t border-border pt-2 whitespace-normal">
       <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-primary">
-        Sources <span className="font-medium text-text-subtle">({sources.length})</span>
+        {t.message.sources} <span className="font-medium text-text-subtle">({sources.length})</span>
       </p>
       <ul className="flex flex-col">
         {sources.map((source, i) => (

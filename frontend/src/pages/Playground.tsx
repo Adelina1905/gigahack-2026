@@ -6,8 +6,11 @@ import SiteHeader from "../components/SiteHeader";
 import { useActiveChatId } from "../hooks/useActiveChatId";
 import { useChat } from "../hooks/useChat";
 import { useChats } from "../hooks/useChats";
+import { useI18n } from "../i18n/context";
+import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 function Playground() {
+  const { t } = useI18n();
   const [activeChatId, navigate] = useActiveChatId();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const chatList = useChats();
@@ -74,12 +77,12 @@ function Playground() {
             <CityGatesArt className="h-48 2xl:h-64" />
           </div>
 
-          <nav aria-label="Breadcrumb" className="relative border-b border-border bg-background/70 px-4 py-2.5">
+          <nav aria-label={t.breadcrumb} className="relative border-b border-border bg-background/70 px-4 py-2.5">
             <ol className="mx-auto flex max-w-3xl items-center gap-2 px-4 text-sm">
-              <li className="shrink-0 text-primary">Conversations</li>
+              <li className="shrink-0 text-primary">{t.sidebar.title}</li>
               <li aria-hidden="true" className="text-text-subtle">/</li>
               <li aria-current="page" className="truncate text-text-muted">
-                {activeName ?? "New chat"}
+                {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
               </li>
             </ol>
           </nav>
