@@ -1,4 +1,4 @@
-"""Shared primitives for the version-2 municipal document pipeline."""
+"""Shared primitives for the municipal document pipeline."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-PIPELINE_VERSION = "2.0"
+PIPELINE_VERSION = "3.0"
 MANAGE_DATA_DIRECTORY = Path(__file__).resolve().parent
-DATA_V2_DIRECTORY = MANAGE_DATA_DIRECTORY / "data" / "v2"
+DATA_DIRECTORY = MANAGE_DATA_DIRECTORY / "data"
 
 
 def sha256_bytes(content: bytes) -> str:
