@@ -16,7 +16,7 @@ from pathlib import Path
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 SEARCH_SCRIPT = SCRIPT_DIRECTORY / "09_search_qdrant.py"
-DEFAULT_COLLECTION = "municipal_documents_review_qwen3_8b"
+DEFAULT_COLLECTION = "municipal_documents"
 
 
 def parse_arguments() -> argparse.Namespace:

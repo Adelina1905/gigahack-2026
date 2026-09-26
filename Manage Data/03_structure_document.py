@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from pipeline_core import DATA_V2_DIRECTORY, read_json, sha256_text, stable_id, write_versioned_json
+from pipeline_core import DATA_DIRECTORY, read_json, sha256_text, stable_id, write_versioned_json
 
 
-DEFAULT_OUTPUT_DIRECTORY = DATA_V2_DIRECTORY / "03_structured"
+DEFAULT_OUTPUT_DIRECTORY = DATA_DIRECTORY / "03_structured"
 
 
 def metadata_value(extracted: dict[str, Any], key: str) -> str | None:
@@ -65,6 +65,13 @@ def structure_document(input_path: Path) -> dict[str, Any]:
     title = metadata_value(extracted, "Title") or manifest.get("title")
     publisher = metadata_value(extracted, "Publisher") or manifest.get("publisher")
     published_date = metadata_value(extracted, "Publication date") or manifest.get("publishedDate")
+    title_citation = None
+    if manifest.get("source", {}).get("sourceType") == "municipal_corpus_api" and title:
+        title_citation = {
+            "passageId": stable_id("passage", manifest["documentId"], "api_metadata", "title", title),
+            "quote": title,
+            "provenance": {"kind": "api_metadata", "field": "title"},
+        }
 
     passages: list[dict[str, Any]] = []
     heading_path: list[str] = []
@@ -106,6 +113,8 @@ def structure_document(input_path: Path) -> dict[str, Any]:
         "publishedDate": published_date,
         "retrievedAt": manifest.get("retrievedAt"),
         "source": source,
+        "sourceMetadata": extracted.get("sourceMetadata", {}),
+        "titleCitation": title_citation,
         "extraction": extracted.get("extraction", {}),
         "assets": [
             {

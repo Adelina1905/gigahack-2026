@@ -27,6 +27,7 @@ extract = load_script("02_extract_content.py")
 structure = load_script("03_structure_document.py")
 enrich = load_script("04_enrich_document.py")
 chunking = load_script("06_create_chunks.py")
+answering = load_script("10_answer_question.py")
 
 
 class PipelineV2Tests(unittest.TestCase):
@@ -83,6 +84,11 @@ class PipelineV2Tests(unittest.TestCase):
             self.assertEqual(len(document["passages"]), 1)
             self.assertEqual(document["passages"][0]["type"], "paragraph")
 
+    def test_multiline_spreadsheet_block_is_not_discarded_as_heading(self):
+        text = "## Worksheet\nBudget municipal\nVenituri 1000 lei"
+        self.assertEqual(extract.api_block_type(text), "paragraph")
+        self.assertEqual(extract.api_block_type("## Worksheet"), "heading")
+
     def test_event_without_year_is_flagged_instead_of_guessed(self):
         passage = {
             "passageId": "passage-1",
@@ -101,6 +107,168 @@ class PipelineV2Tests(unittest.TestCase):
         ]
         groups = chunking.group_passages(passages, 450)
         self.assertEqual([len(group) for group in groups], [1, 1])
+
+    def test_answer_evidence_is_deduplicated(self):
+        citation = {
+            "passageId": "passage-1",
+            "quote": "Informație municipală suficientă și direct verificabilă.",
+            "sourceUrl": "https://example.test",
+            "locator": {"kind": "source_lines", "startLine": 1, "endLine": 1},
+        }
+        response = {
+            "results": [
+                {
+                    "score": 0.8,
+                    "documentId": "doc-1",
+                    "title": "Document",
+                    "indexingStatus": "READY",
+                    "citations": [citation],
+                },
+                {
+                    "score": 0.7,
+                    "documentId": "doc-1",
+                    "title": "Document",
+                    "indexingStatus": "READY",
+                    "citations": [citation],
+                },
+            ]
+        }
+        evidence = answering.build_evidence(response, 0.35)
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0]["id"], "S1")
+
+    def test_answer_rejects_unknown_citation(self):
+        evidence = [{"id": "S1"}]
+        answer = {
+            "answer": "Răspuns [S2].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S2"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "high",
+        }
+        with self.assertRaises(RuntimeError):
+            answering.validate_answer(answer, evidence)
+
+    def test_answer_accepts_matching_inline_citations(self):
+        evidence = [
+            {"id": "S1", "documentId": "doc-1"},
+            {"id": "S2", "documentId": "doc-2"},
+        ]
+        answer = {
+            "answer": "Prima afirmație [S1]. A doua afirmație [S2].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1", "S2"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "high",
+        }
+        answering.validate_answer(answer, evidence)
+
+    def test_answer_does_not_split_at_romanian_street_abbreviation(self):
+        evidence = [{"id": "S1", "documentId": "doc-1", "quote": "Lucrări pe strada Petru Rareș."}]
+        answer = {
+            "answer": "Au fost executate lucrări pe str. Petru Rareș [S1].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "high",
+        }
+        answering.validate_answer(answer, evidence)
+        self.assertEqual(
+            len(answering.split_answer_segments("Lucrări pe bd. Iu. Gagarin [S1].")),
+            1,
+        )
+
+    def test_answer_rejects_ids_missing_from_answer_text(self):
+        evidence = [{"id": "S1"}]
+        answer = {
+            "answer": "Afirmație fără marcaj inline.",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "medium",
+        }
+        with self.assertRaisesRegex(RuntimeError, "Inline citations"):
+            answering.validate_answer(answer, evidence)
+
+    def test_answer_rejects_citations_dumped_after_uncited_claims(self):
+        evidence = [
+            {"id": "S1", "documentId": "doc-1"},
+            {"id": "S2", "documentId": "doc-2"},
+        ]
+        answer = {
+            "answer": "Prima lucrare repară străzile municipale. A doua lucrare repară curțile [S1] [S2].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1", "S2"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "medium",
+        }
+        with self.assertRaisesRegex(RuntimeError, "immediate citation"):
+            answering.validate_answer(answer, evidence)
+
+    def test_partial_answer_requires_explicit_limitations(self):
+        evidence = [{"id": "S1", "documentId": "doc-1"}]
+        answer = {
+            "answer": "Corpusul descrie doar o parte dintre lucrări [S1].",
+            "informationStatus": "PARTIAL",
+            "evidenceIds": ["S1"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "medium",
+        }
+        with self.assertRaisesRegex(RuntimeError, "must explain"):
+            answering.validate_answer(answer, evidence)
+
+    def test_numeric_sentence_cannot_mix_documents(self):
+        evidence = [
+            {"id": "S1", "documentId": "water-project", "quote": "Bugetul este de 60 mln lei."},
+            {"id": "S2", "documentId": "yard-project", "quote": "Lucrările au costat 60 mln lei."},
+        ]
+        answer = {
+            "answer": "Lucrările din curți au costat 60 de milioane de lei [S1] [S2].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1", "S2"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "medium",
+        }
+        with self.assertRaisesRegex(RuntimeError, "numeric sentence"):
+            answering.validate_answer(answer, evidence)
+
+    def test_sentence_cannot_overcite_one_document(self):
+        evidence = [
+            {"id": "S1", "documentId": "doc-1"},
+            {"id": "S2", "documentId": "doc-1"},
+        ]
+        answer = {
+            "answer": "Au fost reparate mai multe căi de acces [S1] [S2].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1", "S2"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "high",
+        }
+        with self.assertRaisesRegex(RuntimeError, "same document"):
+            answering.validate_answer(answer, evidence)
+
+    def test_numeric_claim_must_appear_in_cited_quote(self):
+        evidence = [
+            {"id": "S1", "documentId": "doc-1", "quote": "Contractul valorează 14 mln lei."},
+        ]
+        answer = {
+            "answer": "Pentru lucrări au fost alocate 60 mln lei [S1].",
+            "informationStatus": "SUPPORTED",
+            "evidenceIds": ["S1"],
+            "contradictionDetails": [],
+            "limitations": [],
+            "confidence": "high",
+        }
+        with self.assertRaisesRegex(RuntimeError, "numeric claim"):
+            answering.validate_answer(answer, evidence)
 
 
 if __name__ == "__main__":

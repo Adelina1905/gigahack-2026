@@ -11,17 +11,18 @@ from typing import Any
 from urllib.parse import urlparse
 
 from pipeline_core import (
-    DATA_V2_DIRECTORY,
+    DATA_DIRECTORY,
     MANAGE_DATA_DIRECTORY,
     read_json,
     resolve_managed_path,
     sha256_bytes,
+    split_text_blocks,
     unique_preserving_order,
     write_versioned_json,
 )
 
 
-DEFAULT_OUTPUT_DIRECTORY = DATA_V2_DIRECTORY / "05_validated"
+DEFAULT_OUTPUT_DIRECTORY = DATA_DIRECTORY / "05_validated"
 DOCUMENT_SCHEMA = MANAGE_DATA_DIRECTORY / "schemas" / "document.schema.json"
 
 
@@ -84,17 +85,86 @@ def validate_line_citation(passage: dict[str, Any], source_lines: list[str]) -> 
     return [] if actual == passage.get("citationText") else ["CITATION_TEXT_SOURCE_MISMATCH"]
 
 
+def validate_api_citation(
+    passage: dict[str, Any], api_document: dict[str, Any]
+) -> list[str]:
+    provenance = passage.get("provenance", {})
+    if provenance.get("kind") == "api_metadata":
+        field = provenance.get("field")
+        if field != "title":
+            return ["API_METADATA_LOCATOR_INVALID"]
+        return (
+            []
+            if api_document.get(field) == passage.get("quote", passage.get("citationText"))
+            else ["CITATION_TEXT_SOURCE_MISMATCH"]
+        )
+    if provenance.get("kind") == "scraper_text":
+        text = api_document.get("text")
+        start = provenance.get("startLine")
+        end = provenance.get("endLine")
+        if (
+            not isinstance(text, str)
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or start < 1
+            or end < start
+        ):
+            return ["SCRAPER_TEXT_LOCATOR_INVALID"]
+        lines = text.splitlines()
+        if end > len(lines):
+            return ["SCRAPER_TEXT_RANGE_OUT_OF_BOUNDS"]
+        expected = "\n".join(lines[start - 1 : end]).strip()
+        return [] if expected == passage.get("citationText") else ["CITATION_TEXT_SOURCE_MISMATCH"]
+    if provenance.get("kind") not in {"api_page", "scraper_page"}:
+        return ["CITATION_LOCATOR_INVALID"]
+    page_index = provenance.get("pageIndex")
+    block_index = provenance.get("blockIndex")
+    pages = api_document.get("pages")
+    if (
+        not isinstance(pages, list)
+        or not isinstance(page_index, int)
+        or page_index < 0
+        or page_index >= len(pages)
+        or not isinstance(block_index, int)
+        or block_index < 1
+    ):
+        return ["API_PAGE_LOCATOR_INVALID"]
+    page = pages[page_index]
+    if not isinstance(page, dict) or not isinstance(page.get("text"), str):
+        return ["API_PAGE_TEXT_UNAVAILABLE"]
+    blocks = split_text_blocks(page["text"])
+    if block_index > len(blocks):
+        return ["API_BLOCK_RANGE_OUT_OF_BOUNDS"]
+    expected = blocks[block_index - 1]["citationText"]
+    return [] if expected == passage.get("citationText") else ["CITATION_TEXT_SOURCE_MISMATCH"]
+
+
 def validate_document(input_path: Path) -> dict[str, Any]:
     document = read_json(input_path)
     validate_schema(document)
     passages = document["passages"]
+    source = document["source"]
     document_data_issues, source_path, document_citation_issues = validate_source(document)
     source_lines: list[str] = []
+    api_document: dict[str, Any] | None = None
     if source_path.is_file() and source_path.suffix.lower() in {".txt", ".md", ".html", ".htm"}:
         try:
             source_lines = source_path.read_text(encoding="utf-8-sig").splitlines()
         except UnicodeDecodeError:
             document_citation_issues.append("SOURCE_TEXT_ENCODING_INVALID")
+    elif source_path.is_file() and source.get("sourceType") in {
+        "municipal_corpus_api", "chisinau_scraper_snapshot"
+    }:
+        try:
+            api_document = read_json(source_path)
+        except (OSError, ValueError):
+            document_citation_issues.append("API_SOURCE_JSON_INVALID")
+    title_citation = document.get("titleCitation")
+    if title_citation is not None:
+        if not isinstance(title_citation, dict) or api_document is None:
+            document_citation_issues.append("TITLE_CITATION_INVALID")
+        else:
+            document_citation_issues.extend(validate_api_citation(title_citation, api_document))
 
     passage_ids: set[str] = set()
     ready_passages = 0
@@ -107,6 +177,8 @@ def validate_document(input_path: Path) -> dict[str, Any]:
         passage_ids.add(passage_id)
         if source_lines:
             citation_issues.extend(validate_line_citation(passage, source_lines))
+        elif api_document is not None:
+            citation_issues.extend(validate_api_citation(passage, api_document))
         elif passage.get("provenance", {}).get("kind") not in {"pdf_page", "html_extraction"}:
             citation_issues.append("CITATION_SOURCE_UNAVAILABLE")
         if not passage.get("citationText", "").strip():
@@ -126,6 +198,15 @@ def validate_document(input_path: Path) -> dict[str, Any]:
     data_status = "READY" if passages and not document_data_issues else "NEEDS_REVIEW"
     citation_status = "READY" if passages and not document_citation_issues else "NEEDS_REVIEW"
     overall_status = "READY" if data_status == citation_status == "READY" and ready_passages == len(passages) else "NEEDS_REVIEW"
+    # v3 quarantines bad passages without suppressing clean passages. Only broken
+    # source identity/provenance or an unreadable document blocks the document.
+    blocking_codes = {
+        "SOURCE_SNAPSHOT_MISSING", "SOURCE_HASH_MISMATCH", "SOURCE_URL_MISSING_OR_INVALID",
+        "RAW_WEBPAGE_SNAPSHOT_MISSING", "SOURCE_TEXT_ENCODING_INVALID", "API_SOURCE_JSON_INVALID",
+        "OCR_REQUIRED",
+    }
+    blocking_document_issues = blocking_codes.intersection(document_data_issues + document_citation_issues)
+    indexing_decision = "PRODUCTION" if ready_passages > 0 and not blocking_document_issues else "REVIEW"
     document["schemaVersion"] = "2.2"
     document["pipelineStage"] = "validated"
     document["validation"] = {
@@ -134,7 +215,7 @@ def validate_document(input_path: Path) -> dict[str, Any]:
         "citationStatus": citation_status,
         "citationIssues": unique_preserving_order(document_citation_issues),
         "overallStatus": overall_status,
-        "indexingDecision": "PRODUCTION" if overall_status == "READY" else "REVIEW",
+        "indexingDecision": indexing_decision,
     }
     document["qualityReport"] = {
         "totalPassages": len(passages),
