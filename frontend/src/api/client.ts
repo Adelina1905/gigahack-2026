@@ -14,6 +14,13 @@ export interface ChatResponse {
     createdAt: string;
 }
 
+export interface Document {
+    id: number;
+    title: string;
+    documentLink: string;
+    addedAt: string;
+}
+
 interface CreateChatRequest {
     name: string;
 }
@@ -24,6 +31,11 @@ interface UpdateChatRequest {
 
 interface CreateResponseRequest {
     text: string;
+}
+
+interface CreateDocumentRequest {
+    title: string;
+    documentLink: string;
 }
 
 async function apiRequest<T>(
@@ -105,6 +117,26 @@ export function createResponse(
     const request: CreateResponseRequest = { text };
 
     return apiRequest<ChatResponse>(`/chats/${chatId}/responses`, {
+        method: "POST",
+        body: JSON.stringify(request),
+    });
+}
+
+export function getDocuments(): Promise<Document[]> {
+    return apiRequest<Document[]>("/documents");
+}
+
+export function getDocument(documentId: number): Promise<Document> {
+    return apiRequest<Document>(`/documents/${documentId}`);
+}
+
+export function createDocument(
+    title: string,
+    documentLink: string,
+): Promise<Document> {
+    const request: CreateDocumentRequest = { title, documentLink };
+
+    return apiRequest<Document>("/documents", {
         method: "POST",
         body: JSON.stringify(request),
     });
