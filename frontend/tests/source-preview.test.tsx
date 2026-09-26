@@ -111,7 +111,12 @@ describe("source preview", () => {
     expect(link.getAttribute("href")).toBe("https://example.com/report.pdf?download=1#page=4");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-    expect(document.querySelector("iframe")).toBeNull();
+    const websitePreview = screen.getByTitle(`${en.message.websitePreview}: A very detailed municipal PDF`);
+    expect(websitePreview.getAttribute("src")).toBe("https://example.com/report.pdf?download=1#page=4");
+    expect(websitePreview.getAttribute("loading")).toBe("lazy");
+    expect(websitePreview.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(websitePreview.getAttribute("sandbox")).toBe("allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts");
+    expect(screen.getByText(en.message.websitePreviewHint)).toBeTruthy();
   });
 
   it("navigates in order and never links an unsafe or unavailable URL", () => {
@@ -123,6 +128,7 @@ describe("source preview", () => {
     expect(screen.getByText("Source 2 of 2")).toBeTruthy();
     expect(screen.getByText(en.message.noLink)).toBeTruthy();
     expect(screen.queryByRole("link", { name: en.message.openSource })).toBeNull();
+    expect(document.querySelector("iframe")).toBeNull();
     expect(screen.getByRole("button", { name: /Next source/i }).hasAttribute("disabled")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: /Previous source/i }));

@@ -235,6 +235,27 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
             {hostname && <span>{hostname}</span>}{addedDate && <span>{addedDate}</span>}{source.documentId && <span className="truncate">{source.documentId}</span>}
           </div>}
 
+          {link && <section className="mb-5 overflow-hidden rounded-sm border border-border bg-background-secondary">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.websitePreview}</h3>
+              <a href={link} target="_blank" rel="noopener noreferrer"
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                {t.message.openSource}<span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            <iframe
+              src={link}
+              title={`${t.message.websitePreview}: ${source.title}`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+              className="h-56 w-full border-0 bg-white"
+            />
+            <p className="border-t border-border px-3 py-2 text-xs leading-relaxed text-text-subtle">
+              {t.message.websitePreviewHint}
+            </p>
+          </section>}
+
           {source.exactQuote && <div className="mb-5">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.supportingQuote}</p>
             <blockquote className="break-words border-l-4 border-accent bg-background-secondary px-4 py-3 text-sm leading-relaxed text-text">{source.exactQuote}</blockquote>
@@ -265,10 +286,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
             <p className="mb-3 text-sm text-text-muted">{t.message.previewUnavailable}</p>
           </div>}
 
-          {link ? <a href={link} target="_blank" rel="noopener noreferrer"
-            className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-text-inverted hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            {t.message.openSource}<span aria-hidden="true">↗</span></a>
-            : <p className="mt-6 text-sm text-text-subtle">{t.message.noLink}</p>}
+          {!link && <p className="mt-6 text-sm text-text-subtle">{t.message.noLink}</p>}
         </div>
 
         {sources.length > 1 && <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-5 py-3">
