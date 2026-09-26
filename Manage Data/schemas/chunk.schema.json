@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://municipal-assistant.local/schemas/chunk.schema.json",
+  "title": "Municipal retrieval chunk",
+  "type": "object",
+  "required": ["chunkId", "documentId", "documentType", "language", "text", "citationText", "citations", "metadata", "indexingStatus"],
+  "properties": {
+    "chunkId": {"type": "string"},
+    "documentId": {"type": "string"},
+    "documentType": {"type": "string"},
+    "language": {"type": "string"},
+    "text": {"type": "string", "minLength": 1},
+    "citationText": {"type": "string", "minLength": 1},
+    "citations": {"type": "array", "minItems": 1},
+    "metadata": {"type": "object"},
+    "indexingStatus": {"enum": ["READY", "CITATION_PENDING", "NEEDS_REVIEW"]}
+  }
+}

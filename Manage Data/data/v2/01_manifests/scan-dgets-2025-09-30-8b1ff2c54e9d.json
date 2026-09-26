@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "2.0",
+  "pipelineVersion": "2.0",
+  "documentId": "scan-dgets-2025-09-30-8b1ff2c54e9d",
+  "title": "Scan DGETS 2025-09-30",
+  "documentType": "administrative_document",
+  "language": "ro",
+  "publisher": "DGETS",
+  "publishedDate": null,
+  "retrievedAt": "2026-09-25T22:33:13.937422+03:00",
+  "source": {
+    "sourceType": "pdf",
+    "sourceUrl": "https://chisinauedu.dgets.md/storage/attestations/1775034260_scan-2025-09-30-10-13-39-485.pdf",
+    "originalFilename": "dgets-attestation-scan.pdf",
+    "snapshotPath": "data/v2/01_sources/scan-dgets-2025-09-30-8b1ff2c54e9d/original.pdf",
+    "mediaType": "application/pdf",
+    "bytes": 1580501,
+    "sha256": "8b1ff2c54e9d731be855265ac3eccd0543beb318681d51bde71d1e3a4a9dc7f6"
+  }
+}
