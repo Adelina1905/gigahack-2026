@@ -60,10 +60,6 @@ export interface ChatCreateRequest {
   projectId?: string;
 }
 
-export interface ChatUpdateRequest {
-  name: string;
-}
-
 export interface ChatProjectRequest {
   projectId: string | null;
 }

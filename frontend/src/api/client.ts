@@ -11,7 +11,6 @@ import type {
     AlertView,
     ChatCreateRequest,
     ChatProjectRequest,
-    ChatUpdateRequest,
     ChatView,
     DocumentCreateRequest,
     DocumentView,
@@ -120,15 +119,6 @@ export function createChat(
 
     return apiRequest<ChatView>("/chats", {
         method: "POST",
-        body: JSON.stringify(request),
-    });
-}
-
-export function updateChat(chatId: string, name: string): Promise<ChatView> {
-    const request: ChatUpdateRequest = { name };
-
-    return apiRequest<ChatView>(`/chats/${chatId}`, {
-        method: "PATCH",
         body: JSON.stringify(request),
     });
 }

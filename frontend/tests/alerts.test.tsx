@@ -473,7 +473,7 @@ describe("Sidebar alerts", () => {
   it("shows a project's unread badge and opens its alert settings", () => {
     const opened: string[] = [];
     render(<Sidebar chats={[]} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
-      onNewChat={noop} onSelect={noop} onRename={noop} onDelete={noop} onMoveChat={noop}
+      onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
       onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
       unreadAlertsByProject={{ p1: 3 }} onOpenProjectAlerts={project => opened.push(project.id)}
       isOpen onClose={noop} />);

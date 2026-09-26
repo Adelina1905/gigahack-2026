@@ -143,8 +143,9 @@ the anonymous ownership cookie. Use the same cookie when reopening a chat.
 The older `/api/llm/chats` route is an ephemeral diagnostic API, not the application
 chat API. Python `/v1/chat` remains internal and does not write to PostgreSQL.
 
-- `POST /api/chats`: `{name?, requestId?}`. A browser-generated UUID deduplicates
-  creation, including after a lost HTTP response or a later rename.
+- `POST /api/chats`: `{name?, requestId?, projectId?}`. A browser-generated UUID deduplicates
+  creation, including after a lost HTTP response. Chats cannot be renamed: one still
+  called "New chat" takes its name from its first question.
 - `POST /api/chats/{chatId}/responses`: `{text, requestId?}`. Text is trimmed and
   must contain 1–8,000 characters. Reuse the UUID after an uncertain network result.
   Reusing it with different text returns `409 REQUEST_CONFLICT`.
