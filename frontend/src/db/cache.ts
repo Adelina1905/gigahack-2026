@@ -80,3 +80,15 @@ export function removeChat(chatId: string): Promise<void> {
     undefined,
   );
 }
+
+// Move the first-message outbox only after Java has acknowledged the chat.
+export function moveDraft(chatId: string, messages: ChatMessage[]): Promise<void> {
+  return safely(
+    () => db.transaction("rw", db.messages, async () => {
+      await db.messages.where("chatId").equals("draft").delete();
+      await db.messages.where("chatId").equals(chatId).delete();
+      await db.messages.bulkPut(messages.map((message, position) => ({ ...message, chatId, position })));
+    }),
+    undefined,
+  );
+}

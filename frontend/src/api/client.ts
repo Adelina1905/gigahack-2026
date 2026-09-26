@@ -5,12 +5,13 @@ import type {
     DocumentCreateRequest,
     DocumentView,
     ResponseCreateRequest,
+    ResponseRegenerateRequest,
     ResponseView,
 } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081/api";
+    import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 // status is 0 when the request never reached the server (offline, CORS, backend down).
 export class ApiError extends Error {
@@ -78,8 +79,8 @@ export function getChat(chatId: string): Promise<ChatView> {
     return apiRequest<ChatView>(`/chats/${chatId}`);
 }
 
-export function createChat(name = DEFAULT_CHAT_NAME): Promise<ChatView> {
-    const request: ChatCreateRequest = { name };
+export function createChat(name = DEFAULT_CHAT_NAME, requestId?: string): Promise<ChatView> {
+    const request: ChatCreateRequest = { name, requestId };
 
     return apiRequest<ChatView>("/chats", {
         method: "POST",
@@ -118,8 +119,9 @@ export function getResponse(
 export function createResponse(
     chatId: string,
     text: string,
+    requestId?: string,
 ): Promise<ResponseView> {
-    const request: ResponseCreateRequest = { text };
+    const request: ResponseCreateRequest = { text, requestId };
 
     return apiRequest<ResponseView>(`/chats/${chatId}/responses`, {
         method: "POST",
@@ -131,10 +133,11 @@ export function createResponse(
 export function regenerateResponse(
     chatId: string,
     responseId: number,
+    request: ResponseRegenerateRequest,
 ): Promise<ResponseView> {
     return apiRequest<ResponseView>(
         `/chats/${chatId}/responses/${responseId}`,
-        { method: "PUT" },
+        { method: "PUT", body: JSON.stringify(request) },
     );
 }
 

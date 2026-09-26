@@ -1,5 +1,6 @@
 import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
+import { safeHttpUrl } from "./safeLink";
 
 interface SourceItemProps {
   source: SourceDocument;
@@ -23,7 +24,8 @@ const formatDate = (iso: string, locale: string) => {
 
 function SourceItem({ source, index }: SourceItemProps) {
   const { t } = useI18n();
-  const hostname = getHostname(source.link);
+  const link = safeHttpUrl(source.link);
+  const hostname = link ? getHostname(link) : "";
   const addedDate = formatDate(source.added_date, t.meta.intl);
 
   const content = (
@@ -33,9 +35,10 @@ function SourceItem({ source, index }: SourceItemProps) {
       </span>
 
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className={`truncate text-sm font-medium text-primary${source.link ? " hover:underline" : ""}`}>
+        <span className={`truncate text-sm font-medium text-primary${link ? " hover:underline" : ""}`}>
           {source.title}
         </span>
+        {source.exactQuote && <span className="mt-1 text-xs text-text-muted">{source.exactQuote}</span>}
         {(hostname || addedDate) && (
           <span className="truncate text-xs text-text-subtle">
             {hostname}
@@ -48,7 +51,7 @@ function SourceItem({ source, index }: SourceItemProps) {
   );
 
   // Sources without a URL are shown as plain text rather than a broken link.
-  if (!source.link) {
+  if (!link) {
     return (
       <li title={source.title} className="flex items-center gap-3 rounded-sm px-2 py-1.5">
         {content}
@@ -59,7 +62,7 @@ function SourceItem({ source, index }: SourceItemProps) {
   return (
     <li>
       <a
-        href={source.link}
+        href={link}
         target="_blank"
         rel="noopener noreferrer"
         title={source.title}

@@ -70,6 +70,10 @@ const ro = {
     added: (date: string) => `Adăugat ${date}`,
     citedIn: "Surse citate în acest răspuns",
     noLink: "Link indisponibil",
+    demo: "Răspuns demonstrativ",
+    pending: "Se așteaptă răspunsul…",
+    generationFailed: "Răspunsul nu a putut fi generat",
+    generationFailedKept: "Răspunsul nu a putut fi generat. Răspunsul anterior a fost păstrat",
   },
   support: {
     prefix: "Pentru mai multe informații, contactați serviciul de asistență la",
@@ -81,6 +85,8 @@ const ro = {
     generic: "Ceva nu a funcționat. Încercați din nou.",
     renameFailed: "Conversația nu a putut fi redenumită. Încercați din nou.",
     deleteFailed: "Conversația nu a putut fi ștearsă. Încercați din nou.",
+    tooLong: "Mesajul poate avea cel mult 8.000 de caractere.",
+    chatsLoadFailed: "Conversațiile nu au putut fi încărcate. Verificați conexiunea și reîncărcați pagina.",
   },
 };
 
@@ -154,6 +160,10 @@ const ru: Messages = {
     added: (date) => `Добавлено ${date}`,
     citedIn: "Источники в этом ответе",
     noLink: "Ссылка недоступна",
+    demo: "Демонстрационный ответ",
+    pending: "Ожидание ответа…",
+    generationFailed: "Не удалось получить ответ",
+    generationFailedKept: "Не удалось получить ответ. Предыдущий ответ сохранён",
   },
   support: {
     prefix: "Для получения дополнительной информации обратитесь в службу поддержки по номеру",
@@ -165,6 +175,8 @@ const ru: Messages = {
     generic: "Что-то пошло не так. Попробуйте ещё раз.",
     renameFailed: "Не удалось переименовать чат. Попробуйте ещё раз.",
     deleteFailed: "Не удалось удалить чат. Попробуйте ещё раз.",
+    tooLong: "Сообщение может содержать не более 8 000 символов.",
+    chatsLoadFailed: "Не удалось загрузить чаты. Проверьте подключение и перезагрузите страницу.",
   },
 };
 
@@ -233,6 +245,10 @@ const en: Messages = {
     added: (date) => `Added ${date}`,
     citedIn: "Cited in this answer",
     noLink: "No link available",
+    demo: "Demo response",
+    pending: "Waiting for response…",
+    generationFailed: "Response failed",
+    generationFailedKept: "Response failed. Previous answer kept",
   },
   support: {
     prefix: "For more information, contact support at",
@@ -244,6 +260,8 @@ const en: Messages = {
     generic: "Something went wrong. Please try again.",
     renameFailed: "Couldn't rename the chat. Please try again.",
     deleteFailed: "Couldn't delete the chat. Please try again.",
+    tooLong: "Messages can contain up to 8,000 characters.",
+    chatsLoadFailed: "Can't load your chats. Check the connection and reload.",
   },
 };
 

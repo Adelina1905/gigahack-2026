@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import sys
+import os
 import unittest
 import uuid
 from pathlib import Path
+from unittest.mock import patch, sentinel
 
 
 MANAGE_DATA = Path(__file__).resolve().parents[1]
@@ -32,9 +34,9 @@ class ServerTests(unittest.TestCase):
     def test_health_reports_flags(self) -> None:
         response = client_for(RecordingRag(False), RecordingLlm(), llm_configured=False).get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"llmConfigured": False, "ragAvailable": False})
+        self.assertEqual(response.json(), {"mode": "live", "llmConfigured": False, "ragAvailable": False})
         response = client_for(RecordingRag(True), RecordingLlm(), llm_configured=True).get("/health")
-        self.assertEqual(response.json(), {"llmConfigured": True, "ragAvailable": True})
+        self.assertEqual(response.json(), {"mode": "live", "llmConfigured": True, "ragAvailable": True})
 
     def test_chat_llm_response_matches_contract(self) -> None:
         llm = RecordingLlm("Bună ziua")
@@ -79,6 +81,75 @@ class ServerTests(unittest.TestCase):
         for body in cases:
             with self.subTest(body=str(body)[:80]):
                 self.assertEqual(client.post("/v1/chat", json=body).status_code, 422)
+
+    def test_demo_starts_without_keys_qdrant_or_network(self) -> None:
+        from municipal_rag.server import create_default_app
+
+        with patch.dict(os.environ, {"CHAT_MODE": "demo"}, clear=True), \
+                patch("municipal_rag.server.load_dotenv"), \
+                patch("municipal_rag.server.load_config", side_effect=AssertionError("live config loaded")), \
+                patch.dict(sys.modules, {"qdrant_client": None}), \
+                patch("urllib.request.urlopen", side_effect=AssertionError("network used")):
+            client = TestClient(create_default_app())
+            self.assertEqual(client.get("/health").json(),
+                             {"mode": "demo", "llmConfigured": False, "ragAvailable": False})
+            body = self.body(message="Salut", history=[{"role": "user", "content": "Earlier"}])
+            first = client.post("/v1/chat", json=body)
+            second = client.post("/v1/chat", json=body)
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(first.json(), second.json())
+            self.assertEqual(first.json(), {
+                "mode": "demo", "status": "DEMO",
+                "answer": "Python received your message (5 characters) and "
+                          "1 earlier user message(s). This deterministic reply is for checking chat "
+                          "integration and saved conversations. It is not an AI answer or official "
+                          "municipal information.\n\nExample link for testing: https://example.com "
+                          "(demonstration only; not a supporting source).",
+                "citations": [], "clarificationChoices": None,
+            })
+            self.assertEqual(client.post("/v1/chat", json=self.body(message="  ")).status_code, 422)
+            self.assertEqual(client.post("/v1/chat", json=self.body(chatId="bad")).status_code, 422)
+
+    def test_default_mode_uses_live_factory(self) -> None:
+        from municipal_rag.server import create_default_app
+
+        with patch.dict(os.environ, {}, clear=True), patch("municipal_rag.server.load_dotenv"), \
+                patch("municipal_rag.server._create_live_app", return_value=sentinel.app) as factory:
+            self.assertIs(create_default_app(), sentinel.app)
+            factory.assert_called_once_with()
+
+    def test_explicit_live_failure_does_not_fall_back_to_demo(self) -> None:
+        from municipal_rag.server import create_default_app
+
+        with patch.dict(os.environ, {"CHAT_MODE": "live"}), patch("municipal_rag.server.load_dotenv"), \
+                patch("municipal_rag.server._create_live_app", side_effect=RuntimeError("live failed")):
+            with self.assertRaisesRegex(RuntimeError, "live failed"):
+                create_default_app()
+
+    def test_invalid_mode_fails_fast(self) -> None:
+        from municipal_rag.server import create_default_app
+
+        for mode in ("", "automatic", "dmeo"):
+            with self.subTest(mode=mode), patch.dict(os.environ, {"CHAT_MODE": mode}), \
+                    patch("municipal_rag.server.load_dotenv"), \
+                    patch("municipal_rag.server._create_live_app") as factory:
+                with self.assertRaisesRegex(ValueError, "CHAT_MODE"):
+                    create_default_app()
+                factory.assert_not_called()
+
+    def test_live_factory_without_key_returns_failure_not_demo(self) -> None:
+        from municipal_rag.server import create_default_app
+
+        with patch.dict(os.environ, {"CHAT_MODE": "live"}, clear=True), \
+                patch("municipal_rag.server.load_dotenv"), \
+                patch("qdrant_client.QdrantClient"), \
+                patch("municipal_rag.rag_service.QdrantRagService", return_value=RecordingRag(False)), \
+                patch("urllib.request.urlopen", side_effect=AssertionError("network used")):
+            client = TestClient(create_default_app())
+            self.assertEqual(client.get("/health").json()["mode"], "live")
+            response = client.post("/v1/chat", json=self.body())
+            self.assertEqual(response.status_code, 503)
+            self.assertNotIn("demo", response.text.lower())
 
 
 if __name__ == "__main__":

@@ -6,6 +6,13 @@ export interface SourceDocument {
   title: string;
   link: string;
   added_date: string; // ISO 8601
+  exactQuote?: string | null;
+  documentId?: string | null;
+}
+
+export interface RetryOperation {
+  requestId: string;
+  expectedGenerationVersion: number;
 }
 
 export interface ChatMessage {
@@ -17,6 +24,16 @@ export interface ChatMessage {
   status?: MessageStatus;
   // Only used for assistant messages.
   sources?: SourceDocument[];
+  // Stable IDs survive network failures and page reloads.
+  requestId?: string;
+  chatRequestId?: string;
+  generationStatus?: "PENDING" | "COMPLETED" | "FAILED";
+  generationVersion?: number;
+  errorCode?: string | null;
+  mode?: "rag" | "llm" | "demo";
+  clarificationChoices?: string[];
+  // Retained until the result of a retry/regeneration is known.
+  retryOperation?: RetryOperation;
 }
 
 // The backend renames a chat still called this after its first prompt, so it is

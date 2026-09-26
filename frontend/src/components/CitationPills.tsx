@@ -1,5 +1,6 @@
 import { useI18n } from "../i18n/context";
 import type { SourceDocument } from "../types/chat";
+import { safeHttpUrl } from "./sources/safeLink";
 
 interface CitationPillsProps {
   sources: SourceDocument[];
@@ -23,7 +24,8 @@ function CitationPills({ sources }: CitationPillsProps) {
   return (
     <ul aria-label={t.message.citedIn} className="mt-2 flex flex-wrap gap-1.5 whitespace-normal">
       {sources.map((source, i) => {
-        const hostname = getHostname(source.link);
+        const link = safeHttpUrl(source.link);
+        const hostname = link ? getHostname(link) : "";
         return (
           <li key={`${source.link}-${i}`} className="group/pill relative">
             <span
@@ -38,14 +40,14 @@ function CitationPills({ sources }: CitationPillsProps) {
             <div className="invisible absolute bottom-full left-0 z-20 pb-2 opacity-0 transition-opacity duration-150 group-focus-within/pill:visible group-focus-within/pill:opacity-100 group-hover/pill:visible group-hover/pill:opacity-100">
               <div className="w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-background p-3 shadow-lg">
                 <p className="line-clamp-2 text-sm font-medium text-text">{source.title}</p>
-                {source.link ? (
+                {link ? (
                   <a
-                    href={source.link}
+                    href={link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                   >
-                    <span className="truncate">{source.link}</span>
+                    <span className="truncate">{link}</span>
                     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
                     </svg>

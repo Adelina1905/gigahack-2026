@@ -181,7 +181,11 @@ export async function getResponses(chatId: string): Promise<ResponseView[]> {
   return store.responses.filter((response) => response.chatId === chatId);
 }
 
-export async function createResponse(chatId: string, text: string): Promise<ResponseView> {
+export async function createResponse(
+  chatId: string,
+  text: string,
+  requestId: string = crypto.randomUUID(),
+): Promise<ResponseView> {
   await wait(800 + Math.random() * 700);
   // Type a message containing "fail" to preview the error state.
   if (text.toLowerCase().includes("fail")) {
@@ -198,6 +202,9 @@ export async function createResponse(chatId: string, text: string): Promise<Resp
     text: reply.text,
     createdAt: now(),
     documents: reply.documents,
+    requestId,
+    generationStatus: "COMPLETED",
+    generationVersion: 0,
   };
 
   store.responses.push(response);
@@ -220,9 +227,10 @@ export async function regenerateResponse(
   if (!response) throw notFound("Response");
 
   // The real backend reruns the same prompt, which usually retrieves the same sources.
-  const reply = pickReply(response.prompt ?? "", response.text);
+  const reply = pickReply(response.prompt ?? "", response.text ?? undefined);
   response.text = reply.text;
   response.documents = reply.documents;
+  response.generationVersion = (response.generationVersion ?? 0) + 1;
   chat.updatedAt = now();
   save(store);
   return response;

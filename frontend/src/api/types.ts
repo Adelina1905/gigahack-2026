@@ -23,14 +23,30 @@ export interface ResponseView {
   chatId: string;
   // The user message this response answers; null for rows stored before V3.
   prompt: string | null;
-  text: string;
+  text: string | null;
   createdAt: string; // ISO 8601
-  // Not sent by the backend yet; populated once response_documents is exposed.
   documents?: DocumentView[];
+  requestId?: string | null;
+  generationStatus?: "PENDING" | "COMPLETED" | "FAILED";
+  generationVersion?: number;
+  errorCode?: string | null;
+  aiReply?: {
+    mode: "rag" | "llm" | "demo";
+    status: string;
+    answer: string;
+    citations: Array<{
+      title: string | null;
+      url: string | null;
+      exactQuote: string | null;
+      documentId: string | null;
+    }>;
+    clarificationChoices: Array<{ documentId: string; label: string }> | null;
+  } | null;
 }
 
 export interface ChatCreateRequest {
   name?: string;
+  requestId?: string;
 }
 
 export interface ChatUpdateRequest {
@@ -39,6 +55,12 @@ export interface ChatUpdateRequest {
 
 export interface ResponseCreateRequest {
   text: string;
+  requestId?: string;
+}
+
+export interface ResponseRegenerateRequest {
+  requestId: string;
+  expectedGenerationVersion: number;
 }
 
 export interface DocumentCreateRequest {

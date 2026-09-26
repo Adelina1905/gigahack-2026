@@ -3,19 +3,23 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from qdrant_client import QdrantClient
 
-from .chat_model import OpenRouterChatModel
-from .chat_service import ChatService, LlmUnavailableError
+from .chat_service import ChatReply, ChatService, LlmUnavailableError
 from .config import load_config, load_dotenv
-from .rag_service import QdrantRagService, RagService
+
+if TYPE_CHECKING:
+    from .rag_service import RagService
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class ReplyService(Protocol):
+    def reply(self, message: str, history: list[dict[str, str]]) -> ChatReply: ...
 
 
 class HistoryItem(BaseModel):
@@ -50,7 +54,7 @@ class ClarificationChoice(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    mode: Literal["rag", "llm"]
+    mode: Literal["rag", "llm", "demo"]
     status: str
     answer: str
     citations: list[Citation]
@@ -58,16 +62,19 @@ class ChatResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
+    mode: Literal["live", "demo"]
     llmConfigured: bool
     ragAvailable: bool
 
 
-def create_app(chat_service: ChatService, rag: RagService, llm_configured: bool) -> FastAPI:
+def create_app(chat_service: ReplyService, rag: RagService | None, llm_configured: bool,
+               *, mode: Literal["live", "demo"] = "live") -> FastAPI:
     app = FastAPI(title="Municipal chat service")
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        return HealthResponse(llmConfigured=llm_configured, ragAvailable=rag.is_available())
+        return HealthResponse(mode=mode, llmConfigured=llm_configured,
+                              ragAvailable=rag.is_available() if rag is not None else False)
 
     # Sync handler: blocking OpenRouter/Qdrant calls run in FastAPI's threadpool.
     @app.post("/v1/chat", response_model=ChatResponse)
@@ -89,6 +96,24 @@ def create_app(chat_service: ChatService, rag: RagService, llm_configured: bool)
 def create_default_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     load_dotenv()
+    mode = os.environ.get("CHAT_MODE", "live").strip().lower()
+    if mode == "demo":
+        from .demo_service import DemoChatService
+
+        LOGGER.info("Chat service starting in explicit demo mode; no AI or Qdrant calls")
+        return create_app(DemoChatService(), None, llm_configured=False, mode="demo")
+    if mode != "live":
+        raise ValueError("CHAT_MODE must be 'live' or 'demo'")
+    return _create_live_app()
+
+
+def _create_live_app() -> FastAPI:
+    # Demo mode needs only the HTTP server dependencies, never live clients or an index.
+    from qdrant_client import QdrantClient
+
+    from .chat_model import OpenRouterChatModel
+    from .rag_service import QdrantRagService
+
     config = load_config()
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     qdrant_url = os.environ.get("QDRANT_URL", "").strip() or "http://localhost:6333"

@@ -11,6 +11,7 @@ export const api = {
   updateChat: realClient.updateChat,
   deleteChat: realClient.deleteChat,
   getResponses: realClient.getResponses,
+  getResponse: realClient.getResponse,
   createResponse: realClient.createResponse,
   regenerateResponse: realClient.regenerateResponse,
   ...(import.meta.env.VITE_USE_MOCK === "true" ? mockClient : {}),

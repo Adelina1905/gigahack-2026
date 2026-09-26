@@ -23,7 +23,7 @@ spring:
 
 app:
   # Comma-separated list of browser origins allowed to call /api/** with credentials.
-  frontend-origins: ${FRONTEND_ORIGINS:http://localhost:5173,https://staging.faflist.solutions}
+  frontend-origins: ${FRONTEND_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,https://staging.faflist.solutions}
   llm:
     base-url: ${LLM_SERVICE_URL:http://127.0.0.1:8000}
     connect-timeout: 5s
