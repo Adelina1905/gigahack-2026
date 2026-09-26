@@ -6,15 +6,18 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import sys
 import uuid
 from pathlib import Path
 from typing import Any
 
 from qdrant_client import QdrantClient, models
+from municipal_rag.sparse import bm25_sparse
 
 
 DEFAULT_QDRANT_URL = "http://localhost:6333"
+DEFAULT_QDRANT_PATH = Path(__file__).resolve().parent / "data" / "08_qdrant"
 DEFAULT_COLLECTION = "municipal_documents"
 PAYLOAD_INDEXES = {
     "language": models.PayloadSchemaType.KEYWORD,
@@ -115,13 +118,13 @@ def ensure_collection(client: QdrantClient, name: str, dimensions: int) -> bool:
     if not client.collection_exists(name):
         client.create_collection(
             collection_name=name,
-            vectors_config=models.VectorParams(size=dimensions, distance=models.Distance.COSINE),
+            vectors_config={"dense": models.VectorParams(size=dimensions, distance=models.Distance.COSINE)},
+            sparse_vectors_config={"sparse": models.SparseVectorParams(modifier=models.Modifier.IDF)},
         )
         return True
     configuration = client.get_collection(name).config.params.vectors
-    if isinstance(configuration, dict):
-        raise ValueError("Named-vector collections are not supported by this pipeline.")
-    if configuration.size != dimensions or configuration.distance != models.Distance.COSINE:
+    dense = configuration.get("dense") if isinstance(configuration, dict) else None
+    if dense is None or dense.size != dimensions or dense.distance != models.Distance.COSINE:
         raise ValueError(
             f"Collection {name!r} is incompatible: expected {dimensions} dimensions and cosine distance."
         )
@@ -144,8 +147,11 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Import real or mock embeddings into Qdrant.")
     parser.add_argument("--chunks", type=Path, required=True)
     parser.add_argument("--embeddings", type=Path, required=True)
-    parser.add_argument("--url", default=DEFAULT_QDRANT_URL)
+    location = parser.add_mutually_exclusive_group()
+    location.add_argument("--url", help="Qdrant server URL instead of local storage.")
+    location.add_argument("--path", type=Path, help="Persistent local Qdrant directory.")
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
+    parser.add_argument("--qdrant-api-key-env", default="QDRANT_API_KEY")
     parser.add_argument(
         "--allow-review",
         action="store_true",
@@ -155,6 +161,9 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     arguments = parse_arguments()
     try:
         if arguments.allow_review and not any(
@@ -168,14 +177,28 @@ def main() -> int:
         )
         if is_mock and "mock" not in arguments.collection.lower():
             raise ValueError("Mock vectors require a collection name containing 'mock'.")
-        client = QdrantClient(url=arguments.url, timeout=20)
+        if arguments.url:
+            api_key = os.environ.get(arguments.qdrant_api_key_env, "").strip() or None
+            client = QdrantClient(url=arguments.url, api_key=api_key, timeout=20)
+            qdrant_location = arguments.url
+        else:
+            local_path = (arguments.path or DEFAULT_QDRANT_PATH).expanduser().resolve()
+            local_path.mkdir(parents=True, exist_ok=True)
+            client = QdrantClient(path=str(local_path))
+            qdrant_location = str(local_path)
         client.get_collections()
         collection_created = ensure_collection(client, arguments.collection, dimensions)
         indexes_created = ensure_indexes(client, arguments.collection)
         points = [
             models.PointStruct(
                 id=point_id(chunk["chunkId"]),
-                vector=[float(value) for value in embedding["embedding"]],
+                vector={
+                    "dense": [float(value) for value in embedding["embedding"]],
+                    "sparse": models.SparseVector(
+                        indices=bm25_sparse(chunk["text"])[0],
+                        values=bm25_sparse(chunk["text"])[1],
+                    ),
+                },
                 payload={
                     **chunk,
                     "embedding": {
@@ -202,7 +225,7 @@ def main() -> int:
         return 1
 
     print(json.dumps({
-        "qdrantUrl": arguments.url,
+        "qdrantLocation": qdrant_location,
         "collection": arguments.collection,
         "collectionCreated": collection_created,
         "model": model_name,

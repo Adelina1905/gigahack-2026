@@ -32,12 +32,12 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.frontend-origin:http://localhost:5173}")
-            String frontendOrigin
+            @Value("${app.frontend-origins}")
+            List<String> frontendOrigins
     ) {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(frontendOrigin));
+        configuration.setAllowedOrigins(frontendOrigins);
         configuration.setAllowedMethods(List.of(
                 "GET",
                 "POST",

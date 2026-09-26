@@ -9,6 +9,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from qdrant_client import QdrantClient
@@ -17,7 +18,8 @@ from qdrant_client import QdrantClient
 EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 DEFAULT_MODEL = "qwen/qwen3-embedding-8b"
 DEFAULT_QDRANT_URL = "http://localhost:6333"
-DEFAULT_COLLECTION = "municipal_documents"
+DEFAULT_QDRANT_PATH = Path(__file__).resolve().parent / "data" / "08_qdrant"
+DEFAULT_COLLECTION = "municipal_evidence_current"
 
 
 def read_api_key(variable_name: str) -> str:
@@ -88,8 +90,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--api-key-env", default="OPENROUTER_API_KEY")
-    parser.add_argument("--url", default=DEFAULT_QDRANT_URL)
+    location = parser.add_mutually_exclusive_group()
+    location.add_argument("--url", help="Qdrant server URL instead of local storage.")
+    location.add_argument("--path", type=Path, help="Persistent local Qdrant directory.")
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
+    parser.add_argument("--qdrant-api-key-env", default="QDRANT_API_KEY")
     parser.add_argument("--timeout", type=float, default=60.0)
     return parser.parse_args()
 
@@ -109,18 +114,27 @@ def main() -> int:
         if not api_key:
             raise ValueError(f"Set {arguments.api_key_env} before searching.")
         vector = embed_query(arguments.text, arguments.model, api_key, arguments.timeout)
-        client = QdrantClient(url=arguments.url, timeout=20)
+        if arguments.url:
+            qdrant_api_key = read_api_key(arguments.qdrant_api_key_env) or None
+            client = QdrantClient(url=arguments.url, api_key=qdrant_api_key, timeout=20)
+            qdrant_location = arguments.url
+        else:
+            local_path = (arguments.path or DEFAULT_QDRANT_PATH).expanduser().resolve()
+            client = QdrantClient(path=str(local_path))
+            qdrant_location = str(local_path)
         collection = client.get_collection(arguments.collection)
         vector_config = collection.config.params.vectors
-        if isinstance(vector_config, dict):
-            raise ValueError("Named-vector collections are not supported.")
-        if vector_config.size != len(vector):
+        dense_config = vector_config.get("dense") if isinstance(vector_config, dict) else vector_config
+        if dense_config is None:
+            raise ValueError("Collection has no dense vector.")
+        if dense_config.size != len(vector):
             raise ValueError(
-                f"Query has {len(vector)} dimensions but the collection requires {vector_config.size}."
+                f"Query has {len(vector)} dimensions but the collection requires {dense_config.size}."
             )
         response = client.query_points(
             collection_name=arguments.collection,
             query=vector,
+            using="dense" if isinstance(vector_config, dict) else None,
             limit=arguments.limit,
             with_payload=True,
             with_vectors=False,
@@ -132,6 +146,7 @@ def main() -> int:
 
     print(json.dumps({
         "collection": arguments.collection,
+        "qdrantLocation": qdrant_location,
         "model": arguments.model,
         "queryLanguage": "ro",
         "query": arguments.text,

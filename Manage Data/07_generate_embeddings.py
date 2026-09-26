@@ -25,9 +25,23 @@ from typing import Any
 OPENROUTER_EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 DEFAULT_MODEL = "qwen/qwen3-embedding-8b"
 DEFAULT_API_KEY_ENVIRONMENT_VARIABLE = "OPENROUTER_API_KEY"
-DEFAULT_OUTPUT_DIRECTORY = Path(__file__).resolve().parent / "data" / "embeddings"
+DEFAULT_OUTPUT_DIRECTORY = Path(__file__).resolve().parent / "data" / "07_embeddings"
 MOCK_MODEL = "mock/example-only-not-for-search"
 MOCK_DIMENSIONS = 16
+
+
+def read_api_key(variable_name: str) -> str:
+    value = os.environ.get(variable_name, "").strip()
+    if value or os.name != "nt":
+        return value
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as environment_key:
+            stored_value, _ = winreg.QueryValueEx(environment_key, variable_name)
+        return stored_value.strip() if isinstance(stored_value, str) else ""
+    except (FileNotFoundError, OSError):
+        return ""
 
 
 def load_chunks(input_path: Path) -> list[dict[str, Any]]:
@@ -248,7 +262,7 @@ def write_once(target: Path, content: bytes) -> bool:
 def execute_generation(
     arguments: argparse.Namespace, chunks: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    api_key = os.environ.get(arguments.api_key_env, "").strip()
+    api_key = read_api_key(arguments.api_key_env)
     if not api_key:
         raise ValueError(
             f"Set {arguments.api_key_env} before using --execute. "

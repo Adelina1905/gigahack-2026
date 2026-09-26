@@ -1,4 +1,4 @@
-"""Step 6: create structure-aware chunks with exact multi-passage citations."""
+"""Step 6: create exact, passage-level evidence units (schema v3)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from pipeline_core import (
-    DATA_V2_DIRECTORY,
+    DATA_DIRECTORY,
     MANAGE_DATA_DIRECTORY,
     estimate_tokens,
     read_json,
@@ -18,9 +18,10 @@ from pipeline_core import (
     stable_id,
     write_once,
 )
+from municipal_rag.evidence import build_evidence
 
 
-DEFAULT_OUTPUT_DIRECTORY = DATA_V2_DIRECTORY / "06_chunks"
+DEFAULT_OUTPUT_DIRECTORY = DATA_DIRECTORY / "06_chunks"
 CHUNK_SCHEMA = MANAGE_DATA_DIRECTORY / "schemas" / "chunk.schema.json"
 
 
@@ -80,7 +81,17 @@ def create_chunk(document: dict[str, Any], passages: list[dict[str, Any]], seque
     citation_text = "\n\n".join(passage["citationText"] for passage in passages)
     passage_ids = [passage["passageId"] for passage in passages]
     chunk_id = stable_id("chunk", document["documentId"], str(sequence), *passage_ids)
-    citations = [
+    citations: list[dict[str, Any]] = []
+    title_citation = document.get("titleCitation")
+    if isinstance(title_citation, dict):
+        citations.append({
+            "passageId": title_citation["passageId"],
+            "sourceUrl": document["source"].get("sourceUrl"),
+            "sourceFile": document["source"].get("originalFilename"),
+            "locator": title_citation["provenance"],
+            "quote": title_citation["quote"],
+        })
+    citations.extend([
         {
             "passageId": passage["passageId"],
             "sourceUrl": document["source"].get("sourceUrl"),
@@ -89,7 +100,7 @@ def create_chunk(document: dict[str, Any], passages: list[dict[str, Any]], seque
             "quote": passage["citationText"],
         }
         for passage in passages
-    ]
+    ])
     status = chunk_status(document, passages)
     chunk = {
         "chunkId": chunk_id,
@@ -111,6 +122,10 @@ def create_chunk(document: dict[str, Any], passages: list[dict[str, Any]], seque
             "statisticsAsOf": document.get("temporalContext", {}).get("statisticsAsOf"),
             "headingPath": heading_path,
             "sourceUrl": document["source"].get("sourceUrl"),
+            "source": document.get("sourceMetadata", {}).get("source"),
+            "category": document.get("sourceMetadata", {}).get("category"),
+            "district": document.get("sourceMetadata", {}).get("district"),
+            "tier": document.get("sourceMetadata", {}).get("tier"),
         },
     }
     validate_chunk_schema(chunk)
@@ -126,9 +141,14 @@ def create_chunks(input_path: Path, max_tokens: int, ready_only: bool) -> list[d
     passages = document.get("passages")
     if not isinstance(passages, list) or not passages:
         raise ValueError("Validated document contains no passages.")
-    groups = group_passages(passages, max_tokens)
-    chunks = [create_chunk(document, group, index) for index, group in enumerate(groups, start=1)]
-    return [chunk for chunk in chunks if chunk["indexingStatus"] == "READY"] if ready_only else chunks
+    if max_tokens > 420:
+        max_tokens = 420
+    chunks = build_evidence(document, hard_max_tokens=max_tokens)
+    for chunk in chunks:
+        validate_chunk_schema(chunk)
+    # Quarantined evidence is reported by validation but is never written into
+    # the production chunk artifact, irrespective of the legacy flag.
+    return [chunk for chunk in chunks if chunk["indexingStatus"] == "READY"]
 
 
 def serialize_jsonl(chunks: list[dict[str, Any]]) -> bytes:
@@ -140,7 +160,7 @@ def serialize_jsonl(chunks: list[dict[str, Any]]) -> bytes:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create generic, citation-ready retrieval chunks.")
     parser.add_argument("input", type=Path)
-    parser.add_argument("--max-tokens", type=int, default=450)
+    parser.add_argument("--max-tokens", type=int, default=420)
     parser.add_argument("--ready-only", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIRECTORY)
     return parser.parse_args()

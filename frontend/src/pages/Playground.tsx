@@ -1,8 +1,8 @@
 import ChatWindow from "../components/ChatWindow";
-import { useMockChat } from "../hooks/useMockChat";
+import { useChat } from "../hooks/useChat";
 
 function Playground() {
-  const { messages, isTyping, send, retry, regenerate } = useMockChat();
+  const { messages, isTyping, send, retry } = useChat();
 
   return (
     <main className="h-screen bg-background">
@@ -12,7 +12,6 @@ function Playground() {
           isTyping={isTyping}
           onSend={send}
           onRetry={retry}
-          onRegenerate={regenerate}
         />
       </div>
     </main>
