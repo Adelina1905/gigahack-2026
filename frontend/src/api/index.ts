@@ -1,3 +1,17 @@
-import datasetServices from './datasetServices';
+import * as realClient from "./client";
+import * as mockClient from "./mockClient";
 
-export const datasetApi = datasetServices;
+export { ApiError } from "./client";
+
+// Set VITE_USE_MOCK=true to work on the UI without the backend running.
+export const api = {
+  getChats: realClient.getChats,
+  getChat: realClient.getChat,
+  createChat: realClient.createChat,
+  updateChat: realClient.updateChat,
+  deleteChat: realClient.deleteChat,
+  getResponses: realClient.getResponses,
+  createResponse: realClient.createResponse,
+  regenerateResponse: realClient.regenerateResponse,
+  ...(import.meta.env.VITE_USE_MOCK === "true" ? mockClient : {}),
+};

@@ -10,9 +10,10 @@ The system has three applications and two databases:
 | Java gateway (`backend/`) | 8081 | Spring Boot |
 | React UI (`frontend/`) | 5173 | Vite |
 
-The browser only talks to the Java gateway. Java owns the chat sessions (ephemeral,
-in memory, keyed by a UUID the browser generates) and forwards each turn plus its
-history to the Python service. The Python service answers with retrieved,
+The browser only talks to the Java gateway. Java stores the chats in PostgreSQL,
+scoped to an anonymous per-browser cookie (there are no user accounts). It forwards
+each turn plus the chat's recent history to the Python service, then stores the answer
+and the documents it cites. The Python service answers with retrieved,
 cited municipal documents when a Qdrant index exists, and otherwise falls back to
 plain LLM chat. It never indexes or embeds documents while running.
 
@@ -27,7 +28,8 @@ cp .env.example .env        # PowerShell: Copy-Item .env.example .env
 
 All components read this single root `.env`: Docker Compose, Spring Boot (via
 `spring.config.import`), and the Python service (via `municipal_rag.config.load_dotenv`).
-Never commit `.env`.
+Spring Boot also imports an optional `backend/.env` (template: `backend/.env.example`),
+which overrides the root one. Never commit `.env`.
 
 ## 2. Databases
 
@@ -84,7 +86,8 @@ npm run dev                 # http://localhost:5173
 ## Smoke test
 
 ```bash
-CHAT=$(cat /proc/sys/kernel/random/uuid)
-curl -s -X POST localhost:8081/api/llm/chats/$CHAT/messages \
+CHAT=$(curl -s -c /tmp/jar -b /tmp/jar -X POST localhost:8081/api/chats \
+  -H 'Content-Type: application/json' -d '{}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+curl -s -c /tmp/jar -b /tmp/jar -X POST localhost:8081/api/chats/$CHAT/responses \
   -H 'Content-Type: application/json' -d '{"text":"Salut! Ce poți face?"}'
 ```

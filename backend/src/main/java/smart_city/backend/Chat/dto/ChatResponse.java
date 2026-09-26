@@ -8,7 +8,8 @@ import java.util.UUID;
 public record ChatResponse(
         UUID id,
         String name,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
 ) {
 
     public static ChatResponse from(Chat chat) {
@@ -16,7 +17,8 @@ public record ChatResponse(
         return new ChatResponse(
                 chat.getId(),
                 chat.getName(),
-                chat.getCreatedAt()
+                chat.getCreatedAt(),
+                chat.getUpdatedAt()
         );
     }
 }

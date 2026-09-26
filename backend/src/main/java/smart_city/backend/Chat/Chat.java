@@ -27,6 +27,9 @@ public class Chat {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt = OffsetDateTime.now();
+
 
     // Required by JPA
     public Chat() {
@@ -38,6 +41,7 @@ public class Chat {
         this.clientId = clientId;
         this.name = "New chat";
         this.createdAt = OffsetDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
 
@@ -46,6 +50,7 @@ public class Chat {
         this.clientId = clientId;
         this.name = name;
         this.createdAt = OffsetDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
 
@@ -67,6 +72,10 @@ public class Chat {
         return createdAt;
     }
 
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
 
     // Setters
 
@@ -84,5 +93,9 @@ public class Chat {
 
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

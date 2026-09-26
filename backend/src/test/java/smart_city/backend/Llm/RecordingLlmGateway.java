@@ -10,12 +10,12 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /** Hand-written gateway that records calls and replies with a canned answer. */
-final class RecordingLlmGateway implements LlmGateway {
+public final class RecordingLlmGateway implements LlmGateway {
 
-    record Call(UUID chatId, String message, List<LlmTurn> history) {
+    public record Call(UUID chatId, String message, List<LlmTurn> history) {
     }
 
-    final List<Call> calls = new ArrayList<>();
+    public final List<Call> calls = new ArrayList<>();
     private Function<String, LlmReply> replies = message -> new LlmReply(
             "llm",
             "LLM",
@@ -25,11 +25,11 @@ final class RecordingLlmGateway implements LlmGateway {
     );
     private boolean failing;
 
-    void replyWith(LlmReply reply) {
+    public void replyWith(LlmReply reply) {
         replies = message -> reply;
     }
 
-    void setFailing(boolean failing) {
+    public void setFailing(boolean failing) {
         this.failing = failing;
     }
 
