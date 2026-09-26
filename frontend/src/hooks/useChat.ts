@@ -1,12 +1,21 @@
 import { useCallback, useRef, useState } from "react";
-import { createChat, createResponse } from "../api/client";
+import { ApiError, createChat, createResponse } from "../api/client";
+import { toAssistantMessage } from "../api/mappers";
 import type { ChatMessage, MessageStatus } from "../types/chat";
 
 const makeId = () => crypto.randomUUID();
 
+const describeError = (error: unknown) => {
+  if (error instanceof ApiError && error.status === 0) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+  return "Something went wrong. Please try again.";
+};
+
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
   const chatCreationRef = useRef<Promise<string> | null>(null);
 
@@ -36,33 +45,46 @@ export function useChat() {
     }
   }, []);
 
+  // Posts the user's text and returns the assistant reply. If the chat no
+  // longer exists server-side (deleted, or the client cookie changed), start
+  // a fresh chat once and resend.
+  const requestReply = useCallback(
+    async (userInput: string) => {
+      const chatId = await getOrCreateChatId();
+
+      try {
+        return toAssistantMessage(await createResponse(chatId, userInput));
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) throw error;
+
+        chatIdRef.current = null;
+        chatCreationRef.current = null;
+        const freshChatId = await getOrCreateChatId();
+        return toAssistantMessage(await createResponse(freshChatId, userInput));
+      }
+    },
+    [getOrCreateChatId],
+  );
+
   const deliver = useCallback(
     async (messageId: string, userInput: string) => {
       setIsTyping(true);
+      setError(null);
 
       try {
-        const chatId = await getOrCreateChatId();
-        const assistantResponse = await createResponse(chatId, userInput);
+        const reply = await requestReply(userInput);
 
         setStatus(messageId, "sent");
-        setMessages((current) => [
-          ...current,
-          {
-            id: String(assistantResponse.id),
-            role: "assistant",
-            content: assistantResponse.text,
-            createdAt: new Date(assistantResponse.createdAt).getTime(),
-            sources: [],
-          },
-        ]);
+        setMessages((current) => [...current, reply]);
       } catch (error) {
         console.error("Failed to send chat message", error);
         setStatus(messageId, "error");
+        setError(describeError(error));
       } finally {
         setIsTyping(false);
       }
     },
-    [getOrCreateChatId, setStatus],
+    [requestReply, setStatus],
   );
 
   const send = useCallback(
@@ -100,5 +122,53 @@ export function useChat() {
     [deliver, messages, setStatus],
   );
 
-  return { messages, isTyping, send, retry };
+  const replaceReply = useCallback(
+    async (assistantId: string, userInput: string) => {
+      setIsTyping(true);
+      setError(null);
+
+      try {
+        const reply = await requestReply(userInput);
+
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId ? reply : message,
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to regenerate chat message", error);
+        setError(describeError(error));
+      } finally {
+        setIsTyping(false);
+      }
+    },
+    [requestReply],
+  );
+
+  // Re-asks the user message that preceded this assistant reply and swaps the
+  // reply in place. The backend has no regenerate endpoint, so this stores an
+  // extra response row for the chat.
+  const regenerate = useCallback(
+    (assistantId: string) => {
+      if (isTyping) return;
+
+      const index = messages.findIndex(
+        (candidate) =>
+          candidate.id === assistantId && candidate.role === "assistant",
+      );
+      const prompt = messages
+        .slice(0, index)
+        .reverse()
+        .find((candidate) => candidate.role === "user");
+
+      if (index === -1 || !prompt) return;
+
+      void replaceReply(assistantId, prompt.content);
+    },
+    [isTyping, messages, replaceReply],
+  );
+
+  const dismissError = useCallback(() => setError(null), []);
+
+  return { messages, isTyping, error, send, retry, regenerate, dismissError };
 }

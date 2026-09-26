@@ -1,5 +1,5 @@
 .env
-<<<<<<< HEAD
+**/.env
 .env.*
 !.env.example
 
@@ -7,6 +7,8 @@
 .venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+tmp/
 
 # Frontend
 frontend/node_modules/
@@ -20,11 +22,3 @@ backend/target/
 .vscode/
 .DS_Store
 Thumbs.db
-
-=======
-**/.env
-__pycache__/
-*.py[cod]
-.pytest_cache/
-tmp/
->>>>>>> main

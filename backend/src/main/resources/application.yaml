@@ -1,6 +1,8 @@
 spring:
   application:
     name: backend
+  config:
+    import: optional:file:.env[.properties]
   autoconfigure:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
