@@ -18,7 +18,6 @@ interface SidebarProps {
   isLoaded: boolean;
   onNewChat: () => void;
   onSelect: (chatId: string) => void;
-  onRename: (chatId: string, name: string) => void;
   onDelete: (chatId: string) => void;
   onMoveChat: (chatId: string, projectId: string | null) => void;
   onCreateProject: (name: string) => Promise<ProjectSummary | null>;
@@ -88,7 +87,6 @@ function Sidebar({
   isLoaded,
   onNewChat,
   onSelect,
-  onRename,
   onDelete,
   onMoveChat,
   onCreateProject,
@@ -262,7 +260,6 @@ function Sidebar({
                     onRename={(target) => setDialog({ mode: "rename", project: target })}
                     onDelete={onDeleteProject}
                     onSelectChat={onSelect}
-                    onRenameChat={onRename}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
                     onCreateTracker={onCreateTracker}
@@ -292,7 +289,6 @@ function Sidebar({
                       isActive={chat.id === activeChatId}
                       projects={projects}
                       onSelect={onSelect}
-                      onRename={onRename}
                       onDelete={onDelete}
                       onMove={onMoveChat}
                     />

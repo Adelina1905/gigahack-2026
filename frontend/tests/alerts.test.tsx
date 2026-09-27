@@ -474,7 +474,7 @@ describe("Sidebar trackers", () => {
     const opened: string[] = [];
     const created: string[] = [];
     render(<Sidebar chats={[]} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
-      onNewChat={noop} onSelect={noop} onRename={noop} onDelete={noop} onMoveChat={noop}
+      onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
       onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
       trackerCount={2} isTrackersOpen={false} onOpenTrackers={() => opened.push("trackers")}
       onCreateTracker={project => created.push(project.id)}

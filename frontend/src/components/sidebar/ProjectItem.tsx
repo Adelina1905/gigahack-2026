@@ -16,7 +16,6 @@ interface ProjectItemProps {
   onRename: (project: ProjectSummary) => void;
   onDelete: (projectId: string) => void;
   onSelectChat: (chatId: string) => void;
-  onRenameChat: (chatId: string, name: string) => void;
   onDeleteChat: (chatId: string) => void;
   onMoveChat: (chatId: string, projectId: string | null) => void;
   onCreateTracker?: (project: ProjectSummary) => void;
@@ -34,7 +33,6 @@ function ProjectItem({
   onRename,
   onDelete,
   onSelectChat,
-  onRenameChat,
   onDeleteChat,
   onMoveChat,
   onCreateTracker,
@@ -151,7 +149,6 @@ function ProjectItem({
                 isActive={chat.id === activeChatId}
                 projects={projects}
                 onSelect={onSelectChat}
-                onRename={onRenameChat}
                 onDelete={onDeleteChat}
                 onMove={onMoveChat}
               />

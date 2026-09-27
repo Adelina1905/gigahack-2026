@@ -459,15 +459,6 @@ export async function createChat(
   return chat;
 }
 
-export async function updateChat(chatId: string, name: string): Promise<ChatView> {
-  await wait(100);
-  const store = load();
-  const chat = findChat(store, chatId);
-  chat.name = name.trim();
-  save(store);
-  return chat;
-}
-
 export async function deleteChat(chatId: string): Promise<void> {
   await wait(100);
   const store = load();

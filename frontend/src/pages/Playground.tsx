@@ -194,7 +194,6 @@ function Playground() {
           isLoaded={chatList.isLoaded}
           onNewChat={startNewChat}
           onSelect={selectChat}
-          onRename={(chatId, name) => void chatList.rename(chatId, name)}
           onDelete={deleteChat}
           onMoveChat={(chatId, projectId) => void moveChat(chatId, projectId)}
           onCreateProject={createProject}
