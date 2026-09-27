@@ -20,6 +20,12 @@ VERIFIER_PROMPT = ("Verify that the claim is fully entailed by the exact quotati
 MODEL_CHECKED_TYPES = {"person": "a person", "place": "a place or address", "procedure": "the steps or documents of a procedure",
     "list": "the requested items"}
 NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
+FINANCIAL_STAGES = {
+    "BUDGETED": re.compile(r"\b(?:bugetat\w*|prev[aă]zut\w*\s+(?:în|din)\s+buget|budgeted|запланирован\w*\s+в\s+бюджет)\b", re.I),
+    "ALLOCATED": re.compile(r"\b(?:alocat\w*|allocation|allocated|выделен\w*)\b", re.I),
+    "CONTRACTED": re.compile(r"\b(?:contractat\w*|valoarea\s+contractului|contracted|законтрактован\w*|стоимость\s+контракта)\b", re.I),
+    "SPENT": re.compile(r"\b(?:cheltui\w*|achitat\w*|pl[aă]tit\w*|executat\w*\s+financiar|spent|paid|израсходован\w*|оплачен\w*)\b", re.I),
+}
 VERDICT_SCHEMA = {"type": "object", "properties": {"supported": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["supported", "reason"], "additionalProperties": False}
 
 
@@ -52,6 +58,10 @@ def deterministic_issues(claim: dict[str, Any], evidence: dict[str, dict[str, An
     available_currencies = {value.casefold() for source in sources for value in re.findall(r"\b(?:lei|mdl|eur|euro)\b", source, re.I)}
     if currencies - available_currencies:
         issues.append("UNSUPPORTED_CURRENCY")
+    source_text = " ".join(sources)
+    for stage, pattern in FINANCIAL_STAGES.items():
+        if pattern.search(text) and not pattern.search(source_text):
+            issues.append(f"UNSUPPORTED_FINANCIAL_STAGE:{stage}")
     return issues
 
 
@@ -61,18 +71,23 @@ def verifier_prompt(answer_type: str = "other") -> str:
 
 
 def verify_claims(claims: list[dict[str, Any]], evidence: list[dict[str, Any]], model: str, api_key: str, question: str = "",
-                  answer_type: str = "other", chat: ChatJson | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+                  answer_type: str = "other", chat: ChatJson | None = None,
+                  requirements: dict[str, dict[str, Any]] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     indexed = {item["id"]: item for item in evidence}
     chat = chat or (lambda model_name, system, user, schema=None: chat_json(model_name, system, user, api_key, schema))
-    prompt = verifier_prompt(answer_type)
     fields = ("id", "documentId", "title", "publisher", "publishedDate", "exactQuote")
 
     def check(claim: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        issues = deterministic_issues(claim, indexed, question)
+        requirement = (requirements or {}).get(str(claim.get("requirementId") or ""), {})
+        effective_question = str(requirement.get("question") or question)
+        effective_answer_type = str(requirement.get("answerType") or answer_type)
+        issues = deterministic_issues(claim, indexed, effective_question)
         if issues:
             return False, {"claim": claim.get("text"), "evidenceIds": claim.get("evidenceIds"), "supported": False, "reasons": issues}
         cited = [{key: indexed[item].get(key) for key in fields} for item in claim["evidenceIds"]]
-        verdict = chat(model, prompt, json.dumps({"question": question, "claim": claim["text"], "evidence": cited}, ensure_ascii=False), VERDICT_SCHEMA)
+        verdict = chat(model, verifier_prompt(effective_answer_type),
+                       json.dumps({"question": effective_question, "claim": claim["text"], "evidence": cited}, ensure_ascii=False),
+                       VERDICT_SCHEMA)
         supported = verdict.get("supported") is True
         return supported, {"claim": claim.get("text"), "supported": supported, "reason": verdict.get("reason"), "managedResponse": verdict.get("_managedResponse")}
 
