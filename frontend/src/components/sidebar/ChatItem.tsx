@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "../../i18n/context";
+import ConfirmDialog from "../ConfirmDialog";
 import { DEFAULT_CHAT_NAME, type ChatSummary, type ProjectSummary } from "../../types/chat";
 import { actionButtonClass, dangerButtonClass, iconProps } from "./iconProps";
 
@@ -8,7 +9,6 @@ interface ChatItemProps {
   isActive: boolean;
   projects: ProjectSummary[];
   onSelect: (chatId: string) => void;
-  onRename: (chatId: string, name: string) => void;
   onDelete: (chatId: string) => void;
   onMove: (chatId: string, projectId: string | null) => void;
 }
@@ -84,42 +84,15 @@ function MoveMenu({ current, projects, onPick, onClose }: MoveMenuProps) {
   );
 }
 
-function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMove }: ChatItemProps) {
+function ChatItem({ chat, isActive, projects, onSelect, onDelete, onMove }: ChatItemProps) {
   const { t } = useI18n();
   const title = chat.name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : chat.name;
-  const [isEditing, setIsEditing] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
-  const [draft, setDraft] = useState(chat.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-  // Escape unmounts the input, which can fire a blur; don't save on that one.
-  const cancelledRef = useRef(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  useEffect(() => {
-    if (isEditing) inputRef.current?.select();
-  }, [isEditing]);
-
-  const startEditing = () => {
-    setDraft(chat.name);
-    cancelledRef.current = false;
-    setIsEditing(true);
-  };
-
-  const commit = () => {
-    if (cancelledRef.current) return;
-    setIsEditing(false);
-    if (draft.trim() && draft.trim() !== chat.name) onRename(chat.id, draft);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") commit();
-    if (e.key === "Escape") {
-      cancelledRef.current = true;
-      setIsEditing(false);
-    }
-  };
-
-  const handleDelete = () => {
-    if (window.confirm(t.sidebar.confirmRemove(title))) onDelete(chat.id);
+  const confirmDelete = () => {
+    setIsConfirmingDelete(false);
+    onDelete(chat.id);
   };
 
   const closeMenu = useCallback(() => setIsMoving(false), []);
@@ -128,23 +101,6 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
     setIsMoving(false);
     if (projectId !== chat.projectId) onMove(chat.id, projectId);
   };
-
-  if (isEditing) {
-    return (
-      <li>
-        <input
-          ref={inputRef}
-          value={draft}
-          maxLength={255}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={handleKeyDown}
-          aria-label={t.sidebar.chatName}
-          className="w-full rounded-sm border border-primary bg-background px-3 py-2 text-sm text-text focus:outline-none"
-        />
-      </li>
-    );
-  }
 
   return (
     <li>
@@ -189,18 +145,9 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
           </button>
           <button
             type="button"
-            onClick={startEditing}
-            aria-label={t.sidebar.rename(title)}
-            className={actionButtonClass}
-          >
-            <svg {...iconProps} className="h-3.5 w-3.5">
-              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             aria-label={t.sidebar.remove(title)}
+            aria-haspopup="dialog"
             className={dangerButtonClass}
           >
             <svg {...iconProps} className="h-3.5 w-3.5">
@@ -216,6 +163,15 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
           projects={projects}
           onPick={pickProject}
           onClose={closeMenu}
+        />
+      )}
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t.sidebar.confirmRemoveTitle}
+          message={t.sidebar.confirmRemove(title)}
+          onConfirm={confirmDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
         />
       )}
     </li>

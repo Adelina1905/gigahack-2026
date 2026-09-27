@@ -93,7 +93,7 @@ describe("Sidebar projects", () => {
   const renderSidebar = (overrides: Partial<React.ComponentProps<typeof Sidebar>> = {}) => {
     const calls = { moved: [] as Array<[string, string | null]>, created: [] as string[], newChatIn: [] as string[] };
     render(<Sidebar chats={chats} projects={projects} activeChatId="c1" draftProjectId={null} isLoaded
-      onNewChat={noop} onSelect={noop} onRename={noop} onDelete={noop}
+      onNewChat={noop} onSelect={noop} onDelete={noop}
       onMoveChat={(chatId, projectId) => calls.moved.push([chatId, projectId])}
       onCreateProject={async name => { calls.created.push(name); return null; }}
       onRenameProject={noop} onDeleteProject={noop}
@@ -150,7 +150,7 @@ describe("Sidebar projects", () => {
     expect(calls.newChatIn).toEqual(["p2"]);
   });
   it("lists the first chat under a new project from the draft until it is saved", () => {
-    const props = { chats, projects, isLoaded: true, onNewChat: noop, onSelect: noop, onRename: noop,
+    const props = { chats, projects, isLoaded: true, onNewChat: noop, onSelect: noop,
       onDelete: noop, onMoveChat: noop, onCreateProject: async () => null, onRenameProject: noop,
       onDeleteProject: noop, onNewChatInProject: noop, isOpen: true, onClose: noop };
     const { rerender } = render(<Sidebar {...props} activeChatId={null} draftProjectId="p2" />);

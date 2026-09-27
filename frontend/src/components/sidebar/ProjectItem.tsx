@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useI18n } from "../../i18n/context";
 import type { ChatSummary, ProjectSummary } from "../../types/chat";
+import ConfirmDialog from "../ConfirmDialog";
 import ChatItem from "./ChatItem";
 import { actionButtonClass, dangerButtonClass, iconProps } from "./iconProps";
 
@@ -16,10 +18,8 @@ interface ProjectItemProps {
   onRename: (project: ProjectSummary) => void;
   onDelete: (projectId: string) => void;
   onSelectChat: (chatId: string) => void;
-  onRenameChat: (chatId: string, name: string) => void;
   onDeleteChat: (chatId: string) => void;
   onMoveChat: (chatId: string, projectId: string | null) => void;
-  onCreateTracker?: (project: ProjectSummary) => void;
 }
 
 function ProjectItem({
@@ -34,15 +34,16 @@ function ProjectItem({
   onRename,
   onDelete,
   onSelectChat,
-  onRenameChat,
   onDeleteChat,
   onMoveChat,
-  onCreateTracker,
 }: ProjectItemProps) {
   const { t } = useI18n();
 
-  const handleDelete = () => {
-    if (window.confirm(t.projects.confirmRemove(project.name))) onDelete(project.id);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  const confirmDelete = () => {
+    setIsConfirmingDelete(false);
+    onDelete(project.id);
   };
 
   return (
@@ -93,8 +94,9 @@ function ProjectItem({
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             aria-label={t.projects.remove(project.name)}
+            aria-haspopup="dialog"
             className={dangerButtonClass}
           >
             <svg {...iconProps} className="h-3.5 w-3.5">
@@ -104,22 +106,17 @@ function ProjectItem({
         </div>
       </div>
 
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t.projects.confirmRemoveTitle}
+          message={t.projects.confirmRemove(project.name)}
+          onConfirm={confirmDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
+      )}
+
       {isExpanded && (
         <ul aria-label={project.name} className="ml-4 flex flex-col gap-0.5 border-l border-border pl-1">
-          {onCreateTracker && (
-            <li className="px-2 py-1.5">
-              <button
-                type="button"
-                onClick={() => onCreateTracker(project)}
-                className="flex min-h-10 w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-xs font-semibold text-primary-700 transition-colors duration-200 hover:bg-primary-50 motion-reduce:transition-none"
-              >
-                <svg {...iconProps} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
-                  <path d="M12 3v3M12 18v3M3 12h3M18 12h3M7.8 7.8 5.7 5.7M18.3 18.3l-2.1-2.1M16.2 7.8l2.1-2.1M5.7 18.3l2.1-2.1M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" />
-                </svg>
-                {t.trackers.createForProject}
-              </button>
-            </li>
-          )}
           {/* The chat being written here; the server creates it on the first message. */}
           {isDraftTarget && (
             <li
@@ -151,7 +148,6 @@ function ProjectItem({
                 isActive={chat.id === activeChatId}
                 projects={projects}
                 onSelect={onSelectChat}
-                onRename={onRenameChat}
                 onDelete={onDeleteChat}
                 onMove={onMoveChat}
               />

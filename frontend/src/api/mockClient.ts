@@ -300,7 +300,9 @@ interface MockStore {
   nextAlertId?: number;
 }
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// Simulated latency for demos; tests only need the async hop, not the delay.
+const LATENCY = import.meta.env.MODE === "test" ? 0 : 1;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms * LATENCY));
 const now = () => new Date().toISOString();
 const notFound = (what: string) => new ApiError(`${what} not found`, 404);
 const aiReplyFor = (reply: MockReply): ResponseView["aiReply"] => reply.citations ? {
@@ -455,15 +457,6 @@ export async function createChat(
     updatedAt: timestamp,
   };
   store.chats.push(chat);
-  save(store);
-  return chat;
-}
-
-export async function updateChat(chatId: string, name: string): Promise<ChatView> {
-  await wait(100);
-  const store = load();
-  const chat = findChat(store, chatId);
-  chat.name = name.trim();
   save(store);
   return chat;
 }
