@@ -208,11 +208,6 @@ function Playground() {
             setSelectedTrackerId(null);
             setIsSidebarOpen(false);
           }}
-          onCreateTracker={(project) => {
-            setTrackerConversationProject(project);
-            setWorkspace("trackers");
-            setIsSidebarOpen(false);
-          }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
