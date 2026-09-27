@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render as renderRaw, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderRaw, screen, within } from "@testing-library/react";
 import TrackersView from "../src/components/trackers/TrackersView";
 import { I18nContext } from "../src/i18n/context";
 import { MESSAGES } from "../src/i18n/messages";
@@ -95,6 +95,24 @@ describe("Plan trackers", () => {
       location: "Central Market",
       topics: ["Commercial permits"],
     })]);
+  });
+
+  it("asks for confirmation before deleting a tracker", () => {
+    const removed: string[] = [];
+    render(<TrackersView {...baseProps} selectedId="t1" onSelect={() => {}} onRemove={(id) => removed.push(id)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.remove }));
+    let dialog = screen.getByRole("alertdialog", { name: en.trackers.confirmRemoveTitle });
+    expect(within(dialog).getByText(en.trackers.confirmRemove(tracker.name))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: en.confirm.cancel }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(removed).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.remove }));
+    dialog = screen.getByRole("alertdialog", { name: en.trackers.confirmRemoveTitle });
+    fireEvent.click(within(dialog).getByRole("button", { name: en.confirm.delete }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(removed).toEqual(["t1"]);
   });
 
   it("supports cancelling setup and returning from details", () => {

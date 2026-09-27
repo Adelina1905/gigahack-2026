@@ -470,22 +470,20 @@ describe("ProjectAlertsDialog", () => {
 
 describe("Sidebar trackers", () => {
   const noop = () => {};
-  it("opens the dedicated tracker area and creates one from an expanded project", () => {
+  it("opens the dedicated tracker area and offers no plan creation inside a project", () => {
     const opened: string[] = [];
-    const created: string[] = [];
     render(<Sidebar chats={[]} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
       onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
       onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
       trackerCount={2} isTrackersOpen={false} onOpenTrackers={() => opened.push("trackers")}
-      onCreateTracker={project => created.push(project.id)}
       isOpen onClose={noop} />);
 
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${en.trackers.open}`) }));
     expect(opened).toEqual(["trackers"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Education" }));
-    fireEvent.click(screen.getByRole("button", { name: en.trackers.createForProject }));
-    expect(created).toEqual(["p2"]);
+    const projectList = screen.getByRole("list", { name: "Education" });
+    expect(within(projectList).queryByRole("button", { name: /plan/i })).toBeNull();
   });
 });
 

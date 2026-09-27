@@ -5,6 +5,7 @@ import type { PlanTracker } from "../../types/tracker";
 import type { PlanNotification } from "../../types/planNotification";
 import { CityGatesArt, TriumphalArchArt } from "../brand/Landmarks";
 import TitleRule from "../brand/TitleRule";
+import ConfirmDialog from "../ConfirmDialog";
 import { CivicSurface, StatusBadge, StepProgress, TopicChip } from "../civic/CivicPrimitives";
 import { iconProps } from "../sidebar/iconProps";
 import { safeHttpUrl } from "../sources/safeLink";
@@ -142,6 +143,7 @@ function TrackerDetail({ tracker, project, notifications, onBack, onUpdate, onRe
   const { t, locale } = useI18n();
   const [draft, setDraft] = useState(tracker);
   const [isEditing, setIsEditing] = useState(false);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   useEffect(() => { setDraft(tracker); setIsEditing(false); }, [tracker]);
   const save = () => { onUpdate(draft); setIsEditing(false); };
   const hasConsiderations = draft.risks.length > 0 || draft.opportunities.length > 0;
@@ -161,7 +163,8 @@ function TrackerDetail({ tracker, project, notifications, onBack, onUpdate, onRe
 
       {hasConsiderations && <div className="mt-4 grid gap-4 md:grid-cols-2">{draft.risks.length > 0 && <CivicSurface className="p-5"><h3 className="font-serif text-lg text-primary">{t.trackers.risks}</h3><ul className="mt-3 space-y-2">{draft.risks.map((item) => <li key={item} className="flex gap-2 text-sm text-text-muted"><span className="text-danger" aria-hidden="true">—</span>{item}</li>)}</ul></CivicSurface>}{draft.opportunities.length > 0 && <CivicSurface className="p-5"><h3 className="font-serif text-lg text-primary">{t.trackers.opportunities}</h3><ul className="mt-3 space-y-2">{draft.opportunities.map((item) => <li key={item} className="flex gap-2 text-sm text-text-muted"><span className="text-primary" aria-hidden="true">+</span>{item}</li>)}</ul></CivicSurface>}</div>}
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border/70 pt-5"><p className="max-w-2xl text-xs leading-relaxed text-text-subtle">{t.trackers.prototypeNote}</p><div className="flex items-center gap-2"><button type="button" onClick={onRemove} className="min-h-11 rounded-[5px] px-3 text-sm font-medium text-text-subtle hover:bg-danger-light hover:text-danger">{t.trackers.remove}</button>{isEditing && <button type="button" onClick={save} className="min-h-11 rounded-[5px] bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-dark">{t.trackers.save}</button>}</div></div>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border/70 pt-5"><p className="max-w-2xl text-xs leading-relaxed text-text-subtle">{t.trackers.prototypeNote}</p><div className="flex items-center gap-2"><button type="button" onClick={() => setIsConfirmingRemove(true)} aria-haspopup="dialog" className="min-h-11 rounded-[5px] border border-danger/25 bg-danger-light px-4 text-sm font-semibold text-danger transition-colors duration-200 hover:border-danger/45 hover:bg-danger/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger motion-reduce:transition-none">{t.trackers.remove}</button>{isEditing && <button type="button" onClick={save} className="min-h-11 rounded-[5px] bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-dark">{t.trackers.save}</button>}</div></div>
+      {isConfirmingRemove && <ConfirmDialog title={t.trackers.confirmRemoveTitle} message={t.trackers.confirmRemove(draft.name)} onConfirm={() => { setIsConfirmingRemove(false); onRemove(); }} onCancel={() => setIsConfirmingRemove(false)} />}
     </article>
   );
 }

@@ -27,7 +27,6 @@ interface SidebarProps {
   trackerCount: number;
   isTrackersOpen: boolean;
   onOpenTrackers: () => void;
-  onCreateTracker: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -95,7 +94,6 @@ function Sidebar({
   trackerCount,
   isTrackersOpen,
   onOpenTrackers,
-  onCreateTracker,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -271,7 +269,6 @@ function Sidebar({
                     onSelectChat={onSelect}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
-                    onCreateTracker={onCreateTracker}
                   />
                 ))}
               </ul>
