@@ -5,6 +5,7 @@ from municipal_rag.answering import (
     candidate_profile,
     coverage_ledger,
     evidence_for_scopes,
+    evidence_for_selected_title,
     format_atomic_answer,
     format_scoped_answer,
     headline_only_amount,
@@ -12,6 +13,7 @@ from municipal_rag.answering import (
     requested_atomic_cells,
     requested_scopes,
     resolve_ambiguity,
+    split_explicit_selection,
 )
 from municipal_rag.verification import claim_scope_constraints, deterministic_issues, minimize_numeric_evidence
 
@@ -27,6 +29,27 @@ def evidence(document_id: str, title: str, quote: str, score: float) -> dict:
 
 
 class AmbiguityResolutionTests(unittest.TestCase):
+    def test_clarification_selection_is_parsed_and_matches_only_chosen_title(self) -> None:
+        original, selected = split_explicit_selection(
+            'Câte accese sunt în Botanica?\nDocument selectat pentru clarificare: "Proiect Botanica"'
+        )
+        self.assertEqual(original, "Câte accese sunt în Botanica?")
+        self.assertEqual(selected, "Proiect Botanica")
+        items = [evidence("a", "Proiect Botanica", "73 de accese", .8),
+                 evidence("b", "Proiect general", "60 mln lei", .9)]
+        self.assertEqual([item["documentId"] for item in evidence_for_selected_title(items, selected)], ["a"])
+
+    def test_single_title_with_requested_location_bypasses_clarification(self) -> None:
+        interpreted = {"normalizedRomanianQuery": "Câte accese sunt în Botanica?",
+                       "constraints": {"entities": ["accese"], "locations": ["Botanica"],
+                                       "dates": [], "multipleProjects": False}}
+        direct = evidence("botanica", "Accese reparate în sectorul Botanica", "Vor fi 73 de accese.", .79)
+        general = evidence("general", "Căi de acces spre curțile de bloc", "În Botanica sunt lucrări.", .81)
+        selected, choices, _, diagnostics = resolve_ambiguity([general, direct], interpreted, .88)
+        self.assertEqual({item["documentId"] for item in selected}, {"botanica"})
+        self.assertEqual(choices, [])
+        self.assertIn(diagnostics["decision"], {"exact-title-override", "location-title-override"})
+
     def test_complex_question_builds_location_fact_matrix(self) -> None:
         interpreted = {
             "normalizedRomanianQuery": "Compară suma, durata, numărul acceselor și stadiul pentru Botanica și Buiucani",

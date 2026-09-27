@@ -95,6 +95,9 @@ AMOUNT_RE = re.compile(
     r"\b\d+(?:[.,]\d+)?\s*(?:mln|milioane?|mii)?\s*(?:de\s+)?(?:lei|mdl|eur|euro)\b",
     re.I,
 )
+SELECTED_DOCUMENT_RE = re.compile(
+    r'\n?Document selectat pentru clarificare:\s*["“](.+?)["”]\s*$', re.I | re.S,
+)
 
 
 def normalized_text(value: str) -> str:
@@ -105,6 +108,28 @@ def normalized_text(value: str) -> str:
     folded = re.sub(r"\bbd(?:\.(?=\s|$)|\b)", "bulevardul", folded)
     folded = re.sub(r"\bstr(?:\.(?=\s|$)|\b)", "strada", folded)
     return re.sub(r"\bmln\b", "milioane", folded)
+
+
+def split_explicit_selection(question: str) -> tuple[str, str | None]:
+    match = SELECTED_DOCUMENT_RE.search(question)
+    if not match:
+        return question, None
+    cleaned = question[:match.start()].strip()
+    return (cleaned or question, match.group(1).strip())
+
+
+def evidence_for_selected_title(items: list[dict[str, Any]], selected_title: str) -> list[dict[str, Any]]:
+    expected = normalized_text(selected_title).strip()
+    exact = [item for item in items
+             if normalized_text(str((item.get("metadata") or {}).get("title") or "")).strip() == expected]
+    if exact:
+        return exact
+    # Tolerate UI truncation/typographic changes, but require an almost exact
+    # bidirectional token match so a related project cannot inherit the choice.
+    expected_tokens = content_tokens(selected_title)
+    return [item for item in items if
+            token_coverage(expected_tokens, content_tokens(str((item.get("metadata") or {}).get("title") or ""))) >= .95
+            and token_coverage(content_tokens(str((item.get("metadata") or {}).get("title") or "")), expected_tokens) >= .95]
 
 
 def content_tokens(value: str) -> list[str]:
@@ -214,6 +239,22 @@ def resolve_ambiguity(items: list[dict[str, Any]], interpreted: dict[str, Any], 
                 "decision": "exact-title-override", "selectedDocumentId": winner["documentId"],
                 "selectedTitleMatch": round(winner["titleScore"], 4),
             }
+
+    requested_locations = [str(value) for value in interpreted.get("constraints", {}).get("locations") or []
+                           if str(value).strip()]
+    title_scoped = [value for value in profiles if requested_locations and
+                    all(phrase_matches(location, value["title"]) for location in requested_locations)]
+    title_scoped.sort(key=lambda value: (-value["titleScore"], -value["matchScore"], value["documentId"]))
+    title_runner = title_scoped[1] if len(title_scoped) > 1 else None
+    dominant_location_title = bool(title_scoped and title_scoped[0]["titleScore"] >= .35 and
+                                   (title_runner is None or
+                                    title_scoped[0]["titleScore"] - title_runner["titleScore"] >= .12))
+    if len(title_scoped) == 1 or dominant_location_title:
+        winner = title_scoped[0]
+        selected = [item for item in items if str(item.get("documentId")) == winner["documentId"]]
+        return selected, [], ["A single document title matches every requested location"], {
+            "decision": "location-title-override", "selectedDocumentId": winner["documentId"],
+        }
 
     compatible = [value for value in profiles if value["compatible"]]
     if len(compatible) < 2:
@@ -516,11 +557,23 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
         api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             return unavailable(question, "OPENROUTER_API_KEY is not configured")
+        question, selected_title = split_explicit_selection(question)
         interpreted = interpret_query(question, config, api_key)
-        found = retrieve(question, interpreted, config, api_key, qdrant_path, qdrant_url, explain)
-        scoped_items, choices, ambiguity_reasons, ambiguity_diagnostics = resolve_ambiguity(
-            found["evidence"], interpreted, float(config.raw["thresholds"]["ambiguityScoreRatio"])
-        )
+        retrieval_question = f"{question}\n{selected_title}" if selected_title else question
+        retrieval_interpreted = interpreted
+        if selected_title:
+            retrieval_interpreted = {**interpreted,
+                "normalizedRomanianQuery": f'{interpreted["normalizedRomanianQuery"]} {selected_title}'}
+        found = retrieve(retrieval_question, retrieval_interpreted, config, api_key, qdrant_path, qdrant_url, explain)
+        explicitly_selected = evidence_for_selected_title(found["evidence"], selected_title) if selected_title else []
+        if explicitly_selected:
+            scoped_items, choices, ambiguity_reasons = explicitly_selected, [], ["User selected this document explicitly"]
+            ambiguity_diagnostics = {"decision": "explicit-selection", "selectedTitle": selected_title,
+                                     "selectedDocumentId": explicitly_selected[0].get("documentId")}
+        else:
+            scoped_items, choices, ambiguity_reasons, ambiguity_diagnostics = resolve_ambiguity(
+                found["evidence"], interpreted, float(config.raw["thresholds"]["ambiguityScoreRatio"])
+            )
         evidence = expose_evidence(scoped_items)
         common = {"schemaVersion": "2.0", "question": question, "detectedLanguage": interpreted["language"],
             "normalizedRetrievalQuery": interpreted["normalizedRomanianQuery"], "interpretedConstraints": interpreted["constraints"]}
