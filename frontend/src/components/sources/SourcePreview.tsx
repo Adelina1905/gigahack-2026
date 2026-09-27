@@ -229,7 +229,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
         onClick={onClose} className="pointer-events-auto absolute inset-0 bg-black/40 lg:hidden" />
       <section ref={panelRef} id={id} role="dialog" aria-modal={desktop ? undefined : true} aria-labelledby={titleId}
         tabIndex={-1} style={desktop ? { width: panelWidth } : undefined}
-        className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:rounded-none lg:border-y-0 lg:border-r-0">
+        className="source-panel-enter pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col overflow-hidden rounded-t-2xl border border-border/70 bg-background shadow-[0_12px_40px_rgba(0,30,71,0.16)] lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:rounded-none lg:border-y-0 lg:border-r-0">
         {desktop && <div role="separator" aria-orientation="vertical" aria-label={t.message.resizeSources}
           aria-valuemin={MIN_WIDTH} aria-valuemax={Math.round(window.innerWidth * 0.45)} aria-valuenow={Math.round(panelWidth)}
           tabIndex={0} onPointerDown={beginResize}
@@ -240,7 +240,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
 
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">{t.message.sourcePosition(activeIndex + 1, sources.length)}</p>
+            <p className="text-xs font-semibold text-primary">{t.message.sourcePosition(activeIndex + 1, sources.length)}</p>
             <h2 id={titleId} className="mt-1 break-words font-serif text-xl leading-tight text-text">{source.title}</h2>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label={t.message.closeSources}
@@ -255,13 +255,13 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
           </div>}
 
           {source.exactQuote && <div className="mb-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.supportingQuote}</p>
+            <p className="mb-2 text-xs font-semibold text-text-muted">{t.message.supportingQuote}</p>
             <blockquote className="break-words border-l-4 border-accent bg-background-secondary px-4 py-3 text-sm leading-relaxed text-text">{source.exactQuote}</blockquote>
           </div>}
 
           {link && <section className="mb-5 overflow-hidden rounded-sm border border-border bg-background-secondary">
             <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.websitePreview}</h3>
+              <h3 className="text-xs font-semibold text-text-muted">{t.message.websitePreview}</h3>
               <a href={link} target="_blank" rel="noopener noreferrer"
                 className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 {t.message.openSource}<span aria-hidden="true">↗</span>
@@ -316,7 +316,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
               return <section key={section.id} data-source-section={section.id}
                 className={`scroll-m-6 rounded-sm border px-4 py-3 ${focused ? "border-accent bg-accent/10 shadow-sm" : "border-border bg-background"}`}>
                 {section.headingPath.length > 0 && <p className="mb-1 text-xs font-semibold text-primary">{section.headingPath.join(" › ")}</p>}
-                {label && <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-subtle">{label}</p>}
+                {label && <p className="mb-2 text-[11px] font-medium text-text-subtle">{label}</p>}
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-text"><HighlightedText text={section.text} quote={focused ? source.exactQuote : null} /></p>
               </section>;
             })}

@@ -39,8 +39,8 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
   const { t } = useI18n();
 
   return (
-    <div className="flex min-h-full flex-col justify-center gap-4 py-2">
-      <section className="relative overflow-hidden rounded-[6px] border border-border/80 bg-background px-5 pt-6 pb-20 shadow-[0_1px_2px_rgba(0,58,141,0.04)] sm:px-8 sm:pt-8 sm:pb-24">
+    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-4 py-2">
+      <section className="relative overflow-hidden rounded-[6px] border border-border/60 bg-background px-5 pt-6 pb-20 sm:px-8 sm:pt-8 sm:pb-24">
         <div className="relative">
           <p className="text-sm font-semibold text-primary">{t.welcome.eyebrow}</p>
           <h2 className="mt-2 font-serif text-[1.75rem] leading-tight text-primary sm:text-4xl">{t.welcome.title}</h2>
@@ -62,7 +62,7 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
             key={question}
             type="button"
             onClick={() => onSend(question)}
-            className="group flex min-h-36 flex-col items-start gap-3 rounded-[6px] border border-border/80 bg-background p-4 text-left shadow-[0_1px_2px_rgba(0,58,141,0.04)] transition-[border-color,background-color] duration-200 hover:border-primary-200 hover:bg-primary-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
+            className="group flex min-h-36 flex-col items-start gap-3 rounded-[6px] border border-border/60 bg-background p-4 text-left transition-[border-color,background-color] duration-200 hover:border-primary-100 hover:bg-primary-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
           >
             <span className="rounded-sm border border-border-strong px-1.5 py-px text-[11px] font-medium text-text-muted">
               {topic}
@@ -146,7 +146,7 @@ function ChatWindow({
         ) : isEmpty ? (
           <WelcomePanel onSend={onSend} />
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-7">
             {messages.map((m) =>
               m.role === "user" ? (
                 <UserMessage key={m.id} message={m} onRetry={onRetry} />
@@ -166,7 +166,8 @@ function ChatWindow({
         )}
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pb-4">
+      <div className="px-4 pb-4">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
         {error && (
           <div
             role="alert"
@@ -206,6 +207,7 @@ function ChatWindow({
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}
         </p>
+        </div>
       </div>
 
       {sourcePreview && previewSources?.[sourcePreview.sourceIndex] && (

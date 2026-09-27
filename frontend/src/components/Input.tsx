@@ -64,7 +64,7 @@ function ChatInput({ onSend, disabled = false, placeholder, voice }: ChatInputPr
       )}
 
       {voice.error && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-sm border border-danger bg-danger-light px-3 py-2 text-sm text-danger">
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-[6px] border border-danger/40 bg-danger-light px-3 py-2 text-sm text-danger">
           <span>{t.voice.errors[voice.error]}</span>
           <button type="button" onClick={voice.dismissError} aria-label={t.chat.dismissError} className="rounded-sm px-1.5 text-base leading-none hover:bg-background">×</button>
         </div>
@@ -76,7 +76,7 @@ function ChatInput({ onSend, disabled = false, placeholder, voice }: ChatInputPr
           aria-pressed={voice.enabled}
           aria-label={t.voice.mode}
           onClick={voice.toggleEnabled}
-          className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[6px] border shadow-sm transition-[color,background-color,border-color] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none ${voice.enabled ? "border-primary bg-primary text-white" : "border-border-strong bg-background text-primary hover:border-primary hover:bg-primary-50"}`}
+          className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[6px] border transition-[color,background-color,border-color] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none ${voice.phase === "speaking" ? "border-accent bg-accent/15 text-primary-800" : voice.enabled ? "border-primary-100 bg-primary-50 text-primary-700" : "border-border/70 bg-background/70 text-primary-500 hover:border-primary-200 hover:bg-primary-50/60"}`}
         >
           {voice.enabled && (
             <span aria-hidden="true" className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-sm font-bold leading-none text-primary-900 shadow-sm">×</span>
@@ -90,7 +90,7 @@ function ChatInput({ onSend, disabled = false, placeholder, voice }: ChatInputPr
           </span>
         </button>
 
-        <div className="flex min-w-0 flex-1 items-end gap-2 rounded-sm border border-border-strong bg-background py-2 pr-2 pl-3 shadow-sm transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+        <div className="flex min-w-0 flex-1 items-end gap-2 rounded-[6px] border border-border/80 bg-background py-2 pr-2 pl-3 shadow-[0_1px_2px_rgba(0,58,141,0.025)] transition-[border-color,box-shadow] duration-200 focus-within:border-primary-300 focus-within:shadow-[0_0_0_3px_rgba(0,84,156,0.08)] motion-reduce:transition-none">
           <button
             type="button"
             onClick={voice.toggleRecording}

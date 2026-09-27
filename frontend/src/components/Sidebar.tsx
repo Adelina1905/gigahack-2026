@@ -280,7 +280,7 @@ function Sidebar({
             groups.map((group) => (
               <section key={group.label} className="mt-4">
                 <h3 className="pb-1.5">
-                  <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
+                  <span className="inline-block px-1 text-[11px] font-semibold text-text-subtle">
                     {t.sidebar.groups[group.label]}
                   </span>
                 </h3>

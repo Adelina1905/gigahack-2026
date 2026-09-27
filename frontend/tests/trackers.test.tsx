@@ -5,6 +5,7 @@ import TrackersView from "../src/components/trackers/TrackersView";
 import { I18nContext } from "../src/i18n/context";
 import { MESSAGES } from "../src/i18n/messages";
 import type { PlanTracker } from "../src/types/tracker";
+import type { PlanNotification } from "../src/types/planNotification";
 
 afterEach(cleanup);
 const en = MESSAGES.en;
@@ -39,6 +40,12 @@ const baseProps = {
   onRemove: () => {},
 };
 
+const notification: PlanNotification = {
+  id: "n1", trackerId: "t1", trackerName: tracker.name, scenarioId: "transport",
+  matchedTopic: "Public transport", sourceTitle: "Example source", sourceUrl: "https://www.chisinau.md/ro",
+  publishedDate: "2026-09-27", createdAt: Date.now(), isRead: false, isExample: true,
+};
+
 describe("Plan trackers", () => {
   it("uses a list landing view before opening a tracker", () => {
     const selected: string[] = [];
@@ -57,6 +64,16 @@ describe("Plan trackers", () => {
     expect(screen.getByText(en.trackers.noUpdates)).toBeTruthy();
     expect(screen.queryByText(en.trackers.risks)).toBeNull();
     expect(screen.queryByText(en.trackers.opportunities)).toBeNull();
+  });
+
+  it("shows imported example updates in the tracker and marks them read", () => {
+    const read: string[] = [];
+    render(<TrackersView {...baseProps} selectedId="t1" onSelect={() => {}} notifications={[notification]}
+      onOpenNotification={(id) => read.push(id)} />);
+    expect(screen.getByText(en.planNotifications.scenarios.transport.title)).toBeTruthy();
+    expect(screen.getByText(en.planNotifications.why("Public transport"))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: en.planNotifications.markRead }));
+    expect(read).toEqual(["n1"]);
   });
 
   it("creates a tracker through the deterministic three-step setup", () => {
@@ -93,4 +110,3 @@ describe("Plan trackers", () => {
     expect(calls).toEqual(["cancel", "back"]);
   });
 });
-

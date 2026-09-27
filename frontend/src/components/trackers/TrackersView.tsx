@@ -2,10 +2,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useI18n } from "../../i18n/context";
 import type { ProjectSummary } from "../../types/chat";
 import type { PlanTracker } from "../../types/tracker";
+import type { PlanNotification } from "../../types/planNotification";
 import { CityGatesArt, TriumphalArchArt } from "../brand/Landmarks";
 import TitleRule from "../brand/TitleRule";
 import { CivicSurface, StatusBadge, StepProgress, TopicChip } from "../civic/CivicPrimitives";
 import { iconProps } from "../sidebar/iconProps";
+import { safeHttpUrl } from "../sources/safeLink";
 
 interface TrackersViewProps {
   trackers: PlanTracker[];
@@ -20,6 +22,8 @@ interface TrackersViewProps {
   onCompleteCreate: (details: Partial<PlanTracker>, project?: ProjectSummary) => void;
   onUpdate: (tracker: PlanTracker) => void;
   onRemove: (trackerId: string) => void;
+  notifications?: PlanNotification[];
+  onOpenNotification?: (notificationId: string) => void;
 }
 
 const intlLocale = (locale: string) => locale === "ro" ? "ro-MD" : locale === "ru" ? "ru-MD" : "en-GB";
@@ -134,7 +138,7 @@ function TrackerList({ trackers, onSelect, onCreate }: { trackers: PlanTracker[]
   );
 }
 
-function TrackerDetail({ tracker, project, onBack, onUpdate, onRemove }: { tracker: PlanTracker; project?: ProjectSummary; onBack: () => void; onUpdate: (tracker: PlanTracker) => void; onRemove: () => void }) {
+function TrackerDetail({ tracker, project, notifications, onBack, onUpdate, onRemove, onOpenNotification }: { tracker: PlanTracker; project?: ProjectSummary; notifications: PlanNotification[]; onBack: () => void; onUpdate: (tracker: PlanTracker) => void; onRemove: () => void; onOpenNotification: (notificationId: string) => void }) {
   const { t, locale } = useI18n();
   const [draft, setDraft] = useState(tracker);
   const [isEditing, setIsEditing] = useState(false);
@@ -153,7 +157,7 @@ function TrackerDetail({ tracker, project, onBack, onUpdate, onRemove }: { track
 
       <CivicSurface className="mt-4 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-serif text-lg text-primary">{t.trackers.freshness}</h3><p className="mt-1 text-sm text-text-muted">{t.trackers.availableThrough(formatSnapshotDate(draft.dataThrough, locale))}</p></div><StatusBadge tone="gold">{t.trackers.notLive}</StatusBadge></CivicSurface>
       <CivicSurface className="mt-4 p-5 sm:p-6"><h3 className="font-serif text-xl text-primary">{t.trackers.topics}</h3><div className="mt-4">{isEditing ? <TagEditor items={draft.topics} onChange={(topics) => setDraft({ ...draft, topics })} /> : <div className="flex flex-wrap gap-2">{draft.topics.map((topic) => <TopicChip key={topic}>{topic}</TopicChip>)}</div>}</div></CivicSurface>
-      <CivicSurface className="mt-4 p-5 sm:p-6"><h3 className="font-serif text-xl text-primary">{t.trackers.updates}</h3><div className="mt-4 flex gap-3 rounded-[5px] bg-background-secondary/70 p-4 text-sm leading-relaxed text-text-muted"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" /><p>{t.trackers.noUpdates}</p></div></CivicSurface>
+      <CivicSurface className="mt-4 p-5 sm:p-6"><h3 className="font-serif text-xl text-primary">{t.trackers.updates}</h3>{notifications.length === 0 ? <div className="mt-4 flex gap-3 rounded-[5px] bg-background-secondary/70 p-4 text-sm leading-relaxed text-text-muted"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" /><p>{t.trackers.noUpdates}</p></div> : <ul className="mt-4 space-y-3">{notifications.map((notification) => { const scenario = t.planNotifications.scenarios[notification.scenarioId]; const sourceUrl = safeHttpUrl(notification.sourceUrl); return <li key={notification.id} className={`rounded-[5px] border p-4 ${notification.isRead ? "border-border/70" : "border-accent bg-accent/5"}`}><div className="flex flex-wrap items-center gap-2"><StatusBadge tone="gold">{t.planNotifications.exampleBadge}</StatusBadge><span className="text-xs text-text-subtle">{formatSnapshotDate(notification.publishedDate, locale)}</span></div><h4 className="mt-3 font-serif text-lg text-primary">{scenario.title}</h4><p className="mt-1 text-sm leading-relaxed text-text-muted">{scenario.summary}</p><p className="mt-2 text-xs text-text-subtle">{t.planNotifications.why(notification.matchedTopic)}</p><p className="mt-2 text-xs text-text-subtle">{t.planNotifications.source}: {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">{notification.sourceTitle}</a> : notification.sourceTitle}</p>{!notification.isRead && <button type="button" onClick={() => onOpenNotification(notification.id)} className="mt-3 min-h-10 rounded-[5px] px-3 text-sm font-semibold text-primary hover:bg-primary-50">{t.planNotifications.markRead}</button>}</li>; })}</ul>}</CivicSurface>
 
       {hasConsiderations && <div className="mt-4 grid gap-4 md:grid-cols-2">{draft.risks.length > 0 && <CivicSurface className="p-5"><h3 className="font-serif text-lg text-primary">{t.trackers.risks}</h3><ul className="mt-3 space-y-2">{draft.risks.map((item) => <li key={item} className="flex gap-2 text-sm text-text-muted"><span className="text-danger" aria-hidden="true">—</span>{item}</li>)}</ul></CivicSurface>}{draft.opportunities.length > 0 && <CivicSurface className="p-5"><h3 className="font-serif text-lg text-primary">{t.trackers.opportunities}</h3><ul className="mt-3 space-y-2">{draft.opportunities.map((item) => <li key={item} className="flex gap-2 text-sm text-text-muted"><span className="text-primary" aria-hidden="true">+</span>{item}</li>)}</ul></CivicSurface>}</div>}
 
@@ -162,14 +166,14 @@ function TrackerDetail({ tracker, project, onBack, onUpdate, onRemove }: { track
   );
 }
 
-export default function TrackersView({ trackers, selectedId, projects, isCreating, creationProject, onSelect, onBackToList, onStartCreate, onCancelCreate, onCompleteCreate, onUpdate, onRemove }: TrackersViewProps) {
+export default function TrackersView({ trackers, selectedId, projects, isCreating, creationProject, onSelect, onBackToList, onStartCreate, onCancelCreate, onCompleteCreate, onUpdate, onRemove, notifications = [], onOpenNotification = () => {} }: TrackersViewProps) {
   const { t } = useI18n();
   const selected = trackers.find((tracker) => tracker.id === selectedId);
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-canvas">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 hidden items-end justify-between px-6 text-primary opacity-[0.055] xl:flex"><TriumphalArchArt className="h-44" /><CityGatesArt className="h-56" /></div>
       <header className="relative border-b border-border/80 bg-background/95 px-4 py-5 sm:px-8"><div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold text-primary">{t.trackers.eyebrow}</p><h1 className="mt-1 font-serif text-2xl text-primary sm:text-3xl">{t.trackers.title}</h1><p className="mt-1 max-w-2xl text-sm leading-relaxed text-text-muted">{t.trackers.description}</p></div>{!isCreating && <button type="button" onClick={onStartCreate} className="inline-flex min-h-11 items-center gap-2 rounded-[5px] bg-primary px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"><svg {...iconProps} className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>{t.trackers.newTracker}</button>}</div></header>
-      <div className="relative min-h-0 flex-1 overflow-y-auto">{isCreating ? <TrackerConversation project={creationProject} onCancel={onCancelCreate} onComplete={onCompleteCreate} /> : selected ? <TrackerDetail tracker={selected} project={projects.find((project) => project.id === selected.projectId)} onBack={onBackToList} onUpdate={onUpdate} onRemove={() => onRemove(selected.id)} /> : <TrackerList trackers={trackers} onSelect={onSelect} onCreate={onStartCreate} />}</div>
+      <div className="relative min-h-0 flex-1 overflow-y-auto">{isCreating ? <TrackerConversation project={creationProject} onCancel={onCancelCreate} onComplete={onCompleteCreate} /> : selected ? <TrackerDetail tracker={selected} project={projects.find((project) => project.id === selected.projectId)} notifications={notifications.filter((item) => item.trackerId === selected.id)} onBack={onBackToList} onUpdate={onUpdate} onRemove={() => onRemove(selected.id)} onOpenNotification={onOpenNotification} /> : <TrackerList trackers={trackers} onSelect={onSelect} onCreate={onStartCreate} />}</div>
     </div>
   );
 }

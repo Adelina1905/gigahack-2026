@@ -31,6 +31,20 @@
   50% { transform: scaleY(1); }
 }
 
+@keyframes source-panel-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.source-panel-enter {
+  animation: source-panel-in 200ms ease-out;
+}
+
 .voice-wave {
   display: inline-flex;
   height: 2rem;
@@ -64,6 +78,10 @@
   }
 
   .voice-wave-active > span {
+    animation: none;
+  }
+
+  .source-panel-enter {
     animation: none;
   }
 }
