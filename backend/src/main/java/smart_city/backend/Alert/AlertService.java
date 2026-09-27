@@ -22,8 +22,10 @@ import smart_city.backend.Alert.dto.UnreadCountView;
 import smart_city.backend.Alert.exceptions.AlertMatcherUnavailableException;
 import smart_city.backend.Alert.exceptions.AlertNotFoundException;
 import smart_city.backend.Alert.exceptions.AlertTopicNotFoundException;
+import smart_city.backend.Chat.Chat;
 import smart_city.backend.Chat.ChatRepository;
 import smart_city.backend.Chat.exceptions.ChatNotFoundException;
+import smart_city.backend.config.ApiConflictException;
 import smart_city.backend.Project.ProjectRepository;
 import smart_city.backend.Project.exceptions.ProjectNotFoundException;
 
@@ -181,7 +183,7 @@ public class AlertService {
     @Transactional(readOnly = true)
     public AlertSettingsView getSettings(UUID clientId, AlertScope scope) {
 
-        requireOwned(clientId, scope);
+        requireSubscribable(clientId, scope);
 
         return settingsView(scope);
     }
@@ -195,7 +197,7 @@ public class AlertService {
     public AlertSettingsView updateSettings(UUID clientId, AlertScope scope, boolean enabled) {
 
         Long turnedOn = transactions.execute(tx -> {
-            requireOwned(clientId, scope);
+            requireSubscribable(clientId, scope);
             AlertSubscription row = findOrCreateSubscription(clientId, scope);
             boolean wasEnabled = row.isEnabled();
             row.setEnabled(enabled);
@@ -221,7 +223,7 @@ public class AlertService {
     public AlertSettingsView refreshTopics(UUID clientId, AlertScope scope) {
 
         Long subscriptionId = transactions.execute(tx -> {
-            requireOwned(clientId, scope);
+            requireSubscribable(clientId, scope);
             return findOrCreateSubscription(clientId, scope).getId();
         });
         refresh(subscriptionId);
@@ -233,7 +235,7 @@ public class AlertService {
     @Transactional
     public AlertTopicView addTopic(UUID clientId, AlertScope scope, String label) {
 
-        requireOwned(clientId, scope);
+        requireSubscribable(clientId, scope);
         Long subscriptionId = findOrCreateSubscription(clientId, scope).getId();
         String cleaned = clean(label, AlertTopic.MAX_LABEL);
 
@@ -287,7 +289,7 @@ public class AlertService {
     public ScanResult scanNow(UUID clientId, AlertScope scope) {
 
         Long subscriptionId = transactions.execute(tx -> {
-            requireOwned(clientId, scope);
+            requireSubscribable(clientId, scope);
             return findOrCreateSubscription(clientId, scope).getId();
         });
 
@@ -598,6 +600,23 @@ public class AlertService {
         } else {
             chats.findByIdAndClientId(scope.chatId(), clientId)
                     .orElseThrow(ChatNotFoundException::new);
+        }
+    }
+
+
+    // Like requireOwned, and a chat in a project has no alerts of its own: they are the project's
+    // (409 CHAT_IN_PROJECT). Renaming or deleting topics needs an existing subscription, which
+    // such a chat no longer has, so those stay 404.
+    private void requireSubscribable(UUID clientId, AlertScope scope) {
+
+        if (scope.isProject()) {
+            requireOwned(clientId, scope);
+            return;
+        }
+        Chat chat = chats.findByIdAndClientId(scope.chatId(), clientId)
+                .orElseThrow(ChatNotFoundException::new);
+        if (chat.getProjectId() != null) {
+            throw new ApiConflictException("CHAT_IN_PROJECT", "This chat follows its project's alerts.");
         }
     }
 

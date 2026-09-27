@@ -24,12 +24,11 @@ interface SidebarProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onNewChatInProject: (projectId: string) => void;
-  // Unread alerts per chat id (the chat's own subscription).
+  // Unread alerts per project id and per chat id (a chat outside projects).
+  unreadAlertsByProject?: Record<string, number>;
+  onOpenProjectAlerts?: (project: ProjectSummary) => void;
   unreadAlertsByChat?: Record<string, number>;
   onOpenChatAlerts?: (chat: ChatSummary) => void;
-  trackerCount: number;
-  isTrackersOpen: boolean;
-  onOpenTrackers: () => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -94,11 +93,10 @@ function Sidebar({
   onRenameProject,
   onDeleteProject,
   onNewChatInProject,
+  unreadAlertsByProject,
+  onOpenProjectAlerts,
   unreadAlertsByChat,
   onOpenChatAlerts,
-  trackerCount,
-  isTrackersOpen,
-  onOpenTrackers,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -194,43 +192,6 @@ function Sidebar({
             </svg>
             {t.sidebar.newChat}
           </button>
-
-          {/* The one other workspace besides chat; the yellow bar marks it open, like the title rule. */}
-          <button
-            type="button"
-            onClick={onOpenTrackers}
-            aria-label={`${t.trackers.open} (${trackerCount})`}
-            aria-current={isTrackersOpen ? "page" : undefined}
-            className={`group relative flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[5px] border px-2 py-1.5 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
-              isTrackersOpen
-                ? "border-primary/20 bg-primary-50 text-primary-700"
-                : "border-border bg-background text-text hover:border-primary/25 hover:bg-background-secondary"
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`absolute inset-y-2 left-0 w-[3px] rounded-r-sm bg-accent transition-opacity duration-200 motion-reduce:transition-none ${
-                isTrackersOpen ? "opacity-100" : "opacity-0"
-              }`}
-            />
-            <span
-              aria-hidden="true"
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-sm transition-colors duration-200 motion-reduce:transition-none ${
-                isTrackersOpen ? "bg-primary text-text-inverted" : "bg-primary-50 text-primary group-hover:bg-primary-100"
-              }`}
-            >
-              <svg {...iconProps} className="h-4 w-4"><path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" /></svg>
-            </span>
-            <span className="min-w-0 flex-1 truncate">{t.trackers.title}</span>
-            <span
-              aria-hidden="true"
-              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
-                isTrackersOpen ? "bg-accent text-primary-700" : "bg-background-secondary text-text-subtle"
-              }`}
-            >
-              {trackerCount}
-            </span>
-          </button>
         </div>
 
         <nav className="relative flex-1 overflow-y-auto px-4 pb-4">
@@ -274,8 +235,8 @@ function Sidebar({
                     onSelectChat={onSelect}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
-                    unreadAlertsByChat={unreadAlertsByChat}
-                    onOpenChatAlerts={onOpenChatAlerts}
+                    unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
+                    onOpenAlerts={onOpenProjectAlerts}
                   />
                 ))}
               </ul>

@@ -27,6 +27,7 @@ import smart_city.backend.Project.Project;
 import smart_city.backend.Project.ProjectRepository;
 import smart_city.backend.Response.ChatResponseMessage;
 import smart_city.backend.Response.ResponseRepository;
+import smart_city.backend.config.ApiConflictException;
 
 import java.util.List;
 import java.util.Map;
@@ -119,11 +120,6 @@ class ChatAlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
         assertThat(view.projectId()).isNull();
         assertThat(view.topics()).extracting(AlertTopicView::label).containsExactly("Transport public");
         assertThat(subscriptionRepository.findByChatId(chat.getId()).orElseThrow().getClientId()).isEqualTo(clientId);
-
-        // A chat inside a project has its own questions too, separate from the project's.
-        alertService.refreshTopics(clientId, AlertScope.chat(projectChat.getId()));
-        assertThat(matcher.topicsCalls.get(1).questions()).containsExactly("Întrebare din proiect");
-        assertThat(alertService.getSettings(clientId, AlertScope.project(projectId)).topics()).isEmpty();
     }
 
     @Test
@@ -286,43 +282,52 @@ class ChatAlertServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     }
 
     @Test
-    void movingAChatIntoAProjectKeepsItsOwnSubscription() {
-        ask(chat, "Transport public");
-        alertService.addTopic(clientId, scope, "transport");
+    void movingAChatIntoAProjectDropsItsOwnSubscriptionTopicsAndAlerts() {
+        AlertTopicView topic = alertService.addTopic(clientId, scope, "transport");
         enableDirectly(scope);
         matcher.feed(doc("d1", "transport", 0.9));
+        alertService.scanNow(clientId, scope);
+        Long alertId = alertService.getAlerts(clientId, null, chat.getId(), false, 50).getFirst().id();
 
         chatService.moveChat(clientId, chat.getId(), new ChatProjectRequest(projectId));
         chatRepository.flush();
 
-        AlertSettingsView view = alertService.getSettings(clientId, scope);
-        assertThat(view.enabled()).isTrue();
-        assertThat(view.topics()).extracting(AlertTopicView::label).containsExactly("transport");
+        // The chat now follows the project's alerts.
+        assertThat(subscriptionRepository.findByChatId(chat.getId())).isEmpty();
+        assertThat(topicRepository.existsById(topic.id())).isFalse();
+        assertThat(alertRepository.existsById(alertId)).isFalse();
+        assertThat(alertService.getUnreadCount(clientId).byChat()).isEmpty();
 
-        alertService.scanEnabledSubscriptions();
-
-        AlertView alert = alertService.getAlerts(clientId, null, chat.getId(), false, 50).getFirst();
-        assertThat(alert.chatId()).isEqualTo(chat.getId());
-        assertThat(alert.projectId()).isNull();
-
+        // Moved back out, it starts without alerts of its own.
         chatService.moveChat(clientId, chat.getId(), new ChatProjectRequest(null));
         chatRepository.flush();
-        assertThat(alertService.getSettings(clientId, scope).enabled()).isTrue();
-        assertThat(alertService.getAlerts(clientId, null, chat.getId(), false, 50)).hasSize(1);
+        assertThat(alertService.getSettings(clientId, scope))
+                .isEqualTo(new AlertSettingsView(null, chat.getId(), false, false, List.of(), null));
     }
 
     @Test
-    void deletingAProjectKeepsItsChatsSubscriptions() {
+    void aChatInAProjectHasNoAlertsOfItsOwn() {
         AlertScope projectChatScope = AlertScope.chat(projectChat.getId());
-        alertService.addTopic(clientId, projectChatScope, "transport");
-        alertService.addTopic(clientId, AlertScope.project(projectId), "transport");
+        ask(projectChat, "Transport public");
 
-        projectRepository.deleteById(projectId);
-        projectRepository.flush();
+        for (Runnable call : List.<Runnable>of(
+                () -> alertService.getSettings(clientId, projectChatScope),
+                () -> alertService.updateSettings(clientId, projectChatScope, true),
+                () -> alertService.refreshTopics(clientId, projectChatScope),
+                () -> alertService.addTopic(clientId, projectChatScope, "transport"),
+                () -> alertService.scanNow(clientId, projectChatScope)
+        )) {
+            assertThatThrownBy(call::run)
+                    .isInstanceOfSatisfying(ApiConflictException.class,
+                            conflict -> assertThat(conflict.getCode()).isEqualTo("CHAT_IN_PROJECT"));
+        }
+        assertThat(subscriptionRepository.findByChatId(projectChat.getId())).isEmpty();
+        assertThat(matcher.topicsCalls).isEmpty();
+        assertThat(matcher.matchCalls).isEmpty();
 
-        assertThat(subscriptionRepository.findByProjectId(projectId)).isEmpty();
-        assertThat(alertService.getSettings(clientId, projectChatScope).topics())
-                .extracting(AlertTopicView::label).containsExactly("transport");
+        // Its questions still feed the project's topics.
+        alertService.refreshTopics(clientId, AlertScope.project(projectId));
+        assertThat(matcher.topicsCalls.getFirst().questions()).containsExactly("Transport public");
     }
 
     @Test
