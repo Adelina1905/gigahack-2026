@@ -1,6 +1,7 @@
 package smart_city.backend.Alert;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -16,6 +17,11 @@ public interface AlertSubscriptionRepository extends JpaRepository<AlertSubscrip
     default Optional<AlertSubscription> findByScope(AlertScope scope) {
         return scope.isProject() ? findByProjectId(scope.projectId()) : findByChatId(scope.chatId());
     }
+
+    // Topics and alerts go with it (ON DELETE CASCADE).
+    @Modifying
+    @Query("delete from AlertSubscription s where s.chatId = :chatId")
+    int deleteByChatId(UUID chatId);
 
     @Query("select s.id from AlertSubscription s where s.enabled = true order by s.id")
     List<Long> findEnabledIds();

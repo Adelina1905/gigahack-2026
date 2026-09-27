@@ -441,7 +441,11 @@ export async function setChatProject(chatId: string, projectId: string | null): 
   await wait(100);
   const store = load();
   const chat = findChat(store, chatId);
-  if (projectId) findProject(store, projectId).updatedAt = now();
+  if (projectId) {
+    findProject(store, projectId).updatedAt = now();
+    // Like the server: a chat in a project follows the project's alerts.
+    dropSubscription(store, { kind: "chat", id: chatId });
+  }
   chat.projectId = projectId;
   save(store);
   return chat;

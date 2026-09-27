@@ -6,6 +6,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import smart_city.backend.config.ApiConflictException;
 
+import smart_city.backend.Alert.AlertSubscriptionRepository;
 import smart_city.backend.Chat.dto.ChatCreateRequest;
 import smart_city.backend.Chat.dto.ChatProjectRequest;
 import smart_city.backend.Chat.dto.ChatResponse;
@@ -22,15 +23,18 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
     private final ProjectRepository projectRepository;
+    private final AlertSubscriptionRepository alertSubscriptions;
     private final TransactionTemplate transactions;
 
     public ChatService(
             ChatRepository chatRepository,
             ProjectRepository projectRepository,
+            AlertSubscriptionRepository alertSubscriptions,
             TransactionTemplate transactions
     ) {
         this.chatRepository = chatRepository;
         this.projectRepository = projectRepository;
+        this.alertSubscriptions = alertSubscriptions;
         this.transactions = transactions;
     }
 
@@ -117,6 +121,8 @@ public class ChatService {
             Project project = findOwnedProject(clientId, projectId);
             chat.setProjectId(project.getId());
             project.touch();
+            // A chat in a project follows the project's alerts, so its own subscription is dropped.
+            alertSubscriptions.deleteByChatId(chat.getId());
         }
 
         return ChatResponse.from(chat);

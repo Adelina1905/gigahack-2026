@@ -710,6 +710,18 @@ describe("Sidebar alerts", () => {
 });
 
 describe("mock alerts API", () => {
+  it("drops a chat's own alerts when it moves into a project", async () => {
+    localStorage.clear();
+    const project = await mockClient.createProject("Transport");
+    const chat = await mockClient.createChat("Buses");
+    await mockClient.createChatAlertTopic(chat.id, "Transport public");
+    expect((await mockClient.getChatAlertSettings(chat.id)).topics).toHaveLength(1);
+
+    await mockClient.setChatProject(chat.id, project.id);
+    await mockClient.setChatProject(chat.id, null);
+    expect(await mockClient.getChatAlertSettings(chat.id)).toMatchObject({ enabled: false, prompted: false, topics: [] });
+  });
+
   it("extracts topics, backfills on opt-in and learns from Not relevant", async () => {
     localStorage.clear();
     const project = await mockClient.createProject("Education");

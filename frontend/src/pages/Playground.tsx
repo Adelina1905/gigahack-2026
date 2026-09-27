@@ -93,7 +93,10 @@ function Playground() {
   };
 
   const moveChat = async (chatId: string, projectId: string | null) => {
-    if ((await chatList.moveToProject(chatId, projectId)) && projectId) projectList.touch(projectId);
+    if (!(await chatList.moveToProject(chatId, projectId)) || !projectId) return;
+    projectList.touch(projectId);
+    // In a project the chat follows the project's alerts; the server dropped its own.
+    void alerts.refreshUnread();
   };
 
   const deleteProject = async (projectId: string) => {
