@@ -12,6 +12,7 @@ from municipal_rag.answering import (
     partial_intro,
     requested_atomic_cells,
     requested_scopes,
+    retain_cited_claims,
     resolve_ambiguity,
     split_explicit_selection,
 )
@@ -29,6 +30,22 @@ def evidence(document_id: str, title: str, quote: str, score: float) -> dict:
 
 
 class AmbiguityResolutionTests(unittest.TestCase):
+    def test_qwen_first_policy_only_enforces_structural_citation_integrity(self) -> None:
+        sources = [
+            {"id": "S1", "title": "Primul document", "exactQuote": "Dovada unu."},
+            {"id": "S4", "title": "Al doilea document", "exactQuote": "Dovada doi."},
+        ]
+        claims = [
+            {"text": "Qwen formulează liber primul răspuns.", "evidenceIds": ["S4", "S99"]},
+            {"text": "Qwen formulează liber al doilea răspuns.", "evidenceIds": ["S1"]},
+            {"text": "Afirmație fără sursă disponibilă.", "evidenceIds": ["S88"]},
+        ]
+        retained, citations = retain_cited_claims(claims, sources, 16)
+        self.assertEqual([item["id"] for item in citations], ["S1", "S2"])
+        self.assertEqual(retained[0]["evidenceIds"], ["S2"])
+        self.assertEqual(retained[1]["evidenceIds"], ["S1"])
+        self.assertEqual(len(retained), 2)
+
     def test_clarification_selection_is_parsed_and_matches_only_chosen_title(self) -> None:
         original, selected = split_explicit_selection(
             'Câte accese sunt în Botanica?\nDocument selectat pentru clarificare: "Proiect Botanica"'

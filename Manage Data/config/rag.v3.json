@@ -1,6 +1,6 @@
 {
   "schemaVersion": "3.0",
-  "promptVersion": "municipal-claims-v3.1",
+  "promptVersion": "municipal-qwen-first-v4.0",
   "models": {
     "embedding": "qwen/qwen3-embedding-8b",
     "reranker": "voyageai/rerank-2.5",
@@ -9,6 +9,7 @@
     "fallbacks": ["qwen/qwen3-14b"]
   },
   "operations": {
+    "answerPolicy": "qwen-first",
     "interactiveDeadlineSeconds": 65,
     "perCallTimeoutSeconds": 25,
     "maxClaims": 16

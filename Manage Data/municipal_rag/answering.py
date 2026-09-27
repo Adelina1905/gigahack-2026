@@ -77,11 +77,45 @@ def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         result.append({"id": f"S{len(result)+1}", "evidenceId": key, "documentId": item.get("documentId"),
             "versionId": item.get("versionId"), "evidenceKind": item.get("evidenceKind"),
             "exactQuote": item.get("citationText"), "title": meta.get("title"), "url": meta.get("sourceUrl"),
-            "sourceFile": meta.get("sourceFile"),
+            "sourceFile": meta.get("sourceFile"), "publisher": meta.get("publisher"),
+            "publishedDate": meta.get("publishedDate"), "category": meta.get("category"),
+            "district": meta.get("district"),
             "locator": item.get("sourceLocator") or ((item.get("citations") or [{}])[0].get("locator")),
             "facts": item.get("facts") or {},
             "retrieval": item.get("retrieval")})
     return result
+
+
+def retain_cited_claims(claims: list[dict[str, Any]], evidence: list[dict[str, Any]],
+                        max_claims: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Keep Qwen's answer while enforcing only structural citation integrity.
+
+    This intentionally does not judge wording, project scope, completeness, or
+    entailment. It only prevents a generated source identifier from pointing to
+    a passage that was never supplied to the model, then makes identifiers
+    contiguous for the public response.
+    """
+    available = {str(item.get("id")): item for item in evidence if item.get("id")}
+    retained: list[dict[str, Any]] = []
+    for original in claims[:max_claims]:
+        if not isinstance(original, dict):
+            continue
+        text = str(original.get("text") or "").strip()
+        identifiers = list(dict.fromkeys(
+            str(value) for value in original.get("evidenceIds") or []
+            if str(value) in available
+        ))
+        if text and identifiers:
+            retained.append({"text": text, "evidenceIds": identifiers})
+
+    used = {identifier for claim in retained for identifier in claim["evidenceIds"]}
+    citations = [item.copy() for item in evidence if str(item.get("id")) in used]
+    mapping = {str(item["id"]): f"S{index}" for index, item in enumerate(citations, 1)}
+    for item in citations:
+        item["id"] = mapping[str(item["id"])]
+    for claim in retained:
+        claim["evidenceIds"] = [mapping[value] for value in claim["evidenceIds"]]
+    return retained, citations
 
 
 STOPWORDS = {
@@ -566,132 +600,51 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
                 "normalizedRomanianQuery": f'{interpreted["normalizedRomanianQuery"]} {selected_title}'}
         found = retrieve(retrieval_question, retrieval_interpreted, config, api_key, qdrant_path, qdrant_url, explain)
         explicitly_selected = evidence_for_selected_title(found["evidence"], selected_title) if selected_title else []
-        if explicitly_selected:
-            scoped_items, choices, ambiguity_reasons = explicitly_selected, [], ["User selected this document explicitly"]
-            ambiguity_diagnostics = {"decision": "explicit-selection", "selectedTitle": selected_title,
-                                     "selectedDocumentId": explicitly_selected[0].get("documentId")}
-        else:
-            scoped_items, choices, ambiguity_reasons, ambiguity_diagnostics = resolve_ambiguity(
-                found["evidence"], interpreted, float(config.raw["thresholds"]["ambiguityScoreRatio"])
-            )
+        scoped_items = explicitly_selected or found["evidence"]
+        ambiguity_diagnostics = ({"decision": "explicit-selection", "selectedTitle": selected_title,
+                                  "selectedDocumentId": explicitly_selected[0].get("documentId")}
+                                 if explicitly_selected else
+                                 {"decision": "qwen-first", "policy": "model interprets retrieved evidence"})
         evidence = expose_evidence(scoped_items)
         common = {"schemaVersion": "2.0", "question": question, "detectedLanguage": interpreted["language"],
             "normalizedRetrievalQuery": interpreted["normalizedRomanianQuery"], "interpretedConstraints": interpreted["constraints"]}
         if not evidence:
             return {**common, "status": "NOT_FOUND", "answer": "Informația nu a fost găsită în corpusul disponibil." if interpreted["language"] == "ro" else "Информация не найдена в доступном корпусе.", "claims": [], "citations": [], "confidence": {"score": .96, "reasons": ["No candidate passed the relevance threshold"]}, "readyForUse": True}
-        if choices:
-            result = {**common, "status": "NEEDS_CLARIFICATION", "answer": None, "claims": [], "citations": [],
-                "clarificationQuestion": "La care proiect vă referiți?" if interpreted["language"] == "ro" else "Какой проект вы имеете в виду?",
-                "clarificationChoices": choices, "confidence": {"score": .75, "reasons": ambiguity_reasons}, "readyForUse": True}
-            if explain:
-                result["diagnostics"] = {"retrieval": found["diagnostics"], "ambiguity": ambiguity_diagnostics}
-            return result
-        headline = headline_only_amount(scoped_items, interpreted) if ambiguity_diagnostics.get("decision") == "exact-title-override" else None
-        if headline:
-            if interpreted["language"] == "ro":
-                claim_text = f"Titlul articolului indică suma de {headline['amount']}, dar pasajele disponibile din corpul articolului nu o confirmă independent."
-            else:
-                claim_text = f"В заголовке статьи указана сумма {headline['amount']}, но доступные фрагменты текста статьи независимо её не подтверждают."
-            result = {**common, "status": "PARTIAL", "answer": f"{claim_text} [S1]",
-                "claims": [{"text": claim_text, "evidenceIds": ["S1"]}],
-                "citations": [headline["citation"]],
-                "confidence": {"score": .55, "reasons": ["HEADLINE_ONLY", "The requested amount is not corroborated by an indexed body passage"]},
-                "readyForUse": True}
-            if explain:
-                result["diagnostics"] = {"retrieval": found["diagnostics"], "ambiguity": ambiguity_diagnostics,
-                    "answerability": "headline-only"}
-            return result
         prompt_evidence = [{key: item.get(key) for key in
-            ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator", "facts")}
+            ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator", "facts",
+             "publisher", "publishedDate", "category", "district")}
             for item in evidence]
-        scopes = requested_scopes(interpreted)
-        atomic_cells = requested_atomic_cells(interpreted)
         generated = chat_json(config.generator_model,
-            "Answer only the fact types requested by the question, in the question language, using only exact evidence. Return JSON claims [{text,evidenceIds}]. Treat requestedScopes and requestedCells as a coverage checklist. When requestedCells is non-empty, each claim must answer exactly one scope and one factType; explicitly name the scope, and never combine values for different places or fact types. Produce claims only for supported cells and omit unsupported cells instead of guessing. If the evidence does not contain the requested amount/date/name/count/status, do not substitute a different fact. Every text must be declarative, never repeat the question, and must include the requested value when the quotation contains it. Planned, tendering, ongoing and completed are different statuses. Never merge numeric values across documents. A headline alone cannot support a claim.",
-            json.dumps({"question": question, "requestedScopes": scopes, "requestedCells": atomic_cells,
+            "You are a helpful municipal information assistant. Interpret the user's question naturally and answer directly in the same language. Synthesize the most relevant retrieved passages yourself instead of asking the user to select a document. First identify every item the user actually requests, then include only claims that directly answer those items or clearly explain a missing item. Do not pad the answer with related but different statistics, and never treat a facility, service, participant, meal, project, or budget count as an institution count. Use only information present in the supplied evidence, and cite every factual statement with one or more supplied S identifiers. When sources are dated, distinguish historical information from a current status; do not silently present an old status as current. If the evidence answers only part of the question, return PARTIAL, provide the useful part, and briefly identify exactly what could not be established. If sources genuinely conflict, explain the conflict. Return JSON with status and claims [{text,evidenceIds}]. Do not invent source identifiers or facts.",
+            json.dumps({"question": question, "interpretedContext": interpreted.get("constraints") or {},
                         "evidence": prompt_evidence}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
-        claims = generated.get("claims") if isinstance(generated.get("claims"), list) else []
-        claims = claims[:config.max_claims]
-        verified, decisions = verify_claims(
-            claims, evidence, config.verifier_model, api_key, question, interpreted.get("constraints")
+        raw_claims = generated.get("claims") if isinstance(generated.get("claims"), list) else []
+        claims, citations = retain_cited_claims(raw_claims, evidence, config.max_claims)
+        proposed_status = str(generated.get("status") or "PARTIAL")
+        if not claims:
+            status = "NOT_FOUND"
+        elif proposed_status in {"SUPPORTED", "PARTIAL", "CONTRADICTION"}:
+            status = proposed_status
+        else:
+            status = "PARTIAL"
+        text = "\n".join(
+            f"{claim['text']} {' '.join(f'[{value}]' for value in claim['evidenceIds'])}"
+            for claim in claims
         )
-        pre_correction_ledger = (atomic_coverage_ledger(atomic_cells, verified, evidence)
-                                 if atomic_cells else coverage_ledger(scopes, verified, evidence))
-        needs_correction = not verified or any(item["status"] != "CONFIRMED"
-                                               for item in pre_correction_ledger)
-        if claims and len(verified) != len(claims) and needs_correction and not atomic_cells:
-            corrected = chat_json(config.generator_model, "Correct once: answer the question directly with declarative claims [{text,evidenceIds}], using only the S identifiers in evidence. Keep one project, location scope and requested fact type per claim. Never attach an amount, duration, date or count to a place mentioned only in a later planned/tender/procurement clause. Planned work is not completed work. Never repeat the question. Include a requested value only when the exact quotation supports it and remove unsupported claims.", json.dumps({"question": question, "constraints": interpreted.get("constraints"), "requestedCells": atomic_cells, "evidence": prompt_evidence, "claims": claims, "verifier": decisions}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
-            claims = corrected.get("claims") if isinstance(corrected.get("claims"), list) else []
-            claims = claims[:config.max_claims]
-            verified, decisions = verify_claims(
-                claims, evidence, config.verifier_model, api_key, question, interpreted.get("constraints")
-            )
-        contextual_generations: list[dict[str, Any]] = []
-        contextual_decisions: list[dict[str, Any]] = []
-        partial_prefix: str | None = None
-        initial_ledger = (atomic_coverage_ledger(atomic_cells, verified, evidence)
-                          if atomic_cells else coverage_ledger(scopes, verified, evidence))
-        missing_scopes = list(dict.fromkeys(str(item["scope"]) for item in initial_ledger
-                                            if item["status"] != "CONFIRMED"))
-        attempted_scoped_recovery = False
-        # Multi-cell questions already receive targeted sparse retrieval and one batched
-        # generation. Avoid a sequential AI call for every missing table cell.
-        for scope in ([] if atomic_cells else missing_scopes):
-            scope_evidence = evidence_for_scopes(evidence, [scope])
-            if not scope_evidence:
-                continue
-            attempted_scoped_recovery = True
-            recovery_prompt = [{key: item.get(key) for key in
-                ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator", "facts")}
-                for item in scope_evidence]
-            recovered, scope_decisions, scope_generation = contextual_observations(
-                question, interpreted, scope_evidence, recovery_prompt, config, api_key, [scope]
-            )
-            contextual_decisions.extend(scope_decisions)
-            contextual_generations.append(scope_generation)
-            existing = {(str(item.get("text") or ""), tuple(item.get("evidenceIds") or [])) for item in verified}
-            verified.extend(item for item in recovered
-                            if (str(item.get("text") or ""), tuple(item.get("evidenceIds") or [])) not in existing)
-            decisions.extend({"contextObservation": True, "targetScope": scope, **item}
-                             for item in scope_decisions)
-        if not verified and evidence and not attempted_scoped_recovery and not atomic_cells:
-            verified, contextual_decisions, contextual_generation = contextual_observations(
-                question, interpreted, evidence, prompt_evidence, config, api_key, scopes, atomic_cells
-            )
-            contextual_generations.append(contextual_generation)
-            decisions.extend({"contextObservation": True, **item} for item in contextual_decisions)
-
-        used = {identifier for claim in verified for identifier in claim.get("evidenceIds", [])}
-        citations = [item for item in evidence if item["id"] in used]
-        mapping = {item["id"]: f"S{index}" for index, item in enumerate(citations, 1)}
-        for item in citations:
-            item["id"] = mapping[item["id"]]
-        for claim in verified:
-            claim["evidenceIds"] = [mapping[item] for item in claim.get("evidenceIds", []) if item in mapping]
-        ledger = (atomic_coverage_ledger(atomic_cells, verified, citations)
-                  if atomic_cells else coverage_ledger(scopes, verified, citations))
-        incomplete_coverage = bool(ledger) and any(item["status"] != "CONFIRMED" for item in ledger)
-        if not claims and verified:
-            partial_prefix = partial_intro(interpreted)
-        status = ("PARTIAL" if partial_prefix or (verified and incomplete_coverage) else
-                  "CONTRADICTION" if generated.get("status") == "CONTRADICTION" and verified else
-                  "SUPPORTED" if verified and len(verified) == len(claims) else
-                  "PARTIAL" if verified else "NOT_FOUND")
-        claim_text = "\n".join(f"{claim['text']} {' '.join(f'[{value}]' for value in claim['evidenceIds'])}" for claim in verified)
-        text = (format_atomic_answer(verified, ledger, interpreted["language"])
-                if atomic_cells else
-                format_scoped_answer(verified, ledger, interpreted["language"], incomplete_coverage)
-                if ledger else f"{partial_prefix}\n{claim_text}" if partial_prefix else claim_text)
-        result = {**common, "status": status, "answer": text or ("Informația nu a putut fi confirmată." if interpreted["language"] == "ro" else "Информацию не удалось подтвердить."), "claims": verified, "citations": citations,
-            "coverage": ledger,
-            "confidence": {"score": .9 if status == "SUPPORTED" else .55 if status == "PARTIAL" else .2, "reasons": ["Independent claim verification completed", f"{len(verified)}/{len(claims)} claims retained", f"{sum(item['status'] == 'CONFIRMED' for item in ledger)}/{len(ledger)} requested {'cells' if atomic_cells else 'scopes'} confirmed" if ledger else "No explicit multi-scope checklist"]}, "readyForUse": True}
-        result["_trace"] = {"generation": generated.get("_managedResponse"), "verifierDecisions": decisions,
-            "contextGeneration": [item.get("_managedResponse") for item in contextual_generations] or None}
+        result = {**common, "status": status,
+            "answer": text or ("Informația nu a putut fi confirmată din pasajele recuperate."
+                               if interpreted["language"] == "ro" else
+                               "Информацию не удалось подтвердить по найденным фрагментам."),
+            "claims": claims, "citations": citations, "coverage": [],
+            "confidence": {"score": .82 if status == "SUPPORTED" else .6 if claims else .2,
+                           "reasons": ["Qwen synthesized the retrieved evidence",
+                                       "Citation identifiers were structurally validated"]},
+            "readyForUse": True}
+        result["_trace"] = {"generation": generated.get("_managedResponse"), "answerPolicy": "qwen-first"}
         if explain:
             result["diagnostics"] = {"retrieval": found["diagnostics"], "ambiguity": ambiguity_diagnostics,
-                "verifierDecisions": decisions, "models": config.raw["models"], "generation": generated.get("_managedResponse"),
-                "coverage": ledger,
-                "contextGeneration": [item.get("_managedResponse") for item in contextual_generations] or None}
+                "answerPolicy": "qwen-first", "models": config.raw["models"],
+                "generation": generated.get("_managedResponse")}
         return result
     except Exception as error:
         return unavailable(question, str(error))
