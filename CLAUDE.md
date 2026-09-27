@@ -74,6 +74,6 @@ npm run dev | lint | typecheck | build | test   # vitest + jsdom needs Node >= 2
 - `src/tesseract_convertor.py`: batch OCR of `src/tesseract_Images_To_Convert/` into `src/teeseract_Converted_Text/` (the misspelled folder name is existing).
 
 ## Repo gotchas
-- A Windows `.venv/` is committed at the repo root. Don't use it; the Linux venv is `Manage Data/.venv` (git-ignored).
+- The Python venv is `Manage Data/.venv` (git-ignored); a root `.venv/` is ignored too.
 - `README.md` is UTF-16 encoded.
 - `frontend/.env` is committed and holds only non-secret settings.
