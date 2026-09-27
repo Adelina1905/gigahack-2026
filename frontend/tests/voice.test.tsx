@@ -2,6 +2,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render as renderRaw, screen, waitFor } from "@testing-library/react";
 import AssistantMessage from "../src/components/AssistantMessage";
+import ChatInput from "../src/components/Input";
 import { transcribeAudio, getResponseSpeech } from "../src/api/client";
 import { useVoiceMode } from "../src/hooks/useVoiceMode";
 import { I18nContext } from "../src/i18n/context";
@@ -29,15 +30,40 @@ function VoiceHarness() {
 }
 
 describe("voice mode UI", () => {
+  it("shows the compact waveform toggle and marks its active speaking state", () => {
+    const baseVoice = {
+      enabled: false,
+      phase: "idle" as const,
+      error: null,
+      level: 0,
+      elapsedSeconds: 0,
+      toggleEnabled: vi.fn(),
+      toggleRecording: vi.fn(),
+      cancelRecording: vi.fn(),
+      dismissError: vi.fn(),
+    };
+    const { rerender } = render(<ChatInput onSend={() => null} voice={baseVoice} />);
+    const toggle = screen.getByRole("button", { name: "Voice mode" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.querySelector(".voice-wave-active")).toBeNull();
+
+    rerender(<I18nContext.Provider value={{ locale: "en", setLocale: () => {}, t: MESSAGES.en }}>
+      <ChatInput onSend={() => null} voice={{ ...baseVoice, enabled: true, phase: "speaking" }} />
+    </I18nContext.Provider>);
+    const activeToggle = screen.getByRole("button", { name: "Voice mode" });
+    expect(activeToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(activeToggle.querySelector(".voice-wave-active")).toBeTruthy();
+    expect(activeToggle.textContent).toContain("×");
+  });
+
   it("starts disabled and reports unsupported capture without changing chat", async () => {
     vi.stubGlobal("MediaRecorder", undefined);
     vi.stubGlobal("AudioContext", undefined);
     render(<VoiceHarness />);
 
     expect(screen.getByTestId("enabled").textContent).toBe("false");
-    fireEvent.click(screen.getByText("toggle"));
-    expect(screen.getByTestId("enabled").textContent).toBe("true");
     fireEvent.click(screen.getByText("record"));
+    expect(screen.getByTestId("enabled").textContent).toBe("true");
     await waitFor(() => expect(screen.getByTestId("error").textContent).toBe("unsupported"));
   });
 

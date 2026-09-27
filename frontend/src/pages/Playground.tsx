@@ -172,10 +172,14 @@ function Playground() {
           onNewChatInProject={startNewChatInProject}
           trackerCount={trackerList.trackers.length}
           isTrackersOpen={workspace === "trackers"}
+          onOpenConversations={() => {
+            setWorkspace("chat");
+            setIsSidebarOpen(false);
+          }}
           onOpenTrackers={() => {
             setWorkspace("trackers");
             setTrackerConversationProject(undefined);
-            setSelectedTrackerId((current) => current ?? trackerList.trackers[0]?.id ?? null);
+            setSelectedTrackerId(null);
             setIsSidebarOpen(false);
           }}
           onCreateTracker={(project) => {
@@ -195,6 +199,7 @@ function Playground() {
             isCreating={trackerConversationProject !== undefined}
             creationProject={trackerConversationProject}
             onSelect={setSelectedTrackerId}
+            onBackToList={() => setSelectedTrackerId(null)}
             onStartCreate={() => setTrackerConversationProject(null)}
             onCancelCreate={() => setTrackerConversationProject(undefined)}
             onCompleteCreate={(details, project) => {
@@ -234,21 +239,6 @@ function Playground() {
               <li aria-current="page" className="truncate text-text-muted">
                 {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
               </li>
-              {chat.messages.length > 0 && (
-                <li className="ml-auto shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrackerConversationProject(breadcrumbProject ?? null);
-                      setWorkspace("trackers");
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-sm border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-700 hover:border-primary"
-                  >
-                    <span aria-hidden="true">+</span>
-                    {t.trackers.trackThisPlan}
-                  </button>
-                </li>
-              )}
             </ol>
           </nav>
 
@@ -261,6 +251,10 @@ function Playground() {
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
+              onTrackPlan={chat.messages.length > 0 ? () => {
+                setTrackerConversationProject(breadcrumbProject ?? null);
+                setWorkspace("trackers");
+              } : undefined}
               error={chat.error ?? chatList.error ?? projectList.error}
               onDismissError={() => {
                 chat.dismissError();

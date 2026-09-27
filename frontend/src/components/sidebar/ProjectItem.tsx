@@ -111,7 +111,7 @@ function ProjectItem({
               <button
                 type="button"
                 onClick={() => onCreateTracker(project)}
-                className="flex w-full items-center gap-2 rounded-sm border border-primary-200 bg-primary-50 px-2.5 py-2 text-left text-xs font-semibold text-primary-700 hover:border-primary hover:bg-background"
+                className="flex min-h-10 w-full items-center gap-2 rounded-[5px] px-2.5 py-2 text-left text-xs font-semibold text-primary-700 transition-colors duration-200 hover:bg-primary-50 motion-reduce:transition-none"
               >
                 <svg {...iconProps} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
                   <path d="M12 3v3M12 18v3M3 12h3M18 12h3M7.8 7.8 5.7 5.7M18.3 18.3l-2.1-2.1M16.2 7.8l2.1-2.1M5.7 18.3l2.1-2.1M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" />

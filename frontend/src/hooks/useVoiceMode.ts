@@ -150,7 +150,7 @@ export function useVoiceMode({ chatId, messages, onSend, language }: UseVoiceMod
         audioRef.current = null;
         audioKeyRef.current = null;
         setSpeech({ key, state: "idle" });
-        if (automatic) setPhase("idle");
+        setPhase("idle");
       };
       player.onerror = () => {
         if (audioKeyRef.current !== key) return;
@@ -158,25 +158,25 @@ export function useVoiceMode({ chatId, messages, onSend, language }: UseVoiceMod
         audioKeyRef.current = null;
         setSpeech({ key, state: "error" });
         setError("speechFailed");
-        if (automatic) setPhase("idle");
+        setPhase("idle");
       };
       try {
         await player.play();
         if (token !== playbackTokenRef.current) return;
         setSpeech({ key, state: "playing" });
-        if (automatic) setPhase("speaking");
+        setPhase("speaking");
       } catch {
         audioRef.current = null;
         audioKeyRef.current = null;
         setSpeech({ key, state: "blocked" });
         setError(automatic ? "autoplayBlocked" : "speechFailed");
-        if (automatic) setPhase("idle");
+        setPhase("idle");
       }
     } catch {
       if (token !== playbackTokenRef.current) return;
       setSpeech({ key, state: "error" });
       setError("speechFailed");
-      if (automatic) setPhase("idle");
+      setPhase("idle");
     }
   }, [stopPlayback]);
 
@@ -323,7 +323,13 @@ export function useVoiceMode({ chatId, messages, onSend, language }: UseVoiceMod
 
   const toggleRecording = useCallback(() => {
     if (phase === "listening") stopRecording(true);
-    else if (phase === "idle" && enabled) void startRecording();
+    else if (phase === "idle") {
+      if (!enabled) {
+        enabledRef.current = true;
+        setEnabled(true);
+      }
+      void startRecording();
+    }
   }, [enabled, phase, startRecording, stopRecording]);
 
   const toggleSpeech = useCallback((message: ChatMessage) => {
