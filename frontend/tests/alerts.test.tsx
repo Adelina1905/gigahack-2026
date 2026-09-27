@@ -647,22 +647,33 @@ describe("AlertsDialog", () => {
   });
 });
 
-describe("Sidebar trackers", () => {
+describe("Sidebar alerts", () => {
   const noop = () => {};
-  it("opens the dedicated tracker area and offers no plan creation inside a project", () => {
+  it("shows a project's unread badge and bell on the folder row, not on its chats", () => {
     const opened: string[] = [];
-    render(<Sidebar chats={[]} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
+    const now = Date.now();
+    const projectChats: ChatSummary[] = [{ id: "c3", name: "Buses", projectId: "p1", updatedAt: now }];
+    render(<Sidebar chats={projectChats} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
       onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
       onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
-      trackerCount={2} isTrackersOpen={false} onOpenTrackers={() => opened.push("trackers")}
+      unreadAlertsByProject={{ p1: 3 }} onOpenProjectAlerts={project => opened.push(project.id)}
+      unreadAlertsByChat={{ c3: 1 }} onOpenChatAlerts={chat => opened.push(chat.id)}
       isOpen onClose={noop} />);
 
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${en.trackers.open}`) }));
-    expect(opened).toEqual(["trackers"]);
+    const folder = screen.getByRole("button", { name: projects[0].name });
+    expect(within(folder).getByTestId("project-alert-badge").textContent).toBe("3");
+    expect(document.getElementById(folder.getAttribute("aria-describedby")!)!.textContent)
+      .toBe(en.alerts.projectUnread(3));
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open(projects[0].name) }));
+    expect(opened).toEqual(["p1"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Education" }));
-    const projectList = screen.getByRole("list", { name: "Education" });
-    expect(within(projectList).queryByRole("button", { name: /plan/i })).toBeNull();
+    // No plan trackers entry is left in the sidebar.
+    expect(screen.queryByRole("button", { name: /plan/i })).toBeNull();
+
+    if (folder.getAttribute("aria-expanded") !== "true") fireEvent.click(folder);
+    const chatRow = screen.getByRole("button", { name: "Buses" });
+    expect(within(chatRow).queryByTestId("chat-alert-badge")).toBeNull();
+    expect(screen.queryByRole("button", { name: en.alerts.settings.open("Buses") })).toBeNull();
   });
   it("shows a conversation's unread badge and opens its alert settings", () => {
     const opened: string[] = [];
@@ -689,11 +700,10 @@ describe("Sidebar trackers", () => {
     fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open("Fairs") }));
     expect(opened).toEqual(["c2"]);
 
-    // A project chat with its own alerts keeps its badge and bell; others follow the project.
+    // Chats in a project follow the project's alerts: no badge or bell of their own.
     const buses = screen.getByRole("button", { name: "Buses" });
-    expect(within(buses).getByTestId("chat-alert-badge").textContent).toBe("1");
-    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open("Buses") }));
-    expect(opened).toEqual(["c2", "c3"]);
+    expect(within(buses).queryByTestId("chat-alert-badge")).toBeNull();
+    expect(screen.queryByRole("button", { name: en.alerts.settings.open("Buses") })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Education" }));
     expect(screen.queryByRole("button", { name: en.alerts.settings.open("Kindergartens") })).toBeNull();
   });
