@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "../../i18n/context";
+import ConfirmDialog from "../ConfirmDialog";
 import { DEFAULT_CHAT_NAME, type ChatSummary, type ProjectSummary } from "../../types/chat";
 import { actionButtonClass, dangerButtonClass, iconProps } from "./iconProps";
 
@@ -87,9 +88,11 @@ function ChatItem({ chat, isActive, projects, onSelect, onDelete, onMove }: Chat
   const { t } = useI18n();
   const title = chat.name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : chat.name;
   const [isMoving, setIsMoving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  const handleDelete = () => {
-    if (window.confirm(t.sidebar.confirmRemove(title))) onDelete(chat.id);
+  const confirmDelete = () => {
+    setIsConfirmingDelete(false);
+    onDelete(chat.id);
   };
 
   const closeMenu = useCallback(() => setIsMoving(false), []);
@@ -142,8 +145,9 @@ function ChatItem({ chat, isActive, projects, onSelect, onDelete, onMove }: Chat
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             aria-label={t.sidebar.remove(title)}
+            aria-haspopup="dialog"
             className={dangerButtonClass}
           >
             <svg {...iconProps} className="h-3.5 w-3.5">
@@ -159,6 +163,15 @@ function ChatItem({ chat, isActive, projects, onSelect, onDelete, onMove }: Chat
           projects={projects}
           onPick={pickProject}
           onClose={closeMenu}
+        />
+      )}
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t.sidebar.confirmRemoveTitle}
+          message={t.sidebar.confirmRemove(title)}
+          onConfirm={confirmDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
         />
       )}
     </li>
