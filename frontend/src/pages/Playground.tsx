@@ -281,6 +281,7 @@ function Playground() {
               messages={chat.messages}
               isTyping={chat.isTyping}
               isLoading={chat.isLoading}
+              hasChats={chatList.chats.length > 0 ? true : chatList.isLoaded ? false : null}
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
