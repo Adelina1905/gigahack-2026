@@ -55,6 +55,9 @@ class LanguageAndTypeTests(unittest.TestCase):
         self.assertFalse(guardrails.is_yearly_topic("Ce lucrări s-au făcut pe strada Vasile Alecsandri?"))
         self.assertTrue(guardrails.is_yearly_topic("Programul de burse", hint=True))
 
+    def test_year_ranges_include_intermediate_years(self) -> None:
+        self.assertEqual(guardrails.years_in("investiții 2024–2026"), {2024, 2025, 2026})
+
 
 class RuleTests(unittest.TestCase):
     def constraints(self, question: str, normalized: str | None = None, **interpreted: object) -> dict[str, object]:

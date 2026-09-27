@@ -338,6 +338,50 @@ class RunAnswerTests(unittest.TestCase):
         result = answer("Q?", dependencies=Broken([]).dependencies())
         self.assertEqual((result["status"], result["confidence"]["reasons"]), ("UNAVAILABLE", ["qdrant down"]))
 
+    def test_multi_intent_answer_reports_coverage_per_requirement(self) -> None:
+        first = payload("shop", "e1", .8, "Comerciantul depune notificarea privind inițierea activității de comerț.")
+        first["retrieval"]["requirementIds"] = ["R1"]
+        requirements = [
+            {"id": "R1", "question": "Ce notificare trebuie depusă?", "normalizedRomanianQuery": "notificare comerț",
+             "answerType": "procedure", "yearlyTopic": False, "topicCategory": "services"},
+            {"id": "R2", "question": "Care este taxa actuală?", "normalizedRomanianQuery": "taxă magazin actuală",
+             "answerType": "amount", "yearlyTopic": True, "topicCategory": "services"},
+        ]
+        claim = {"text": "Comerciantul trebuie să depună notificarea de inițiere a activității de comerț.",
+                 "requirementId": "R1", "evidenceIds": ["S1"]}
+        models = FakeModels([first], {"requirements": requirements}, claims=[[claim]])
+        result = self.run_answer(models, "Cum deschid magazinul și care este taxa actuală?")
+        self.assertEqual(result["status"], "PARTIAL")
+        self.assertEqual([(item["id"], item["status"]) for item in result["coverage"]],
+                         [("R1", "ANSWERED"), ("R2", "MISSING")])
+        self.assertIn("Care este taxa actuală?", result["answer"])
+        verification = next(body for kind, body in models.calls if kind == "verify")
+        self.assertEqual(verification["question"], "Ce notificare trebuie depusă?")
+
+    def test_rejected_extra_draft_does_not_make_complete_answer_partial(self) -> None:
+        evidence = payload("lumteh", "e1", .8,
+                           "Î.M. Lumteh întreține iluminatul public. Defecțiunile se raportează pe eu.chisinau.md.")
+        requirements = [
+            {"id": "R1", "question": "Cine întreține iluminatul public?",
+             "normalizedRomanianQuery": "întreținere iluminat public", "answerType": "organization",
+             "yearlyTopic": False, "topicCategory": "services"},
+            {"id": "R2", "question": "Unde se raportează defecțiunile?",
+             "normalizedRomanianQuery": "raportare iluminat defect", "answerType": "procedure",
+             "yearlyTopic": False, "topicCategory": "services"},
+        ]
+        accepted = "Î.M. Lumteh întreține iluminatul public."
+        accepted_second = "Defecțiunile se raportează pe eu.chisinau.md."
+        unsupported = "Programul de lucru este non-stop."
+        models = FakeModels([evidence], {"requirements": requirements}, claims=[[
+            {"text": accepted, "requirementId": "R1", "evidenceIds": ["S1"]},
+            {"text": accepted_second, "requirementId": "R2", "evidenceIds": ["S1"]},
+            {"text": unsupported, "requirementId": "R1", "evidenceIds": ["S1"]},
+        ]], rejected={unsupported})
+        result = self.run_answer(models, "Cine întreține iluminatul public și unde se raportează defecțiunile?")
+        self.assertEqual(result["status"], "SUPPORTED")
+        self.assertEqual([item["status"] for item in result["coverage"]], ["ANSWERED", "ANSWERED"])
+        self.assertEqual([claim["text"] for claim in result["claims"]], [accepted, accepted_second])
+
 
 class VerificationTests(unittest.TestCase):
     EVIDENCE = {"S1": {"documentId": "a", "evidenceKind": "body", "title": "Ordin nr. 01/1-7/345 din 17.03.2026",
@@ -350,6 +394,15 @@ class VerificationTests(unittest.TestCase):
     def test_model_checked_answer_types_extend_the_verifier_prompt(self) -> None:
         self.assertIn("a person", verifier_prompt("person"))
         self.assertEqual(verifier_prompt("hours"), verifier_prompt("other"))
+
+    def test_financial_stage_must_be_stated_by_the_source(self) -> None:
+        evidence = {"S1": {"documentId": "a", "evidenceKind": "body", "title": "Proiect",
+                           "exactQuote": "Din bugetul municipal au fost alocați 370.000 lei."}}
+        unsupported = deterministic_issues(
+            {"text": "Au fost cheltuiți efectiv 370.000 lei.", "evidenceIds": ["S1"]}, evidence)
+        self.assertIn("UNSUPPORTED_FINANCIAL_STAGE:SPENT", unsupported)
+        self.assertNotIn("UNSUPPORTED_FINANCIAL_STAGE:ALLOCATED", deterministic_issues(
+            {"text": "Au fost alocați 370.000 lei.", "evidenceIds": ["S1"]}, evidence))
 
 
 if __name__ == "__main__":

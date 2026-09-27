@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import time
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -28,12 +29,13 @@ CLAIMS_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "text": {"type": "string"},
+                    "requirementId": {"type": "string", "pattern": "^R[1-9][0-9]*$"},
                     "evidenceIds": {
                         "type": "array",
                         "items": {"type": "string", "pattern": "^S[1-9][0-9]*$"},
                     },
                 },
-                "required": ["text", "evidenceIds"],
+                "required": ["text", "requirementId", "evidenceIds"],
                 "additionalProperties": False,
             },
         },
@@ -52,6 +54,7 @@ def screen_schema(identifiers: list[str]) -> dict[str, Any]:
 
 SCREEN_PROMPT = (
     SCREEN_MARKER + " for one question; today is {today}. For every passage id decide whether the passage is about "
+    "at least one of the supplied requirements. A passage supporting any requirement is relevant even when it does not support the others. "
     "the same subject the question asks about: the same event or project, the same institution, person, street or district, and the "
     "same period. A relevant passage is about that subject, even if it lacks the exact requested value; label it RELEVANT_A. "
     "Passages about the same specific thing share a letter, even when they complement each other. When the question does not say "
@@ -61,7 +64,10 @@ SCREEN_PROMPT = (
     "institution or service, such as kindergarten instead of school) or TOPIC_ONLY (it only "
     "shares words or a broad theme with the question). Be strict. Return an object mapping every passage id to its label.")
 GENERATION_PROMPT = (
-    "Answer the question in {language} using only the exact evidence. Return JSON {{status, claims:[{{text,evidenceIds}}]}}. "
+    "Answer the question in {language} using only the exact evidence. Return JSON "
+    "{{status, claims:[{{text,requirementId,evidenceIds}}]}}. "
+    "The input includes atomic requirements R1..Rn. Cover each requirement independently and put its requirementId on every claim. "
+    "Use at most two concise claims per requirement. Do not omit a requirement merely because another one has stronger evidence. "
     "Every claim is one or two declarative sentences that directly answer the question; never repeat or paraphrase the question. "
     "Name the locality, institution or date of a fact when the evidence gives it. "
     "The question asks for {expected}: state it explicitly{legal}. When the evidence covers only part of it, answer that part. "
@@ -71,8 +77,9 @@ GENERATION_PROMPT = (
     "conflicting values for the same thing, give each value as its own claim with its own evidence and set status CONTRADICTION. "
     "Evidence marked outdated is from an earlier year: name that year in the claim.")
 CORRECTION_PROMPT = (
-    "Correct once: answer the question in {language} with declarative claims [{{text,evidenceIds}}], using only the S identifiers in "
-    "evidence. The evidence was screened as relevant to the question, and earlier claims (possibly none) are given with the "
+    "Correct once: answer the question in {language} with declarative claims [{{text,requirementId,evidenceIds}}], using only the S identifiers in "
+    "evidence. Put the matching requirementId R1..Rn on every claim and cover requirements independently. "
+    "The evidence was screened as relevant to the question, and earlier claims (possibly none) are given with the "
     "verifier's decisions. Never repeat the question. The question asks for {expected}; include it when present{legal}. Remove every claim the "
     "verifier rejected unless you can fix it from the evidence, and keep the claims it accepted. Only when no evidence contains any "
     "of the requested information, return an empty claims list with status NOT_FOUND. Never write a claim about what the evidence "
@@ -118,6 +125,7 @@ def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "category": meta.get("category"), "district": meta.get("district"), "heading": meta.get("heading") or [],
             "locator": item.get("sourceLocator") or ((item.get("citations") or [{}])[0].get("locator")),
             "retrieval": item.get("retrieval"), "score": float((item.get("retrieval") or {}).get("rerankScore") or 0.0),
+            "requirementIds": list((item.get("retrieval") or {}).get("requirementIds") or []),
             "outdated": False})
     return result
 
@@ -151,7 +159,8 @@ def unavailable(question: str, reason: str) -> dict[str, Any]:
 
 
 def prompt_evidence(items: list[dict[str, Any]], quote_limit: int | None = None) -> list[dict[str, Any]]:
-    fields = ("id", "documentId", "evidenceKind", "title", "publisher", "publishedDate", "category", "exactQuote")
+    fields = ("id", "documentId", "evidenceKind", "title", "publisher", "publishedDate", "category", "exactQuote",
+              "requirementIds")
     result = []
     for item in items:
         value = {key: item.get(key) for key in fields}
@@ -166,6 +175,75 @@ def prompt_evidence(items: list[dict[str, Any]], quote_limit: int | None = None)
 def claims_of(generated: dict[str, Any]) -> list[dict[str, Any]]:
     claims = generated.get("claims") if isinstance(generated.get("claims"), list) else []
     return [claim for claim in claims if isinstance(claim, dict)]
+
+
+def bind_claim_requirements(claims: list[dict[str, Any]], evidence: list[dict[str, Any]],
+                            requirements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Attach a valid requirement id, inferring it only when cited retrieval evidence is unambiguous."""
+    valid = {str(item.get("id")) for item in requirements}
+    indexed = {str(item.get("id")): item for item in evidence}
+    output = []
+    for claim in claims:
+        requirement_id = str(claim.get("requirementId") or "")
+        if requirement_id not in valid:
+            inferred = {value for identifier in claim.get("evidenceIds") or []
+                        for value in indexed.get(str(identifier), {}).get("requirementIds") or [] if value in valid}
+            requirement_id = next(iter(inferred)) if len(inferred) == 1 else (next(iter(valid)) if len(valid) == 1 else "")
+        output.append({**claim, **({"requirementId": requirement_id} if requirement_id else {})})
+    return output
+
+
+def prune_claim_evidence(claims: list[dict[str, Any]], evidence: list[dict[str, Any]], maximum: int = 2
+                         ) -> list[dict[str, Any]]:
+    """Keep the strongest few cited passages; extra citations add noise and verification cost."""
+    indexed = {str(item.get("id")): item for item in evidence}
+    output = []
+    for claim in claims:
+        identifiers = [str(value) for value in dict.fromkeys(claim.get("evidenceIds") or []) if str(value) in indexed]
+        claimed_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", str(claim.get("text") or "")))
+        if claimed_numbers:
+            numeric_matches = []
+            for value in identifiers:
+                source = f"{indexed[value].get('title') or ''} {indexed[value].get('exactQuote') or ''}"
+                available = set(re.findall(r"\d+(?:[.,]\d+)?", source))
+                available |= {part for number in list(available) for part in re.split(r"[.,]", number)}
+                available |= {number.lstrip("0") or "0" for number in list(available)}
+                if claimed_numbers <= available:
+                    numeric_matches.append(value)
+            if numeric_matches:
+                identifiers = numeric_matches
+        identifiers.sort(key=lambda value: (-float(indexed[value].get("score") or 0.0), value))
+        output.append({**claim, "evidenceIds": identifiers[:(1 if claimed_numbers else maximum)]})
+    return output
+
+
+def atomize_claims(claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Verify complex answers sentence by sentence so one unsupported fragment cannot erase supported facts."""
+    output = []
+    for claim in claims:
+        sentences = guardrails.split_sentences(str(claim.get("text") or ""))
+        output.extend({**claim, "text": sentence} for sentence in sentences)
+    return output
+
+
+def requirement_coverage(requirements: list[dict[str, Any]], claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    for claim in claims:
+        requirement_id = str(claim.get("requirementId") or "")
+        counts[requirement_id] = counts.get(requirement_id, 0) + 1
+    return [{"id": item["id"], "question": item["question"],
+             "status": "ANSWERED" if counts.get(str(item["id"]), 0) else "MISSING",
+             "claimCount": counts.get(str(item["id"]), 0)} for item in requirements]
+
+
+def coverage_note(language: str, coverage: list[dict[str, Any]]) -> str:
+    missing = [str(item.get("question") or "").strip() for item in coverage if item.get("status") == "MISSING"]
+    if not missing:
+        return ""
+    prefix = {"ro": "Nu am putut confirma din documentele recuperate:",
+              "ru": "По найденным документам не удалось подтвердить:",
+              "en": "The retrieved documents did not confirm:"}.get(language, "Nu am putut confirma din documentele recuperate:")
+    return prefix + "\n" + "\n".join(f"- {value}" for value in missing)
 
 
 def answer(question: str, config_path: Path | None = None, qdrant_path: Path | None = None, qdrant_url: str | None = None,
@@ -199,6 +277,8 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
         dense_query = embedding.result()
     standalone = interpreted["standaloneQuestion"]
     constraints = interpreted["constraints"]
+    requirements = list(constraints.get("requirements") or [])
+    requirement_map = {str(item["id"]): item for item in requirements}
     language, answer_type = interpreted["language"], constraints["answerType"]
     wanted_text = dense_text(standalone, bool(constraints["yearlyTopic"]), today)
     if wanted_text != embedded_text:
@@ -219,7 +299,7 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
         screen_drops = [{"id": item["id"], "documentId": item["documentId"], "reason": "TOPIC_ONLY", "source": "scope"} for item in candidates]
     elif candidates:
         screened = deps.chat(config.verifier_model, SCREEN_PROMPT.format(today=today.isoformat()), json.dumps({
-            "question": standalone, "romanianQuery": interpreted["normalizedRomanianQuery"], "expectedAnswerType": answer_type,
+            "question": standalone, "requirements": requirements, "romanianQuery": interpreted["normalizedRomanianQuery"], "expectedAnswerType": answer_type,
             "passages": prompt_evidence(candidates, int(settings.get("screenQuoteChars", 700)))}, ensure_ascii=False),
             screen_schema([item["id"] for item in candidates]))
         screen_response = screened.get("_managedResponse")
@@ -249,7 +329,7 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
     if not relevant:
         reason = guardrails.not_found_reason(in_scope=bool(constraints["inScope"]), relevant=0, claims=0, lacks_value=False)
         return not_found(reason, guardrails.build_flags(off_topic=off_topic, duplicates=merged), ["No passage relevant to the question remained after screening"])
-    documents = [] if scope_label else guardrails.clarification_documents(relevant, bool(constraints["multipleProjects"]),
+    documents = [] if scope_label else guardrails.clarification_documents(relevant, bool(constraints["multipleProjects"] or constraints.get("multiIntent")),
         float(thresholds["ambiguityScoreRatio"]), float(thresholds["clarificationMinimumScore"]))
     # Colliding documents are only offered as choices after verification, and only those with a verified answer: a question
     # the index cannot answer gets NOT_FOUND, never a list of documents to pick from.
@@ -258,9 +338,13 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
     language_name = LANGUAGE_NAMES[language]
     evidence_for_model = prompt_evidence(relevant)
     generated = deps.chat(config.generator_model, GENERATION_PROMPT.format(language=language_name, expected=expected, legal=legal),
-        json.dumps({"question": standalone, "evidence": evidence_for_model}, ensure_ascii=False), CLAIMS_SCHEMA)
-    claims = claims_of(generated)
-    verified, decisions = verify_claims(claims, relevant, config.verifier_model, "", standalone, answer_type, deps.chat)
+        json.dumps({"question": standalone, "requirements": requirements, "evidence": evidence_for_model}, ensure_ascii=False), CLAIMS_SCHEMA)
+    claims = bind_claim_requirements(claims_of(generated)[:max(6, len(requirements) * 2)], relevant, requirements)
+    if len(requirements) > 1:
+        claims = atomize_claims(claims)
+    claims = prune_claim_evidence(claims, relevant)
+    verified, decisions = verify_claims(claims, relevant, config.verifier_model, "", standalone, answer_type, deps.chat,
+                                        requirement_map)
     corrected = False
     # One correction round, only when it can change the outcome: nothing was generated from relevant evidence, or fewer than
     # half of the claims survived. Otherwise the verified claims are answered (PARTIAL when some were rejected).
@@ -268,14 +352,19 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
         corrected = True
         first = (generated, claims, verified, decisions)
         generated = deps.chat(config.generator_model, CORRECTION_PROMPT.format(language=language_name, expected=expected, legal=legal),
-            json.dumps({"question": standalone, "evidence": evidence_for_model, "claims": claims, "verifier": decisions}, ensure_ascii=False), CLAIMS_SCHEMA)
-        claims = claims_of(generated)
-        verified, decisions = verify_claims(claims, relevant, config.verifier_model, "", standalone, answer_type, deps.chat)
+            json.dumps({"question": standalone, "requirements": requirements, "evidence": evidence_for_model,
+                       "claims": claims, "verifier": decisions}, ensure_ascii=False), CLAIMS_SCHEMA)
+        claims = bind_claim_requirements(claims_of(generated)[:max(6, len(requirements) * 2)], relevant, requirements)
+        if len(requirements) > 1:
+            claims = atomize_claims(claims)
+        claims = prune_claim_evidence(claims, relevant)
+        verified, decisions = verify_claims(claims, relevant, config.verifier_model, "", standalone, answer_type, deps.chat,
+                                            requirement_map)
         if len(verified) < len(first[2]):
             # The correction made things worse: keep the first round's verified claims.
             generated, claims, verified, decisions = first
     trace.update({"generation": generated.get("_managedResponse"), "verifierDecisions": decisions})
-    lacks_value = bool(verified) and not guardrails.has_expected_value(verified, answer_type, relevant)
+    lacks_value = bool(verified) and len(requirements) == 1 and not guardrails.has_expected_value(verified, answer_type, relevant)
     text, final_claims, citations = "", [], []
     if verified and not lacks_value:
         text, final_claims, citations, _ = guardrails.render_answer(verified, relevant)
@@ -296,15 +385,23 @@ def run_answer(question: str, history: list[dict[str, str]], config: RagConfig, 
     outdated = any(item.get("outdated") for item in citations)
     if outdated:
         text = f"{text}\n{guardrails.outdated_note(language, citations)}"
+    coverage = requirement_coverage(requirements, final_claims)
+    missing_requirements = any(item["status"] == "MISSING" for item in coverage)
+    note = coverage_note(language, coverage)
+    if note:
+        text = f"{text}\n\n{note}"
     if generated.get("status") == "CONTRADICTION" and len({item.get("documentId") for item in citations}) < 2:
         # Different values from one document are a misreading, not conflicting documents.
         return not_found("CLAIMS_UNVERIFIED", guardrails.build_flags(**{**flags_args, "rejected": len(claims)}),
                          ["Conflicting values came from a single document"])
+    # For explicitly planned multi-intent questions, coverage is the public completeness contract: if every requirement
+    # has a verified claim, a discarded extra draft does not make the answer partial. Preserve the stricter legacy
+    # behaviour for ordinary single-intent questions, where a rejected draft can represent an incomplete answer.
     status = ("CONTRADICTION" if generated.get("status") == "CONTRADICTION" and len(final_claims) > 1 else
-              "SUPPORTED" if rejected == 0 else "PARTIAL")
+              "SUPPORTED" if not missing_requirements and (rejected == 0 or len(requirements) > 1) else "PARTIAL")
     return finish({**common, "status": status, "reason": guardrails.CONFLICT_REASON if status == "CONTRADICTION" else None,
         "flags": guardrails.build_flags(**flags_args, outdated=outdated), "answer": text, "claims": final_claims,
-        "citations": [{key: item.get(key) for key in CITATION_FIELDS} for item in citations],
+        "citations": [{key: item.get(key) for key in CITATION_FIELDS} for item in citations], "coverage": coverage,
         "confidence": {"score": .9 if status == "SUPPORTED" else .55, "reasons": ["Independent claim verification completed",
             f"{len(final_claims)}/{len(claims)} claims retained"]}, "readyForUse": True})
 

@@ -150,7 +150,13 @@ def is_yearly_topic(question: str, hint: bool = False) -> bool:
 
 
 def years_in(text: str) -> set[int]:
-    return {int(value) for value in YEAR.findall(str(text or ""))}
+    value = str(text or "")
+    years = {int(item) for item in YEAR.findall(value)}
+    for match in re.finditer(r"\b((?:19|20)\d{2})\s*[-–—]\s*((?:19|20)\d{2})\b", value):
+        start, end = int(match.group(1)), int(match.group(2))
+        if start <= end and end - start <= 20:
+            years.update(range(start, end + 1))
+    return years
 
 
 def street_keys(streets: list[str], query: str) -> set[str]:
@@ -519,7 +525,11 @@ def render_answer(claims: list[dict[str, Any]], evidence: list[dict[str, Any]]) 
     for claim in kept_claims:
         markers = " ".join(f"[{mapping[value]}]" for value in claim["evidenceIds"])
         lines.append(" ".join(f"{sentence} {markers}" for sentence in claim["sentences"]))
-        final_claims.append({"text": " ".join(claim["sentences"]), "evidenceIds": [mapping[value] for value in claim["evidenceIds"]]})
+        final_claim = {"text": " ".join(claim["sentences"]),
+                       "evidenceIds": [mapping[value] for value in claim["evidenceIds"]]}
+        if claim.get("requirementId"):
+            final_claim["requirementId"] = claim["requirementId"]
+        final_claims.append(final_claim)
     text = "\n".join(lines)
     if uncited_segments(text, {item["id"] for item in citations}):
         return "", [], [], len(claims)
