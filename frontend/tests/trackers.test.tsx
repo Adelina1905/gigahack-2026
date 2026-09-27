@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render as renderRaw, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderRaw, screen, within } from "@testing-library/react";
 import TrackersView from "../src/components/trackers/TrackersView";
 import { I18nContext } from "../src/i18n/context";
 import { MESSAGES } from "../src/i18n/messages";
@@ -95,6 +95,60 @@ describe("Plan trackers", () => {
       location: "Central Market",
       topics: ["Commercial permits"],
     })]);
+  });
+
+  it("asks for confirmation before deleting a tracker", () => {
+    const removed: string[] = [];
+    render(<TrackersView {...baseProps} selectedId="t1" onSelect={() => {}} onRemove={(id) => removed.push(id)} />);
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.remove }));
+    let dialog = screen.getByRole("alertdialog", { name: en.trackers.confirmRemoveTitle });
+    expect(within(dialog).getByText(en.trackers.confirmRemove(tracker.name))).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: en.confirm.cancel }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(removed).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.remove }));
+    dialog = screen.getByRole("alertdialog", { name: en.trackers.confirmRemoveTitle });
+    fireEvent.click(within(dialog).getByRole("button", { name: en.confirm.delete }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(removed).toEqual(["t1"]);
+  });
+
+  it("opens a fully prefilled setup on the review and keeps every step editable", () => {
+    const completed: Array<Partial<PlanTracker>> = [];
+    render(<TrackersView {...baseProps} trackers={[]} selectedId={null} isCreating creationProject={null}
+      creationDraft={{ plan: "Open a bakery on Dacia Street", location: "bd. Dacia 5", topics: ["Parking"] }}
+      onSelect={() => {}} onCompleteCreate={(details) => completed.push(details)} />);
+
+    expect(screen.getByText(en.trackers.guideReview)).toBeTruthy();
+    expect(screen.getByText("bd. Dacia 5")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    fireEvent.click(screen.getByRole("button", { name: /Public transport/ }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    expect((screen.getByPlaceholderText(en.trackers.guideLocationPlaceholder) as HTMLInputElement).value).toBe("bd. Dacia 5");
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    expect((screen.getByPlaceholderText(en.trackers.guidePlanPlaceholder) as HTMLTextAreaElement).value).toBe("Open a bakery on Dacia Street");
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.confirmCreate }));
+
+    expect(completed).toEqual([expect.objectContaining({
+      name: "Open a bakery on Dacia Street",
+      plan: "Open a bakery on Dacia Street",
+      location: "bd. Dacia 5",
+      topics: ["Parking", "Public transport"],
+    })]);
+  });
+
+  it("starts a partly prefilled setup at the first missing answer", () => {
+    render(<TrackersView {...baseProps} trackers={[]} selectedId={null} isCreating creationProject={null}
+      creationDraft={{ plan: "Open a bakery", location: "", topics: ["Parking"] }} onSelect={() => {}} />);
+
+    expect(screen.getByText(en.trackers.guideLocation)).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.trackers.continue }).hasAttribute("disabled")).toBe(true);
   });
 
   it("supports cancelling setup and returning from details", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/context";
 import type { ErrorKey } from "../i18n/messages";
 import type { ChatMessage } from "../types/chat";
@@ -10,6 +10,7 @@ import TitleRule from "./brand/TitleRule";
 import SupportNotice from "./SupportNotice";
 import { isUnanswered, notFoundReason } from "../utils/unanswered";
 import { useVoiceMode } from "../hooks/useVoiceMode";
+import { useFirstRun } from "../hooks/useFirstRun";
 import SourcePreview from "./sources/SourcePreview";
 
 interface ChatWindowProps {
@@ -24,6 +25,9 @@ interface ChatWindowProps {
   onTrackPlan?: () => void;
   error?: ErrorKey | null;
   onDismissError?: () => void;
+  // Whether this browser already has chats; null while the list is loading.
+  // The sample-question welcome is shown only before the first chat ever.
+  hasChats?: boolean | null;
   // The inline alert question (or its follow-up notice), shown just above the input.
   alertPrompt?: ReactNode;
 }
@@ -41,36 +45,36 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
   const { t } = useI18n();
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-4 py-2">
-      <section className="relative overflow-hidden rounded-[6px] border border-border/60 bg-background px-5 pt-6 pb-20 sm:px-8 sm:pt-8 sm:pb-24">
+    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-3 py-2">
+      <section className="relative overflow-hidden rounded-[6px] border border-border/60 bg-background px-5 pt-5 pb-14 sm:px-7 sm:pt-6 sm:pb-18">
         <div className="relative">
-          <p className="text-sm font-semibold text-primary">{t.welcome.eyebrow}</p>
-          <h2 className="mt-2 font-serif text-[1.75rem] leading-tight text-primary sm:text-4xl">{t.welcome.title}</h2>
-          <TitleRule className="mt-3 sm:mt-4" />
-          <p className="mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-text-muted sm:mt-4 sm:text-base">
+          <p className="text-[0.8125rem] font-semibold text-primary sm:text-sm">{t.welcome.eyebrow}</p>
+          <h2 className="mt-1.5 font-serif text-2xl leading-tight text-primary sm:text-[2rem]">{t.welcome.title}</h2>
+          <TitleRule className="mt-2.5 sm:mt-3" />
+          <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-text-muted sm:mt-3 sm:text-[0.9375rem]">
             {t.welcome.body}
           </p>
         </div>
         <Skyline
           preserveAspectRatio="xMidYMax meet"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full text-primary opacity-[0.09] sm:h-20"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 w-full text-primary opacity-[0.09] sm:h-16"
         />
       </section>
 
       {/* Topics the indexed municipal corpus actually covers. */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-2.5 sm:grid-cols-3">
         {t.welcome.suggestions.map(({ topic, question }) => (
           <button
             key={question}
             type="button"
             onClick={() => onSend(question)}
-            className="group flex min-h-36 flex-col items-start gap-3 rounded-[6px] border border-border/60 bg-background p-4 text-left transition-[border-color,background-color] duration-200 hover:border-primary-100 hover:bg-primary-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
+            className="group flex min-h-28 flex-col items-start gap-2 rounded-[6px] border border-border/60 bg-background p-3.5 text-left transition-[border-color,background-color] duration-200 hover:border-primary-100 hover:bg-primary-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
           >
             <span className="rounded-sm border border-border-strong px-1.5 py-px text-[11px] font-medium text-text-muted">
               {topic}
             </span>
-            <span className="font-serif text-[1.0625rem] leading-snug text-text">{question}</span>
-            <span className="mt-auto inline-flex items-center gap-2 pt-1 text-sm font-medium text-primary">
+            <span className="font-serif text-base leading-snug text-text">{question}</span>
+            <span className="mt-auto inline-flex items-center gap-2 text-sm font-medium text-primary">
               {t.welcome.ask}
               <svg
                 viewBox="0 0 22 16"
@@ -92,6 +96,19 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
   );
 }
 
+// After the first chat, a new conversation opens on a quiet greeting instead of
+// the sample questions, so the input stays the focus.
+function CompactGreeting() {
+  const { t } = useI18n();
+
+  return (
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center py-2 text-center">
+      <h2 className="font-serif text-2xl leading-tight text-primary sm:text-[1.75rem]">{t.welcome.title}</h2>
+      <TitleRule className="mt-3 justify-center" />
+    </div>
+  );
+}
+
 function ChatWindow({
   chatId = null,
   messages,
@@ -103,10 +120,19 @@ function ChatWindow({
   onTrackPlan,
   error,
   onDismissError,
+  hasChats = false,
   alertPrompt,
 }: ChatWindowProps) {
   const { t, locale } = useI18n();
-  const voice = useVoiceMode({ chatId, messages, onSend, language: locale });
+  const firstRun = useFirstRun(hasChats);
+  const { markChatted } = firstRun;
+  const send = useCallback((text: string) => {
+    const requestId = onSend(text);
+    // Only a message that was actually queued ends the first-run welcome.
+    if (requestId) markChatted();
+    return requestId;
+  }, [markChatted, onSend]);
+  const voice = useVoiceMode({ chatId, messages, onSend: send, language: locale });
   const [sourcePreview, setSourcePreview] = useState<SourcePreviewSelection | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrolledRef = useRef({ chatId, hadMessages: false });
@@ -148,7 +174,10 @@ function ChatWindow({
             {t.chat.loading}
           </div>
         ) : isEmpty ? (
-          <WelcomePanel onSend={onSend} />
+          firstRun.state === "welcome" ? <WelcomePanel onSend={send} />
+            : firstRun.state === "returning" ? <CompactGreeting />
+            // Chat list still loading: stay blank rather than flash the welcome.
+            : null
         ) : (
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-7">
             {messages.map((m) =>
@@ -163,7 +192,7 @@ function ChatWindow({
                     setSourcePreview({ messageId: message.id, sourceIndex, trigger });
                   }}
                   // Only the latest reply's clarification can still be answered.
-                  onChoose={m.id === lastMessage?.id && !isTyping ? (label) => { onSend(label); } : undefined} />
+                  onChoose={m.id === lastMessage?.id && !isTyping ? (label) => { send(label); } : undefined} />
               ),
             )}
             {isTyping && !messages.some(message => message.generationStatus === "PENDING") && <AssistantMessage isTyping />}
@@ -205,12 +234,12 @@ function ChatWindow({
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" />
               </svg>
-              {t.trackers.trackThisPlan}
+              {t.trackers.continueWithPlan}
             </button>
           </div>
         )}
         {alertPrompt}
-        <ChatInput onSend={onSend} disabled={isTyping || isLoading} voice={voice} />
+        <ChatInput onSend={send} disabled={isTyping || isLoading} voice={voice} />
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}
         </p>
