@@ -85,6 +85,8 @@ export interface SourcePreviewView {
   publishedDate: string | null;
   // Optional static capture used when the original website cannot be embedded.
   previewImageUrl?: string | null;
+  // On-demand server capture used when a live HTML or PDF frame fails.
+  screenshotUrl?: string | null;
   totalSections: number;
   start: number;
   focusIndex: number | null;
