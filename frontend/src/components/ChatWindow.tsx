@@ -231,7 +231,7 @@ function ChatWindow({
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" />
               </svg>
-              {t.trackers.trackThisPlan}
+              {t.trackers.continueWithPlan}
             </button>
           </div>
         )}

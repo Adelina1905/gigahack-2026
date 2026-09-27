@@ -115,6 +115,42 @@ describe("Plan trackers", () => {
     expect(removed).toEqual(["t1"]);
   });
 
+  it("opens a fully prefilled setup on the review and keeps every step editable", () => {
+    const completed: Array<Partial<PlanTracker>> = [];
+    render(<TrackersView {...baseProps} trackers={[]} selectedId={null} isCreating creationProject={null}
+      creationDraft={{ plan: "Open a bakery on Dacia Street", location: "bd. Dacia 5", topics: ["Parking"] }}
+      onSelect={() => {}} onCompleteCreate={(details) => completed.push(details)} />);
+
+    expect(screen.getByText(en.trackers.guideReview)).toBeTruthy();
+    expect(screen.getByText("bd. Dacia 5")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    fireEvent.click(screen.getByRole("button", { name: /Public transport/ }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    expect((screen.getByPlaceholderText(en.trackers.guideLocationPlaceholder) as HTMLInputElement).value).toBe("bd. Dacia 5");
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.back }));
+    expect((screen.getByPlaceholderText(en.trackers.guidePlanPlaceholder) as HTMLTextAreaElement).value).toBe("Open a bakery on Dacia Street");
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.continue }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.confirmCreate }));
+
+    expect(completed).toEqual([expect.objectContaining({
+      name: "Open a bakery on Dacia Street",
+      plan: "Open a bakery on Dacia Street",
+      location: "bd. Dacia 5",
+      topics: ["Parking", "Public transport"],
+    })]);
+  });
+
+  it("starts a partly prefilled setup at the first missing answer", () => {
+    render(<TrackersView {...baseProps} trackers={[]} selectedId={null} isCreating creationProject={null}
+      creationDraft={{ plan: "Open a bakery", location: "", topics: ["Parking"] }} onSelect={() => {}} />);
+
+    expect(screen.getByText(en.trackers.guideLocation)).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.trackers.continue }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("supports cancelling setup and returning from details", () => {
     const calls: string[] = [];
     const { rerender } = render(<TrackersView {...baseProps} selectedId={null} isCreating onSelect={() => {}}
