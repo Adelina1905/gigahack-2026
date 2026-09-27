@@ -17,18 +17,3 @@ class RecordingRag:
     def answer(self, question: str) -> dict[str, Any]:
         self.questions.append(question)
         return dict(self.result)
-
-
-class RecordingLlm:
-    """Hand-written ChatModel that returns a fixed reply or raises, recording every call."""
-
-    def __init__(self, reply: str = "llm reply", error: Exception | None = None) -> None:
-        self.reply = reply
-        self.error = error
-        self.calls: list[list[dict[str, str]]] = []
-
-    def complete(self, messages: list[dict[str, str]]) -> str:
-        self.calls.append(messages)
-        if self.error is not None:
-            raise self.error
-        return self.reply

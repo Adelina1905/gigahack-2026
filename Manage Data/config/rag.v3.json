@@ -24,6 +24,7 @@
   "thresholds": {
     "minimumRerankScore": 0.22,
     "ambiguityScoreRatio": 0.88,
+    "clarificationMinimumScore": 0.6,
     "supportedConfidence": 0.78
   },
   "chunking": {

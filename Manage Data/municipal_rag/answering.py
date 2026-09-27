@@ -5,10 +5,11 @@ import json
 import os
 import time
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from .api import chat_json
+from .api import chat_json, embed
 from .config import load_config, load_dotenv
 from .retrieval import interpret_query, retrieve
 from .verification import verify_claims
@@ -39,6 +40,12 @@ CLAIMS_SCHEMA = {
 }
 
 
+CLARIFICATION_QUESTION = {
+    "ro": "Nu sunt sigur la ce document vă referiți: am găsit mai multe documente care se potrivesc la fel de bine întrebării. Vă referiți la unul dintre acestea?",
+    "ru": "Я не уверен, какой документ вы имеете в виду: несколько документов одинаково подходят к вопросу. Вы имеете в виду один из них?",
+}
+
+
 def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     result, seen = [], set()
     for item in items:
@@ -56,14 +63,16 @@ def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
-def ambiguity(items: list[dict[str, Any]], interpreted: dict[str, Any], ratio: float) -> list[dict[str, str]]:
+def ambiguity(items: list[dict[str, Any]], interpreted: dict[str, Any], ratio: float, minimum_score: float) -> list[dict[str, str]]:
+    """Documents to ask about when several strong matches tie; weak ties are left to generation and verification."""
     if interpreted["constraints"].get("multipleProjects"):
         return []
     best: dict[str, dict[str, Any]] = {}
     for item in items:
         best.setdefault(str(item["documentId"]), item)
     ranked = sorted(best.values(), key=lambda item: -float(item["retrieval"]["rerankScore"]))
-    if len(ranked) < 2 or float(ranked[1]["retrieval"]["rerankScore"]) < float(ranked[0]["retrieval"]["rerankScore"]) * ratio:
+    if len(ranked) < 2 or float(ranked[0]["retrieval"]["rerankScore"]) < minimum_score \
+            or float(ranked[1]["retrieval"]["rerankScore"]) < float(ranked[0]["retrieval"]["rerankScore"]) * ratio:
         return []
     return [{"documentId": str(item["documentId"]), "label": str((item.get("metadata") or {}).get("title", item["documentId"]))} for item in ranked[:3]]
 
@@ -80,26 +89,37 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
         api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             return unavailable(question, "OPENROUTER_API_KEY is not configured")
-        interpreted = interpret_query(question, config, api_key)
-        found = retrieve(question, interpreted, config, api_key, qdrant_path, qdrant_url, explain)
+        # The dense query embeds the raw question, so it does not wait for the interpreter.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            embedding = pool.submit(embed, question, config.embedding_model, api_key)
+            interpreted = interpret_query(question, config, api_key)
+            dense_query = embedding.result()
+        found = retrieve(question, interpreted, config, api_key, qdrant_path, qdrant_url, explain, dense_query)
         evidence = expose_evidence(found["evidence"])
         common = {"schemaVersion": "2.0", "question": question, "detectedLanguage": interpreted["language"],
             "normalizedRetrievalQuery": interpreted["normalizedRomanianQuery"], "interpretedConstraints": interpreted["constraints"]}
         if not evidence:
             return {**common, "status": "NOT_FOUND", "answer": "Informația nu a fost găsită în corpusul disponibil." if interpreted["language"] == "ro" else "Информация не найдена в доступном корпусе.", "claims": [], "citations": [], "confidence": {"score": .96, "reasons": ["No candidate passed the relevance threshold"]}, "readyForUse": True}
-        choices = ambiguity(found["evidence"], interpreted, float(config.raw["thresholds"]["ambiguityScoreRatio"]))
+        thresholds = config.raw["thresholds"]
+        choices = ambiguity(found["evidence"], interpreted, float(thresholds["ambiguityScoreRatio"]), float(thresholds["clarificationMinimumScore"]))
         if choices:
-            return {**common, "status": "NEEDS_CLARIFICATION", "answer": None, "claims": [], "citations": [],
-                "clarificationQuestion": "La care proiect vă referiți?" if interpreted["language"] == "ro" else "Какой проект вы имеете в виду?",
+            # Cite the best passage of each colliding document so the user can see what matched.
+            best: dict[str, dict[str, Any]] = {}
+            for item in evidence:
+                best.setdefault(str(item["documentId"]), item)
+            matched = [best[choice["documentId"]] for choice in choices if choice["documentId"] in best]
+            citations = [{**item, "id": f"S{index}"} for index, item in enumerate(matched, 1)]
+            return {**common, "status": "NEEDS_CLARIFICATION", "answer": None, "claims": [], "citations": citations,
+                "clarificationQuestion": CLARIFICATION_QUESTION[interpreted["language"]],
                 "clarificationChoices": choices, "confidence": {"score": .9, "reasons": ["Several project interpretations rank similarly"]}, "readyForUse": True}
         prompt_evidence = [{key: item.get(key) for key in ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator")} for item in evidence]
         generated = chat_json(config.generator_model,
-            "Answer the question directly in the question language using only exact evidence. Return JSON claims [{text,evidenceIds}]. Every text must be a declarative answer, never repeat or paraphrase the question, and must include the requested value when the evidence contains it. Separate projects. Never merge numeric values across documents. A headline alone cannot support a claim.",
+            "Answer the question directly in the question language using only exact evidence. Return JSON claims [{text,evidenceIds}]. Every text must be a declarative answer, never repeat or paraphrase the question, and must include the requested value when the evidence contains it. Separate projects. Never merge numeric values across documents. A headline alone cannot support a claim. Only evidence about the same event, entity, place and period as the question can answer it; if none does, return an empty claims list with status NOT_FOUND. Never write a claim about what the evidence does not mention.",
             json.dumps({"question": question, "evidence": prompt_evidence}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
         claims = generated.get("claims") if isinstance(generated.get("claims"), list) else []
         verified, decisions = verify_claims(claims, evidence, config.verifier_model, api_key, question)
         if claims and len(verified) != len(claims):
-            corrected = chat_json(config.generator_model, "Correct once: answer the question directly with declarative claims [{text,evidenceIds}], using only the S identifiers in evidence. Never repeat the question. Include the requested number/date/name when present and remove unsupported claims.", json.dumps({"question": question, "evidence": prompt_evidence, "claims": claims, "verifier": decisions}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
+            corrected = chat_json(config.generator_model, "Correct once: answer the question directly with declarative claims [{text,evidenceIds}], using only the S identifiers in evidence. Never repeat the question. Include the requested number/date/name when present and remove unsupported claims. Only evidence about the same event, entity, place and period as the question can answer it; if none does, return an empty claims list with status NOT_FOUND. Never write a claim about what the evidence does not mention.", json.dumps({"question": question, "evidence": prompt_evidence, "claims": claims, "verifier": decisions}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
             claims = corrected.get("claims") if isinstance(corrected.get("claims"), list) else []
             verified, decisions = verify_claims(claims, evidence, config.verifier_model, api_key, question)
         used = {identifier for claim in verified for identifier in claim.get("evidenceIds", [])}

@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from .api import chat_json
 
+MAX_PARALLEL_VERIFICATIONS = 8
+VERIFIER_PROMPT = ("Verify that the claim is fully entailed by the exact quotations, for the same project/place/time, and that it directly "
+    "answers the question about the same event, entity and period. A claim about a different event, year or entity, or one that only "
+    "says the evidence lacks the requested information, is not supported. No outside knowledge. Return supported boolean and reason.")
 NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 VERDICT_SCHEMA = {"type": "object", "properties": {"supported": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["supported", "reason"], "additionalProperties": False}
 
@@ -39,16 +44,18 @@ def deterministic_issues(claim: dict[str, Any], evidence: dict[str, dict[str, An
 
 def verify_claims(claims: list[dict[str, Any]], evidence: list[dict[str, Any]], model: str, api_key: str, question: str = "") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     indexed = {item["id"]: item for item in evidence}
-    retained, decisions = [], []
-    for claim in claims:
+
+    def check(claim: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
         issues = deterministic_issues(claim, indexed, question)
         if issues:
-            decisions.append({"claim": claim.get("text"), "evidenceIds": claim.get("evidenceIds"), "supported": False, "reasons": issues})
-            continue
+            return False, {"claim": claim.get("text"), "evidenceIds": claim.get("evidenceIds"), "supported": False, "reasons": issues}
         cited = [indexed[item] for item in claim["evidenceIds"]]
-        verdict = chat_json(model, "Verify full entailment from exact quotations and same project/place/time. No outside knowledge. Return supported boolean and reason.", json.dumps({"claim": claim["text"], "evidence": cited}, ensure_ascii=False), api_key, VERDICT_SCHEMA)
+        verdict = chat_json(model, VERIFIER_PROMPT, json.dumps({"question": question, "claim": claim["text"], "evidence": cited}, ensure_ascii=False), api_key, VERDICT_SCHEMA)
         supported = verdict.get("supported") is True
-        decisions.append({"claim": claim.get("text"), "supported": supported, "reason": verdict.get("reason"), "managedResponse": verdict.get("_managedResponse")})
-        if supported:
-            retained.append(claim)
-    return retained, decisions
+        return supported, {"claim": claim.get("text"), "supported": supported, "reason": verdict.get("reason"), "managedResponse": verdict.get("_managedResponse")}
+
+    # Claims are verified independently, so the managed calls run concurrently; results keep claim order.
+    with ThreadPoolExecutor(max_workers=max(1, min(MAX_PARALLEL_VERIFICATIONS, len(claims)))) as pool:
+        results = list(pool.map(check, claims))
+    retained = [claim for claim, (supported, _) in zip(claims, results) if supported]
+    return retained, [decision for _, decision in results]

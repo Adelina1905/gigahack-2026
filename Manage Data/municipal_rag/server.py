@@ -282,7 +282,6 @@ def _create_live_app() -> FastAPI:
     # Demo mode needs only the HTTP server dependencies, never live clients or an index.
     from qdrant_client import QdrantClient
 
-    from .chat_model import OpenRouterChatModel
     from .rag_service import QdrantRagService
     from .source_preview import QdrantSourcePreviewService
 
@@ -292,7 +291,6 @@ def _create_live_app() -> FastAPI:
     qdrant_key = os.environ.get("QDRANT_API_KEY", "").strip()
     client = QdrantClient(url=qdrant_url, api_key=qdrant_key or None, timeout=5)
     rag = QdrantRagService(client, config, qdrant_url)
-    llm = OpenRouterChatModel(config.generator_model, api_key)
     voice = OpenRouterVoiceService(
         api_key,
         os.environ.get("OPENROUTER_STT_MODEL", "openai/whisper-large-v3-turbo").strip(),
@@ -302,5 +300,5 @@ def _create_live_app() -> FastAPI:
     LOGGER.info("Chat service starting: llmConfigured=%s qdrant=%s", bool(api_key), qdrant_url)
     alerts = create_alert_service(api_key, config.embedding_model, config.generator_model)
     previews = QdrantSourcePreviewService(client, config.preview_collection)
-    return create_app(ChatService(rag, llm), rag, llm_configured=bool(api_key),
+    return create_app(ChatService(rag), rag, llm_configured=bool(api_key),
                       voice_service=voice, alert_service=alerts, source_preview_service=previews)

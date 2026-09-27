@@ -83,8 +83,9 @@ def client_for(path: Path | None, url: str | None) -> QdrantClient:
     return QdrantClient(path=str((path or Path(__file__).resolve().parents[1] / "data" / "08_qdrant").resolve()))
 
 
-def retrieve(question: str, interpreted: dict[str, Any], config: RagConfig, api_key: str, path: Path | None = None, url: str | None = None, explain: bool = False) -> dict[str, Any]:
-    dense_query = embed(question, config.embedding_model, api_key)
+def retrieve(question: str, interpreted: dict[str, Any], config: RagConfig, api_key: str, path: Path | None = None, url: str | None = None, explain: bool = False, dense_query: list[float] | None = None) -> dict[str, Any]:
+    if dense_query is None:
+        dense_query = embed(question, config.embedding_model, api_key)
     indices, values = bm25_sparse(interpreted["normalizedRomanianQuery"])
     limits = config.raw["retrieval"]
     client = client_for(path, url)
