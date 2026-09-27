@@ -9,7 +9,6 @@ import smart_city.backend.config.ApiConflictException;
 import smart_city.backend.Chat.dto.ChatCreateRequest;
 import smart_city.backend.Chat.dto.ChatProjectRequest;
 import smart_city.backend.Chat.dto.ChatResponse;
-import smart_city.backend.Chat.dto.ChatUpdateRequest;
 import smart_city.backend.Chat.exceptions.ChatNotFoundException;
 import smart_city.backend.Project.Project;
 import smart_city.backend.Project.ProjectRepository;
@@ -95,26 +94,6 @@ public class ChatService {
         if (!name.equals(chat.getCreationName()))
             throw new ApiConflictException("REQUEST_CONFLICT", "This request ID was already used for another chat name.");
         return new CreationResult(ChatResponse.from(chat), false);
-    }
-
-
-    @Transactional
-    public ChatResponse updateChat(
-            UUID clientId,
-            UUID chatId,
-            ChatUpdateRequest request
-    ) {
-
-        Chat chat = findOwnedChat(
-                clientId,
-                chatId
-        );
-
-        chat.setName(
-                request.name().trim()
-        );
-
-        return ChatResponse.from(chat);
     }
 
 

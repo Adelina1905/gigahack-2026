@@ -8,7 +8,6 @@ export const api = {
   getChats: realClient.getChats,
   getChat: realClient.getChat,
   createChat: realClient.createChat,
-  updateChat: realClient.updateChat,
   deleteChat: realClient.deleteChat,
   setChatProject: realClient.setChatProject,
   getProjects: realClient.getProjects,
@@ -34,6 +33,13 @@ export const api = {
   updateAlertTopic: realClient.updateAlertTopic,
   deleteAlertTopic: realClient.deleteAlertTopic,
   scanProjectAlerts: realClient.scanProjectAlerts,
+  getChatAlertSettings: realClient.getChatAlertSettings,
+  updateChatAlertSettings: realClient.updateChatAlertSettings,
+  refreshChatAlertTopics: realClient.refreshChatAlertTopics,
+  createChatAlertTopic: realClient.createChatAlertTopic,
+  updateChatAlertTopic: realClient.updateChatAlertTopic,
+  deleteChatAlertTopic: realClient.deleteChatAlertTopic,
+  scanChatAlerts: realClient.scanChatAlerts,
   ...(import.meta.env.VITE_USE_MOCK === "true" ? mockClient : {}),
 };
 
