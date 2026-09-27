@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record UnreadCountView(
         long total,
-        Map<UUID, Long> byProject
+        Map<UUID, Long> byProject,
+        Map<UUID, Long> byChat
 ) {
 }

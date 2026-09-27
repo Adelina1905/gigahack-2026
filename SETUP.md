@@ -49,7 +49,7 @@ are cached only in the current browser session.
 ## 2. Databases
 
 ```bash
-docker compose up -d        # postgres + qdrant
+docker compose up -d postgres qdrant   # only the databases (apps run locally, sections 3-5)
 docker compose ps
 docker compose exec postgres psql -U smart_city_app -d smart_city -c "\dt"
 curl -s localhost:6333/collections
@@ -57,10 +57,31 @@ curl -s localhost:6333/collections
 
 ```bash
 docker compose down         # stop, keep data
-docker compose down -v      # delete both volumes
+docker compose down -v      # deletes the volumes, including the Qdrant RAG index
 ```
 
 Flyway creates and updates the PostgreSQL schema when the backend starts.
+
+### Everything in Docker
+
+`compose.yaml` also builds and runs the three applications, so sections 3-5 are optional:
+
+```bash
+docker compose up -d --build   # postgres, qdrant, llm, backend, frontend
+docker compose logs -f backend
+```
+
+| Service | Published on | Talks to |
+|---|---|---|
+| `frontend` (nginx serving the built UI, proxies `/api`) | `FRONTEND_PORT` (5173) | `backend:8080` |
+| `backend` | 127.0.0.1:`SERVER_PORT` (8081) | `postgres:5432`, `llm:8000` |
+| `llm` (Python service, live or `CHAT_MODE=demo`) | 127.0.0.1:`LLM_PORT` (8000) | `qdrant:6333`, OpenRouter |
+
+The containers read the same root `.env`; inside the network the service names replace
+`localhost`, so `QDRANT_URL`, `LLM_SERVICE_URL` and the JDBC URL are set by compose.
+Rebuild after pulling (`docker compose up -d --build`); the Qdrant index and PostgreSQL
+data live in named volumes and survive rebuilds and `docker compose down`. Indexing
+(`run_all.py`) still runs outside the containers against `localhost:6333`.
 
 ## 3. Python LLM/RAG service
 
@@ -156,8 +177,9 @@ the anonymous ownership cookie. Use the same cookie when reopening a chat.
 The older `/api/llm/chats` route is an ephemeral diagnostic API, not the application
 chat API. Python `/v1/chat` remains internal and does not write to PostgreSQL.
 
-- `POST /api/chats`: `{name?, requestId?}`. A browser-generated UUID deduplicates
-  creation, including after a lost HTTP response or a later rename.
+- `POST /api/chats`: `{name?, requestId?, projectId?}`. A browser-generated UUID deduplicates
+  creation, including after a lost HTTP response. Chats cannot be renamed: one still
+  called "New chat" takes its name from its first question.
 - `POST /api/chats/{chatId}/responses`: `{text, requestId?}`. Text is trimmed and
   must contain 1–8,000 characters. Reuse the UUID after an uncertain network result.
   Reusing it with different text returns `409 REQUEST_CONFLICT`.

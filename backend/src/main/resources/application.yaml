@@ -35,7 +35,7 @@ app:
     session-ttl: 30m
     max-history: 20 # messages (user + assistant) kept per chat
   alerts:
-    enabled: ${ALERTS_ENABLED:true} # scheduled scan of projects with alerts on
+    enabled: ${ALERTS_ENABLED:true} # scheduled scan of projects and chats with alerts on
     scan-interval: 2m
-    max-per-scan: 2 # new alerts per project per scheduled scan
+    max-per-scan: 2 # new alerts per project or chat per scheduled scan
     manual-max: 3 # new alerts per manual scan / when alerts are turned on

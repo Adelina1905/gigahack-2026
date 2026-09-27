@@ -11,7 +11,6 @@ import type {
     AlertView,
     ChatCreateRequest,
     ChatProjectRequest,
-    ChatUpdateRequest,
     ChatView,
     DocumentCreateRequest,
     DocumentView,
@@ -128,15 +127,6 @@ export function createChat(
 
     return apiRequest<ChatView>("/chats", {
         method: "POST",
-        body: JSON.stringify(request),
-    });
-}
-
-export function updateChat(chatId: string, name: string): Promise<ChatView> {
-    const request: ChatUpdateRequest = { name };
-
-    return apiRequest<ChatView>(`/chats/${chatId}`, {
-        method: "PATCH",
         body: JSON.stringify(request),
     });
 }
@@ -280,6 +270,7 @@ export function getResponseSpeech(chatId: string, responseId: number): Promise<B
 
 export interface AlertListQuery {
     projectId?: string | null;
+    chatId?: string | null;
     unreadOnly?: boolean;
     limit?: number;
 }
@@ -288,6 +279,7 @@ export interface AlertListQuery {
 export function getAlerts(query: AlertListQuery = {}): Promise<AlertView[]> {
     const params = new URLSearchParams();
     if (query.projectId) params.set("projectId", query.projectId);
+    if (query.chatId) params.set("chatId", query.chatId);
     if (query.unreadOnly) params.set("unreadOnly", "true");
     if (query.limit) params.set("limit", String(query.limit));
     const search = params.toString();
@@ -302,12 +294,12 @@ export function markAlertRead(alertId: number): Promise<AlertView> {
     return apiRequest<AlertView>(`/alerts/${alertId}/read`, { method: "POST" });
 }
 
-// null marks the alerts of every project as read.
-export function markAllAlertsRead(projectId: string | null = null): Promise<AlertReadAllView> {
-    const request: AlertReadAllRequest = { projectId };
+// One project's or one chat's alerts; neither marks every alert as read.
+export function markAllAlertsRead(request: AlertReadAllRequest = {}): Promise<AlertReadAllView> {
+    const body: AlertReadAllRequest = { projectId: request.projectId ?? null, chatId: request.chatId ?? null };
     return apiRequest<AlertReadAllView>("/alerts/read-all", {
         method: "POST",
-        body: JSON.stringify(request),
+        body: JSON.stringify(body),
     });
 }
 
@@ -320,49 +312,107 @@ export function markAlertNotRelevant(alertId: number): Promise<void> {
     });
 }
 
-export function getAlertSettings(projectId: string): Promise<AlertSettingsView> {
-    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-settings`);
+// A project's subscription lives under /projects/{id}, a chat's own one under
+// /chats/{id}; both have the same endpoints and behaviour.
+const projectBase = (projectId: string) => `/projects/${projectId}`;
+const chatBase = (chatId: string) => `/chats/${chatId}`;
+
+function getSettingsAt(base: string): Promise<AlertSettingsView> {
+    return apiRequest<AlertSettingsView>(`${base}/alert-settings`);
 }
 
-// Also records that the opt-in was answered; turning alerts on runs a first scan.
-export function updateAlertSettings(projectId: string, enabled: boolean): Promise<AlertSettingsView> {
+function updateSettingsAt(base: string, enabled: boolean): Promise<AlertSettingsView> {
     const request: AlertSettingsUpdateRequest = { enabled };
-    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-settings`, {
+    return apiRequest<AlertSettingsView>(`${base}/alert-settings`, {
         method: "PUT",
         body: JSON.stringify(request),
     });
 }
 
-// Extracts topics from all of the project's questions.
-export function refreshAlertTopics(projectId: string): Promise<AlertSettingsView> {
-    return apiRequest<AlertSettingsView>(`/projects/${projectId}/alert-topics/refresh`, {
-        method: "POST",
-    });
+function refreshTopicsAt(base: string): Promise<AlertSettingsView> {
+    return apiRequest<AlertSettingsView>(`${base}/alert-topics/refresh`, { method: "POST" });
 }
 
-export function createAlertTopic(projectId: string, label: string): Promise<AlertTopicView> {
+function createTopicAt(base: string, label: string): Promise<AlertTopicView> {
     const request: AlertTopicRequest = { label };
-    return apiRequest<AlertTopicView>(`/projects/${projectId}/alert-topics`, {
+    return apiRequest<AlertTopicView>(`${base}/alert-topics`, {
         method: "POST",
         body: JSON.stringify(request),
     });
 }
 
-export function updateAlertTopic(projectId: string, topicId: number, label: string): Promise<AlertTopicView> {
+function updateTopicAt(base: string, topicId: number, label: string): Promise<AlertTopicView> {
     const request: AlertTopicRequest = { label };
-    return apiRequest<AlertTopicView>(`/projects/${projectId}/alert-topics/${topicId}`, {
+    return apiRequest<AlertTopicView>(`${base}/alert-topics/${topicId}`, {
         method: "PATCH",
         body: JSON.stringify(request),
     });
 }
 
+function deleteTopicAt(base: string, topicId: number): Promise<void> {
+    return apiRequest<void>(`${base}/alert-topics/${topicId}`, { method: "DELETE" });
+}
+
+function scanAt(base: string): Promise<AlertScanView> {
+    return apiRequest<AlertScanView>(`${base}/alerts/scan`, { method: "POST" });
+}
+
+export function getAlertSettings(projectId: string): Promise<AlertSettingsView> {
+    return getSettingsAt(projectBase(projectId));
+}
+
+// Also records that the opt-in was answered; turning alerts on runs a first scan.
+export function updateAlertSettings(projectId: string, enabled: boolean): Promise<AlertSettingsView> {
+    return updateSettingsAt(projectBase(projectId), enabled);
+}
+
+// Extracts topics from all of the project's questions.
+export function refreshAlertTopics(projectId: string): Promise<AlertSettingsView> {
+    return refreshTopicsAt(projectBase(projectId));
+}
+
+export function createAlertTopic(projectId: string, label: string): Promise<AlertTopicView> {
+    return createTopicAt(projectBase(projectId), label);
+}
+
+export function updateAlertTopic(projectId: string, topicId: number, label: string): Promise<AlertTopicView> {
+    return updateTopicAt(projectBase(projectId), topicId, label);
+}
+
 export function deleteAlertTopic(projectId: string, topicId: number): Promise<void> {
-    return apiRequest<void>(`/projects/${projectId}/alert-topics/${topicId}`, {
-        method: "DELETE",
-    });
+    return deleteTopicAt(projectBase(projectId), topicId);
 }
 
 // Looks for new matching documents now, even while alerts are off.
 export function scanProjectAlerts(projectId: string): Promise<AlertScanView> {
-    return apiRequest<AlertScanView>(`/projects/${projectId}/alerts/scan`, { method: "POST" });
+    return scanAt(projectBase(projectId));
+}
+
+export function getChatAlertSettings(chatId: string): Promise<AlertSettingsView> {
+    return getSettingsAt(chatBase(chatId));
+}
+
+export function updateChatAlertSettings(chatId: string, enabled: boolean): Promise<AlertSettingsView> {
+    return updateSettingsAt(chatBase(chatId), enabled);
+}
+
+// Extracts topics from the chat's own questions.
+export function refreshChatAlertTopics(chatId: string): Promise<AlertSettingsView> {
+    return refreshTopicsAt(chatBase(chatId));
+}
+
+export function createChatAlertTopic(chatId: string, label: string): Promise<AlertTopicView> {
+    return createTopicAt(chatBase(chatId), label);
+}
+
+export function updateChatAlertTopic(chatId: string, topicId: number, label: string): Promise<AlertTopicView> {
+    return updateTopicAt(chatBase(chatId), topicId, label);
+}
+
+export function deleteChatAlertTopic(chatId: string, topicId: number): Promise<void> {
+    return deleteTopicAt(chatBase(chatId), topicId);
+}
+
+export function scanChatAlerts(chatId: string): Promise<AlertScanView> {
+    return scanAt(chatBase(chatId));
 }

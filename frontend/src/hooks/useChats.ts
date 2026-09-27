@@ -78,29 +78,6 @@ export function useChats() {
     [upsert],
   );
 
-  const rename = useCallback(
-    async (chatId: string, name: string) => {
-      const trimmed = name.trim();
-      const previous = chats.find((chat) => chat.id === chatId);
-      if (!previous || !trimmed || trimmed === previous.name) return;
-
-      setChats((current) =>
-        current.map((chat) => (chat.id === chatId ? { ...chat, name: trimmed } : chat)),
-      );
-
-      try {
-        await api.updateChat(chatId, trimmed);
-      } catch (renameError) {
-        console.error("Failed to rename chat", renameError);
-        setChats((current) =>
-          current.map((chat) => (chat.id === chatId ? previous : chat)),
-        );
-        setError("renameFailed");
-      }
-    },
-    [chats],
-  );
-
   // Drops a chat locally without calling the API (e.g. it's already gone).
   const forget = useCallback((chatId: string) => {
     createdLocallyRef.current.delete(chatId);
@@ -174,7 +151,7 @@ export function useChats() {
   const dismissError = useCallback(() => setError(null), []);
 
   return {
-    chats, isLoaded, error, upsert, refresh, rename, remove, forget,
+    chats, isLoaded, error, upsert, refresh, remove, forget,
     moveToProject, detachProject, reattachProject, dismissError,
   };
 }

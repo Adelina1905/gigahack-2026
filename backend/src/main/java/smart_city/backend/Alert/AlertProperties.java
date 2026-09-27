@@ -10,7 +10,7 @@ public record AlertProperties(
         // Turns the scheduled scan on or off; manual scans always work.
         @DefaultValue("true") boolean enabled,
         @DefaultValue("2m") Duration scanInterval,
-        // New alerts per project per scheduled scan.
+        // New alerts per project or chat per scheduled scan.
         @DefaultValue("2") int maxPerScan,
         // New alerts per manual scan ("Check now" and turning alerts on).
         @DefaultValue("3") int manualMax

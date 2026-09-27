@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/context";
 import type { ErrorKey } from "../i18n/messages";
 import type { ChatMessage } from "../types/chat";
@@ -24,6 +24,8 @@ interface ChatWindowProps {
   onTrackPlan?: () => void;
   error?: ErrorKey | null;
   onDismissError?: () => void;
+  // The inline alert question (or its follow-up notice), shown just above the input.
+  alertPrompt?: ReactNode;
 }
 
 const SOURCE_PANEL_ID = "source-preview-panel";
@@ -101,6 +103,7 @@ function ChatWindow({
   onTrackPlan,
   error,
   onDismissError,
+  alertPrompt,
 }: ChatWindowProps) {
   const { t, locale } = useI18n();
   const voice = useVoiceMode({ chatId, messages, onSend, language: locale });
@@ -206,6 +209,7 @@ function ChatWindow({
             </button>
           </div>
         )}
+        {alertPrompt}
         <ChatInput onSend={onSend} disabled={isTyping || isLoading} voice={voice} />
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}

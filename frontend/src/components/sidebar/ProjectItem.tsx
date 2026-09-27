@@ -16,9 +16,12 @@ interface ProjectItemProps {
   onRename: (project: ProjectSummary) => void;
   onDelete: (projectId: string) => void;
   onSelectChat: (chatId: string) => void;
-  onRenameChat: (chatId: string, name: string) => void;
   onDeleteChat: (chatId: string) => void;
   onMoveChat: (chatId: string, projectId: string | null) => void;
+  // A chat in a project follows the project's alerts; one that kept its own
+  // subscription (from before it was moved here) still shows its badge and bell.
+  unreadAlertsByChat?: Record<string, number>;
+  onOpenChatAlerts?: (chat: ChatSummary) => void;
   onCreateTracker?: (project: ProjectSummary) => void;
 }
 
@@ -34,9 +37,10 @@ function ProjectItem({
   onRename,
   onDelete,
   onSelectChat,
-  onRenameChat,
   onDeleteChat,
   onMoveChat,
+  unreadAlertsByChat,
+  onOpenChatAlerts,
   onCreateTracker,
 }: ProjectItemProps) {
   const { t } = useI18n();
@@ -151,9 +155,10 @@ function ProjectItem({
                 isActive={chat.id === activeChatId}
                 projects={projects}
                 onSelect={onSelectChat}
-                onRename={onRenameChat}
                 onDelete={onDeleteChat}
                 onMove={onMoveChat}
+                unreadAlerts={unreadAlertsByChat?.[chat.id] ?? 0}
+                onOpenAlerts={(unreadAlertsByChat?.[chat.id] ?? 0) > 0 ? onOpenChatAlerts : undefined}
               />
             ))
           )}

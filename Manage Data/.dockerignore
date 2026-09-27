@@ -1,0 +1,6 @@
+*
+!requirements.txt
+!requirements-server.txt
+!config
+!municipal_rag
+**/__pycache__

@@ -302,14 +302,15 @@ class ResponseServiceTest extends smart_city.backend.IsolatedDatabaseTest {
     }
 
     @Test
-    void chatCreationReplaysAfterRenameAndRejectsChangedPayload() {
+    void chatCreationReplaysAfterAutomaticRenameAndRejectsChangedPayload() {
         var request = new smart_city.backend.Chat.dto.ChatCreateRequest("New chat", UUID.randomUUID());
         var created = chatService.createIdempotent(clientId, request);
-        chatService.updateChat(clientId, created.chat().id(), new smart_city.backend.Chat.dto.ChatUpdateRequest("Renamed"));
+        // The first question renames the chat; that is the only way a chat name changes.
+        responseService.createResponse(clientId, created.chat().id(), new ResponseCreateRequest("Renamed by the question"));
         var repeated = chatService.createIdempotent(clientId, request);
         assertThat(repeated.created()).isFalse();
         assertThat(repeated.chat().id()).isEqualTo(created.chat().id());
-        assertThat(repeated.chat().name()).isEqualTo("Renamed");
+        assertThat(repeated.chat().name()).isEqualTo("Renamed by the question");
         assertThatThrownBy(() -> chatService.createChat(clientId,
                 new smart_city.backend.Chat.dto.ChatCreateRequest("Changed", request.requestId())))
                 .isInstanceOf(smart_city.backend.config.ApiConflictException.class);
