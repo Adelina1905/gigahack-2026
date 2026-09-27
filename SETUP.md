@@ -36,7 +36,7 @@ which overrides the root one. Never commit `.env`.
 Voice mode uses that same OpenRouter key. Its model defaults can be overridden:
 
 ```properties
-OPENROUTER_STT_MODEL=openai/whisper-large-v3-turbo
+OPENROUTER_STT_MODEL=openai/whisper-large-v3
 OPENROUTER_TTS_MODEL=microsoft/mai-voice-2-flash
 OPENROUTER_TTS_VOICE=en-US-Harper:MAI-Voice-2
 ```

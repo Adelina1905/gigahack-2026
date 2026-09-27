@@ -311,7 +311,7 @@ def _create_live_app() -> FastAPI:
     rag = QdrantRagService(client, config, qdrant_url)
     voice = OpenRouterVoiceService(
         api_key,
-        os.environ.get("OPENROUTER_STT_MODEL", "openai/whisper-large-v3-turbo").strip(),
+        os.environ.get("OPENROUTER_STT_MODEL", "openai/whisper-large-v3").strip(),
         os.environ.get("OPENROUTER_TTS_MODEL", "microsoft/mai-voice-2-flash").strip(),
         os.environ.get("OPENROUTER_TTS_VOICE", "en-US-Harper:MAI-Voice-2").strip(),
     )

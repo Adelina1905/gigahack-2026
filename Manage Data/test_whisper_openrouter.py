@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 
 
 API_URL = "https://openrouter.ai/api/v1/audio/transcriptions"
-MODEL = "openai/whisper-large-v3-turbo"
+MODEL = "openai/whisper-large-v3"
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
 SUPPORTED_FORMATS = {"aac", "flac", "m4a", "mp3", "ogg", "wav", "webm"}
 RECORDING_SAMPLE_RATE = 16_000

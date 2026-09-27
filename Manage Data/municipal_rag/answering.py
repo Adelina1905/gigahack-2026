@@ -67,7 +67,8 @@ GENERATION_PROMPT = (
     "Answer the question in {language} using only the exact evidence. Return JSON "
     "{{status, claims:[{{text,requirementId,evidenceIds}}]}}. "
     "The input includes atomic requirements R1..Rn. Cover each requirement independently and put its requirementId on every claim. "
-    "Use at most two concise claims per requirement. Do not omit a requirement merely because another one has stronger evidence. "
+    "Use at most two concise claims per requirement, except for procedure or list questions: include every distinct supported "
+    "step or item in source order, using up to six claims. Do not omit a requirement merely because another one has stronger evidence. "
     "Every claim is one or two declarative sentences that directly answer the question; never repeat or paraphrase the question. "
     "Name the locality, institution or date of a fact when the evidence gives it. "
     "The question asks for {expected}: state it explicitly{legal}. When the evidence covers only part of it, answer that part. "
@@ -78,7 +79,8 @@ GENERATION_PROMPT = (
     "Evidence marked outdated is from an earlier year: name that year in the claim.")
 CORRECTION_PROMPT = (
     "Correct once: answer the question in {language} with declarative claims [{{text,requirementId,evidenceIds}}], using only the S identifiers in "
-    "evidence. Put the matching requirementId R1..Rn on every claim and cover requirements independently. "
+    "evidence. Put the matching requirementId R1..Rn on every claim and cover requirements independently. For procedure or list "
+    "questions, include every distinct supported step or item in source order, using up to six claims. "
     "The evidence was screened as relevant to the question, and earlier claims (possibly none) are given with the "
     "verifier's decisions. Never repeat the question. The question asks for {expected}; include it when present{legal}. Remove every claim the "
     "verifier rejected unless you can fix it from the evidence, and keep the claims it accepted. Only when no evidence contains any "
