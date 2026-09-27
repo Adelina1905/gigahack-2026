@@ -100,7 +100,7 @@ describe("source preview", () => {
     const directLink = screen.getByRole("link", {
       name: `${en.message.openSource}: A very detailed municipal PDF`,
     });
-    expect(directLink.getAttribute("href")).toContain("/api/sources/document-1/open?versionId=version-1");
+    expect(directLink.getAttribute("href")).toBe("https://example.com/report.pdf?download=1#page=4");
     expect(directLink.getAttribute("target")).toBe("_blank");
     expect(directLink.getAttribute("rel")).toBe("noopener noreferrer");
 
@@ -115,7 +115,7 @@ describe("source preview", () => {
     expect(screen.queryByText("Invalid Date")).toBeNull();
 
     const link = screen.getByRole("link", { name: en.message.openSource });
-    expect(link.getAttribute("href")).toContain("/api/sources/document-1/open?versionId=version-1");
+    expect(link.getAttribute("href")).toBe("https://example.com/report.pdf?download=1#page=4");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
     const websitePreview = screen.getByTitle(`${en.message.websitePreview}: A very detailed municipal PDF`);
