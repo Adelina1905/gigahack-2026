@@ -272,8 +272,8 @@ function AlertBell({
                 onClick={() => onOfferAlertsChange(!offerAlerts)}
                 className="shrink-0 cursor-pointer rounded-full p-0.5 focus-visible:outline-2 focus-visible:outline-primary"
               >
-                <span aria-hidden="true" className={`relative block h-5 w-9 rounded-full transition-colors ${offerAlerts ? "bg-primary" : "bg-border-strong"}`}>
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${offerAlerts ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                <span aria-hidden="true" className={`relative block h-5 w-9 shrink-0 rounded-full transition-colors ${offerAlerts ? "bg-primary" : "bg-border-strong"}`}>
+                  <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${offerAlerts ? "translate-x-4" : "translate-x-0"}`} />
                 </span>
               </button>
             </div>
