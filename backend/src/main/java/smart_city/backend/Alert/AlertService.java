@@ -15,14 +15,15 @@ import smart_city.backend.Alert.dto.AlertTopicView;
 import smart_city.backend.Alert.dto.AlertView;
 import smart_city.backend.Alert.dto.MatchServiceReply;
 import smart_city.backend.Alert.dto.MatchTopic;
-import smart_city.backend.Alert.dto.ProjectUnreadCount;
+import smart_city.backend.Alert.dto.ScopeUnreadCount;
 import smart_city.backend.Alert.dto.ScanResult;
 import smart_city.backend.Alert.dto.TopicSuggestion;
 import smart_city.backend.Alert.dto.UnreadCountView;
 import smart_city.backend.Alert.exceptions.AlertMatcherUnavailableException;
 import smart_city.backend.Alert.exceptions.AlertNotFoundException;
 import smart_city.backend.Alert.exceptions.AlertTopicNotFoundException;
-import smart_city.backend.Project.Project;
+import smart_city.backend.Chat.ChatRepository;
+import smart_city.backend.Chat.exceptions.ChatNotFoundException;
 import smart_city.backend.Project.ProjectRepository;
 import smart_city.backend.Project.exceptions.ProjectNotFoundException;
 
@@ -39,8 +40,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Project alerts. Calls to the Python matcher happen between short transactions
- * (TransactionTemplate), so no DB connection is held while it runs.
+ * Alerts of projects and of single chats. Both scopes share this logic through an
+ * {@link AlertSubscription}; they differ only in ownership and where the questions come from.
+ * Calls to the Python matcher happen between short transactions (TransactionTemplate),
+ * so no DB connection is held while it runs.
  */
 @Service
 public class AlertService {
@@ -55,18 +58,27 @@ public class AlertService {
     static final int MAX_EXCERPT = 400;
     static final String NO_MATCHER = "none";
 
+    private static final String INSERT_SUBSCRIPTION = """
+            INSERT INTO alert_subscriptions (client_id, project_id, chat_id)
+            VALUES (:clientId, :projectId, :chatId)
+            ON CONFLICT DO NOTHING
+            """;
+
     private static final String INSERT_ALERT = """
-            INSERT INTO alerts (client_id, project_id, topic_id, topic_label, document_id, title, url,
-                                source, district, category, published_date, excerpt, score, created_at)
-            VALUES (:clientId, :projectId, :topicId, :topicLabel, :documentId, :title, :url,
-                    :source, :district, :category, :publishedDate, :excerpt, :score, :createdAt)
-            ON CONFLICT (project_id, document_id) DO NOTHING
+            INSERT INTO alerts (client_id, subscription_id, project_id, chat_id, topic_id, topic_label,
+                                document_id, title, url, source, district, category, published_date,
+                                excerpt, score, created_at)
+            VALUES (:clientId, :subscriptionId, :projectId, :chatId, :topicId, :topicLabel,
+                    :documentId, :title, :url, :source, :district, :category, :publishedDate,
+                    :excerpt, :score, :createdAt)
+            ON CONFLICT (subscription_id, document_id) DO NOTHING
             """;
 
     private final AlertRepository alerts;
     private final AlertTopicRepository topics;
-    private final ProjectAlertSettingsRepository settings;
+    private final AlertSubscriptionRepository subscriptions;
     private final ProjectRepository projects;
+    private final ChatRepository chats;
     private final AlertMatcherGateway matcher;
     private final AlertProperties properties;
     private final TransactionTemplate transactions;
@@ -75,8 +87,9 @@ public class AlertService {
     public AlertService(
             AlertRepository alerts,
             AlertTopicRepository topics,
-            ProjectAlertSettingsRepository settings,
+            AlertSubscriptionRepository subscriptions,
             ProjectRepository projects,
+            ChatRepository chats,
             AlertMatcherGateway matcher,
             AlertProperties properties,
             TransactionTemplate transactions,
@@ -84,8 +97,9 @@ public class AlertService {
     ) {
         this.alerts = alerts;
         this.topics = topics;
-        this.settings = settings;
+        this.subscriptions = subscriptions;
         this.projects = projects;
+        this.chats = chats;
         this.matcher = matcher;
         this.properties = properties;
         this.transactions = transactions;
@@ -95,15 +109,14 @@ public class AlertService {
 
     // Alerts
 
+    // Null projectId / chatId: no filter.
     @Transactional(readOnly = true)
-    public List<AlertView> getAlerts(UUID clientId, UUID projectId, boolean unreadOnly, int limit) {
+    public List<AlertView> getAlerts(UUID clientId, UUID projectId, UUID chatId, boolean unreadOnly, int limit) {
 
-        if (projectId != null) {
-            findOwnedProject(clientId, projectId);
-        }
+        requireOwnedFilters(clientId, projectId, chatId);
 
         return alerts
-                .findVisible(clientId, projectId, unreadOnly, Limit.of(Math.clamp(limit, 1, MAX_LIST_LIMIT)))
+                .findVisible(clientId, projectId, chatId, unreadOnly, Limit.of(Math.clamp(limit, 1, MAX_LIST_LIMIT)))
                 .stream()
                 .map(AlertView::from)
                 .toList();
@@ -114,13 +127,18 @@ public class AlertService {
     public UnreadCountView getUnreadCount(UUID clientId) {
 
         Map<UUID, Long> byProject = new LinkedHashMap<>();
+        Map<UUID, Long> byChat = new LinkedHashMap<>();
         long total = 0;
-        for (ProjectUnreadCount row : alerts.countUnreadByProject(clientId)) {
-            byProject.put(row.projectId(), row.count());
+        for (ScopeUnreadCount row : alerts.countUnreadByScope(clientId)) {
+            if (row.projectId() != null) {
+                byProject.merge(row.projectId(), row.count(), Long::sum);
+            } else if (row.chatId() != null) {
+                byChat.merge(row.chatId(), row.count(), Long::sum);
+            }
             total += row.count();
         }
 
-        return new UnreadCountView(total, byProject);
+        return new UnreadCountView(total, byProject, byChat);
     }
 
 
@@ -134,14 +152,13 @@ public class AlertService {
     }
 
 
+    // Null projectId and chatId: every alert of the client.
     @Transactional
-    public int markAllRead(UUID clientId, UUID projectId) {
+    public int markAllRead(UUID clientId, UUID projectId, UUID chatId) {
 
-        if (projectId != null) {
-            findOwnedProject(clientId, projectId);
-        }
+        requireOwnedFilters(clientId, projectId, chatId);
 
-        return alerts.markAllRead(clientId, projectId, OffsetDateTime.now());
+        return alerts.markAllRead(clientId, projectId, chatId, OffsetDateTime.now());
     }
 
 
@@ -162,79 +179,83 @@ public class AlertService {
     // Settings and topics
 
     @Transactional(readOnly = true)
-    public AlertSettingsView getSettings(UUID clientId, UUID projectId) {
+    public AlertSettingsView getSettings(UUID clientId, AlertScope scope) {
 
-        findOwnedProject(clientId, projectId);
+        requireOwned(clientId, scope);
 
-        return settingsView(projectId);
+        return settingsView(scope);
     }
 
 
     /**
-     * Sets prompted=true (the one-time popup is answered either way). Turning alerts on also
+     * Sets prompted=true (the one-time prompt is answered either way). Turning alerts on also
      * extracts topics when there are none and runs a backfill scan; if the Python service is
      * unavailable the saved setting stays and AlertMatcherUnavailableException is thrown.
      */
-    public AlertSettingsView updateSettings(UUID clientId, UUID projectId, boolean enabled) {
+    public AlertSettingsView updateSettings(UUID clientId, AlertScope scope, boolean enabled) {
 
-        boolean turnedOn = Boolean.TRUE.equals(transactions.execute(tx -> {
-            findOwnedProject(clientId, projectId);
-            ProjectAlertSettings row = findOrCreateSettings(projectId);
+        Long turnedOn = transactions.execute(tx -> {
+            requireOwned(clientId, scope);
+            AlertSubscription row = findOrCreateSubscription(clientId, scope);
             boolean wasEnabled = row.isEnabled();
             row.setEnabled(enabled);
             row.setPrompted(true);
             row.touch();
-            return enabled && !wasEnabled;
-        }));
+            return enabled && !wasEnabled ? row.getId() : null;
+        });
 
-        if (turnedOn) {
+        if (turnedOn != null) {
             boolean hasTopics = Boolean.TRUE.equals(transactions.execute(
-                    tx -> topics.existsByProjectIdAndRemovedFalse(projectId)
+                    tx -> topics.existsBySubscriptionIdAndRemovedFalse(turnedOn)
             ));
             if (!hasTopics) {
-                refresh(projectId);
+                refresh(turnedOn);
             }
-            scan(projectId, properties.manualMax());
+            scan(turnedOn, properties.manualMax());
         }
 
-        return readSettings(projectId);
+        return readSettings(scope);
     }
 
 
-    public AlertSettingsView refreshTopics(UUID clientId, UUID projectId) {
+    public AlertSettingsView refreshTopics(UUID clientId, AlertScope scope) {
 
-        transactions.executeWithoutResult(tx -> findOwnedProject(clientId, projectId));
-        refresh(projectId);
+        Long subscriptionId = transactions.execute(tx -> {
+            requireOwned(clientId, scope);
+            return findOrCreateSubscription(clientId, scope).getId();
+        });
+        refresh(subscriptionId);
 
-        return readSettings(projectId);
+        return readSettings(scope);
     }
 
 
     @Transactional
-    public AlertTopicView addTopic(UUID clientId, UUID projectId, String label) {
+    public AlertTopicView addTopic(UUID clientId, AlertScope scope, String label) {
 
-        findOwnedProject(clientId, projectId);
+        requireOwned(clientId, scope);
+        Long subscriptionId = findOrCreateSubscription(clientId, scope).getId();
         String cleaned = clean(label, AlertTopic.MAX_LABEL);
 
-        // Adding a label the project already follows returns that topic instead of a duplicate.
-        for (AlertTopic existing : topics.findAllByProjectIdAndRemovedFalseOrderByCreatedAtAscIdAsc(projectId)) {
+        // Adding a label the scope already follows returns that topic instead of a duplicate.
+        for (AlertTopic existing : topics.findAllBySubscriptionIdAndRemovedFalseOrderByCreatedAtAscIdAsc(subscriptionId)) {
             if (existing.getLabel().equalsIgnoreCase(cleaned)) {
                 return AlertTopicView.from(existing);
             }
         }
 
         AlertTopic topic = topics.save(
-                new AlertTopic(projectId, cleaned, cleaned, AlertTopicSource.USER)
+                new AlertTopic(subscriptionId, cleaned, cleaned, AlertTopicSource.USER)
         );
         return AlertTopicView.from(topic);
     }
 
 
     @Transactional
-    public AlertTopicView renameTopic(UUID clientId, UUID projectId, Long topicId, String label) {
+    public AlertTopicView renameTopic(UUID clientId, AlertScope scope, Long topicId, String label) {
 
-        findOwnedProject(clientId, projectId);
-        AlertTopic topic = findTopic(projectId, topicId);
+        requireOwned(clientId, scope);
+        AlertTopic topic = findTopic(scope, topicId);
 
         String cleaned = clean(label, AlertTopic.MAX_LABEL);
         topic.setLabel(cleaned);
@@ -247,10 +268,10 @@ public class AlertService {
 
     // AUTO topics are only marked removed, so a refresh never re-creates them; USER topics are deleted.
     @Transactional
-    public void deleteTopic(UUID clientId, UUID projectId, Long topicId) {
+    public void deleteTopic(UUID clientId, AlertScope scope, Long topicId) {
 
-        findOwnedProject(clientId, projectId);
-        AlertTopic topic = findTopic(projectId, topicId);
+        requireOwned(clientId, scope);
+        AlertTopic topic = findTopic(scope, topicId);
 
         if (topic.getSource() == AlertTopicSource.AUTO) {
             topic.setRemoved(true);
@@ -263,83 +284,107 @@ public class AlertService {
     // Scans
 
     // "Check now": works even when alerts are off.
-    public ScanResult scanProject(UUID clientId, UUID projectId) {
+    public ScanResult scanNow(UUID clientId, AlertScope scope) {
 
-        transactions.executeWithoutResult(tx -> findOwnedProject(clientId, projectId));
+        Long subscriptionId = transactions.execute(tx -> {
+            requireOwned(clientId, scope);
+            return findOrCreateSubscription(clientId, scope).getId();
+        });
 
-        return scan(projectId, properties.manualMax());
+        return scan(subscriptionId, properties.manualMax());
     }
 
 
     /**
-     * The scheduled scan of every enabled project: refreshes topics when the project has newer
-     * questions, then adds up to app.alerts.max-per-scan alerts. Never throws.
+     * The scheduled scan of every enabled subscription (project or chat): refreshes topics when
+     * the scope has newer questions, then adds up to app.alerts.max-per-scan alerts. Never throws.
      */
-    public void scanEnabledProjects() {
+    public void scanEnabledSubscriptions() {
 
-        List<UUID> projectIds;
+        List<Long> subscriptionIds;
         try {
-            projectIds = transactions.execute(tx -> settings.findEnabledProjectIds());
+            subscriptionIds = transactions.execute(tx -> subscriptions.findEnabledIds());
         } catch (RuntimeException exception) {
-            log.warn("Alert scan skipped: could not list enabled projects", exception);
+            log.warn("Alert scan skipped: could not list enabled subscriptions", exception);
             return;
         }
 
-        for (UUID projectId : projectIds) {
+        for (Long subscriptionId : subscriptionIds) {
             try {
-                if (hasNewQuestions(projectId)) {
-                    refresh(projectId);
+                if (hasNewQuestions(subscriptionId)) {
+                    refresh(subscriptionId);
                 }
-                ScanResult result = scan(projectId, properties.maxPerScan());
+                ScanResult result = scan(subscriptionId, properties.maxPerScan());
                 if (result.created() > 0) {
-                    log.info("Alert scan created {} alert(s) for project {}", result.created(), projectId);
+                    log.info("Alert scan created {} alert(s) for subscription {}", result.created(), subscriptionId);
                 }
             } catch (AlertMatcherUnavailableException exception) {
                 // The Python service is down: skip this round, the next one retries.
                 log.warn("Alert scan skipped: {}", exception.getMessage());
                 return;
             } catch (RuntimeException exception) {
-                log.error("Alert scan failed for project {}", projectId, exception);
+                log.error("Alert scan failed for subscription {}", subscriptionId, exception);
             }
         }
     }
 
 
-    private boolean hasNewQuestions(UUID projectId) {
+    // Where each scope's questions come from: all the project's chats, or the one chat.
 
-        return Boolean.TRUE.equals(transactions.execute(tx -> {
-            OffsetDateTime latest = topics.findLatestPromptAt(projectId);
-            OffsetDateTime refreshed = settings.findById(projectId)
-                    .map(ProjectAlertSettings::getTopicsRefreshedAt)
-                    .orElse(null);
-            return latest != null && (refreshed == null || latest.isAfter(refreshed));
-        }));
+    private List<String> prompts(AlertScope scope) {
+
+        return scope.isProject()
+                ? topics.findProjectPrompts(scope.projectId(), Limit.of(MAX_QUESTIONS))
+                : topics.findChatPrompts(scope.chatId(), Limit.of(MAX_QUESTIONS));
+    }
+
+    private OffsetDateTime latestPromptAt(AlertScope scope) {
+
+        return scope.isProject()
+                ? topics.findLatestProjectPromptAt(scope.projectId())
+                : topics.findLatestChatPromptAt(scope.chatId());
+    }
+
+
+    private boolean hasNewQuestions(Long subscriptionId) {
+
+        return Boolean.TRUE.equals(transactions.execute(tx -> subscriptions.findById(subscriptionId)
+                .map(row -> {
+                    OffsetDateTime latest = latestPromptAt(row.scope());
+                    OffsetDateTime refreshed = row.getTopicsRefreshedAt();
+                    return latest != null && (refreshed == null || latest.isAfter(refreshed));
+                })
+                .orElse(false)
+        ));
     }
 
 
     private record RefreshInput(List<String> questions, List<String> labels) {
     }
 
-    // Extracts topics from the project's questions and adds the new labels as AUTO topics.
-    private void refresh(UUID projectId) {
+    // Extracts topics from the scope's questions and adds the new labels as AUTO topics.
+    private void refresh(Long subscriptionId) {
 
         // Taken before the call, so questions asked meanwhile trigger the next refresh.
         OffsetDateTime refreshedAt = OffsetDateTime.now();
 
-        RefreshInput input = transactions.execute(tx -> new RefreshInput(
-                topics.findProjectPrompts(projectId, Limit.of(MAX_QUESTIONS))
-                        .stream()
-                        .map(String::trim)
-                        .filter(prompt -> !prompt.isEmpty())
-                        .map(prompt -> truncate(prompt, MAX_QUESTION_CHARS))
-                        .toList(),
-                topics.findAllByProjectIdOrderByCreatedAtAscIdAsc(projectId)
-                        .stream()
-                        .map(AlertTopic::getLabel)
-                        .toList()
-        ));
+        RefreshInput input = transactions.execute(tx -> subscriptions.findById(subscriptionId)
+                .map(row -> new RefreshInput(
+                        prompts(row.scope())
+                                .stream()
+                                .map(String::trim)
+                                .filter(prompt -> !prompt.isEmpty())
+                                .map(prompt -> truncate(prompt, MAX_QUESTION_CHARS))
+                                .toList(),
+                        topics.findAllBySubscriptionIdOrderByCreatedAtAscIdAsc(subscriptionId)
+                                .stream()
+                                .map(AlertTopic::getLabel)
+                                .toList()
+                ))
+                .orElse(null)
+        );
 
-        if (input.questions().isEmpty()) {
+        if (input == null || input.questions().isEmpty()) {
             return;
         }
 
@@ -350,9 +395,15 @@ public class AlertService {
         List<TopicSuggestion> suggestions = matcher.topics(input.questions(), recentLabels);
 
         transactions.executeWithoutResult(tx -> {
+            AlertSubscription row = subscriptions.findById(subscriptionId).orElse(null);
+            if (row == null) {
+                // The project or chat was deleted while the service ran.
+                return;
+            }
+
             // Removed labels count too, so they never come back.
             Set<String> known = new HashSet<>();
-            for (AlertTopic topic : topics.findAllByProjectIdOrderByCreatedAtAscIdAsc(projectId)) {
+            for (AlertTopic topic : topics.findAllBySubscriptionIdOrderByCreatedAtAscIdAsc(subscriptionId)) {
                 known.add(key(topic.getLabel()));
             }
 
@@ -367,28 +418,32 @@ public class AlertService {
                 String query = suggestion.query() == null || suggestion.query().isBlank()
                         ? label
                         : clean(suggestion.query(), AlertTopic.MAX_QUERY);
-                topics.save(new AlertTopic(projectId, label, query, AlertTopicSource.AUTO));
+                topics.save(new AlertTopic(subscriptionId, label, query, AlertTopicSource.AUTO));
             }
 
-            ProjectAlertSettings row = findOrCreateSettings(projectId);
             row.setTopicsRefreshedAt(refreshedAt);
         });
     }
 
 
-    private record ScanInput(UUID clientId, Map<Long, AlertTopic> topics, List<String> excluded) {
+    private record ScanInput(
+            UUID clientId,
+            AlertScope scope,
+            Map<Long, AlertTopic> topics,
+            List<String> excluded
+    ) {
     }
 
-    // Matches the project's topics against the update feed and stores up to `limit` new alerts.
-    private ScanResult scan(UUID projectId, int limit) {
+    // Matches the subscription's topics against the update feed and stores up to `limit` new alerts.
+    private ScanResult scan(Long subscriptionId, int limit) {
 
         ScanInput input = transactions.execute(tx -> {
-            Project project = projects.findById(projectId).orElse(null);
-            if (project == null) {
+            AlertSubscription row = subscriptions.findById(subscriptionId).orElse(null);
+            if (row == null) {
                 return null;
             }
             Map<Long, AlertTopic> active = topics
-                    .findAllByProjectIdAndRemovedFalseOrderByCreatedAtAscIdAsc(projectId)
+                    .findAllBySubscriptionIdAndRemovedFalseOrderByCreatedAtAscIdAsc(subscriptionId)
                     .stream()
                     .limit(MAX_MATCH_TOPICS)
                     .collect(Collectors.toMap(
@@ -397,14 +452,14 @@ public class AlertService {
                             (first, second) -> first,
                             LinkedHashMap::new
                     ));
-            return new ScanInput(project.getClientId(), active, alerts.findDocumentIds(projectId));
+            return new ScanInput(row.getClientId(), row.scope(), active, alerts.findDocumentIds(subscriptionId));
         });
 
         if (input == null) {
             return new ScanResult(0, NO_MATCHER);
         }
         if (input.topics().isEmpty()) {
-            markScanned(projectId);
+            markScanned(subscriptionId);
             return new ScanResult(0, NO_MATCHER);
         }
 
@@ -418,6 +473,10 @@ public class AlertService {
         MatchServiceReply reply = matcher.match(request, input.excluded(), limit);
 
         Integer created = transactions.execute(tx -> {
+            if (!subscriptions.existsById(subscriptionId)) {
+                // The project or chat was deleted while the matcher ran.
+                return 0;
+            }
             Set<String> seen = new HashSet<>(input.excluded());
             int inserted = 0;
             for (AlertMatch match : reply.matchesOrEmpty()) {
@@ -429,9 +488,9 @@ public class AlertService {
                         || match.documentId().length() > 128 || !seen.add(match.documentId())) {
                     continue;
                 }
-                inserted += insertAlert(input.clientId(), projectId, topic, match);
+                inserted += insertAlert(subscriptionId, input, topic, match);
             }
-            markScanned(projectId);
+            markScanned(subscriptionId);
             return inserted;
         });
 
@@ -453,7 +512,7 @@ public class AlertService {
 
 
     // ON CONFLICT: a concurrent scan that stored the same document first wins, without failing this one.
-    private int insertAlert(UUID clientId, UUID projectId, AlertTopic topic, AlertMatch match) {
+    private int insertAlert(Long subscriptionId, ScanInput input, AlertTopic topic, AlertMatch match) {
 
         // The topic may have been deleted while the matcher ran; the label snapshot keeps the reason.
         Long topicId = topics.existsById(topic.getId()) ? topic.getId() : null;
@@ -463,8 +522,10 @@ public class AlertService {
                 : match.title().trim();
 
         MapSqlParameterSource parameters = new MapSqlParameterSource()
-                .addValue("clientId", clientId, Types.OTHER)
-                .addValue("projectId", projectId, Types.OTHER)
+                .addValue("clientId", input.clientId(), Types.OTHER)
+                .addValue("subscriptionId", subscriptionId, Types.BIGINT)
+                .addValue("projectId", input.scope().projectId(), Types.OTHER)
+                .addValue("chatId", input.scope().chatId(), Types.OTHER)
                 .addValue("topicId", topicId, Types.BIGINT)
                 .addValue("topicLabel", topic.getLabel(), Types.VARCHAR)
                 .addValue("documentId", match.documentId(), Types.VARCHAR)
@@ -482,53 +543,73 @@ public class AlertService {
     }
 
 
-    private void markScanned(UUID projectId) {
+    private void markScanned(Long subscriptionId) {
 
-        transactions.executeWithoutResult(tx -> {
-            ProjectAlertSettings row = findOrCreateSettings(projectId);
-            row.setLastScanAt(OffsetDateTime.now());
+        transactions.executeWithoutResult(tx -> subscriptions.findById(subscriptionId)
+                .ifPresent(row -> row.setLastScanAt(OffsetDateTime.now())));
+    }
+
+
+    private AlertSettingsView readSettings(AlertScope scope) {
+
+        return transactions.execute(tx -> settingsView(scope));
+    }
+
+
+    private AlertSettingsView settingsView(AlertScope scope) {
+
+        return subscriptions.findByScope(scope)
+                .map(row -> new AlertSettingsView(
+                        scope.projectId(),
+                        scope.chatId(),
+                        row.isEnabled(),
+                        row.isPrompted(),
+                        topics.findAllBySubscriptionIdAndRemovedFalseOrderByCreatedAtAscIdAsc(row.getId())
+                                .stream()
+                                .map(AlertTopicView::from)
+                                .toList(),
+                        row.getLastScanAt()
+                ))
+                .orElseGet(() -> new AlertSettingsView(
+                        scope.projectId(), scope.chatId(), false, false, List.of(), null
+                ));
+    }
+
+
+    // ON CONFLICT: a concurrent request that created the subscription first wins, without failing this one.
+    private AlertSubscription findOrCreateSubscription(UUID clientId, AlertScope scope) {
+
+        return subscriptions.findByScope(scope).orElseGet(() -> {
+            jdbc.update(INSERT_SUBSCRIPTION, new MapSqlParameterSource()
+                    .addValue("clientId", clientId, Types.OTHER)
+                    .addValue("projectId", scope.projectId(), Types.OTHER)
+                    .addValue("chatId", scope.chatId(), Types.OTHER));
+            return subscriptions.findByScope(scope).orElseThrow();
         });
     }
 
 
-    private AlertSettingsView readSettings(UUID projectId) {
+    // 404 (ProjectNotFoundException / ChatNotFoundException) unless the client owns the scope.
+    private void requireOwned(UUID clientId, AlertScope scope) {
 
-        return transactions.execute(tx -> settingsView(projectId));
+        if (scope.isProject()) {
+            projects.findByIdAndClientId(scope.projectId(), clientId)
+                    .orElseThrow(ProjectNotFoundException::new);
+        } else {
+            chats.findByIdAndClientId(scope.chatId(), clientId)
+                    .orElseThrow(ChatNotFoundException::new);
+        }
     }
 
 
-    private AlertSettingsView settingsView(UUID projectId) {
+    private void requireOwnedFilters(UUID clientId, UUID projectId, UUID chatId) {
 
-        List<AlertTopicView> active = topics
-                .findAllByProjectIdAndRemovedFalseOrderByCreatedAtAscIdAsc(projectId)
-                .stream()
-                .map(AlertTopicView::from)
-                .toList();
-
-        return settings.findById(projectId)
-                .map(row -> new AlertSettingsView(
-                        projectId,
-                        row.isEnabled(),
-                        row.isPrompted(),
-                        active,
-                        row.getLastScanAt()
-                ))
-                .orElseGet(() -> new AlertSettingsView(projectId, false, false, active, null));
-    }
-
-
-    private ProjectAlertSettings findOrCreateSettings(UUID projectId) {
-
-        return settings.findById(projectId)
-                .orElseGet(() -> settings.saveAndFlush(new ProjectAlertSettings(projectId)));
-    }
-
-
-    private Project findOwnedProject(UUID clientId, UUID projectId) {
-
-        return projects
-                .findByIdAndClientId(projectId, clientId)
-                .orElseThrow(ProjectNotFoundException::new);
+        if (projectId != null) {
+            requireOwned(clientId, AlertScope.project(projectId));
+        }
+        if (chatId != null) {
+            requireOwned(clientId, AlertScope.chat(chatId));
+        }
     }
 
 
@@ -541,10 +622,10 @@ public class AlertService {
     }
 
 
-    private AlertTopic findTopic(UUID projectId, Long topicId) {
+    private AlertTopic findTopic(AlertScope scope, Long topicId) {
 
-        return topics
-                .findByIdAndProjectIdAndRemovedFalse(topicId, projectId)
+        return subscriptions.findByScope(scope)
+                .flatMap(row -> topics.findByIdAndSubscriptionIdAndRemovedFalse(topicId, row.getId()))
                 .orElseThrow(AlertTopicNotFoundException::new);
     }
 

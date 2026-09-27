@@ -8,7 +8,9 @@ import java.util.UUID;
 
 public record AlertView(
         Long id,
+        // Exactly one of projectId and chatId is set.
         UUID projectId,
+        UUID chatId,
         Long topicId,
         String topicLabel,
         String documentId,
@@ -29,6 +31,7 @@ public record AlertView(
         return new AlertView(
                 alert.getId(),
                 alert.getProjectId(),
+                alert.getChatId(),
                 alert.getTopicId(),
                 alert.getTopicLabel(),
                 alert.getDocumentId(),

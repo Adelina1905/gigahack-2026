@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/context";
 import type { ErrorKey } from "../i18n/messages";
 import type { ChatMessage } from "../types/chat";
@@ -28,6 +28,8 @@ interface ChatWindowProps {
   // Whether this browser already has chats; null while the list is loading.
   // The sample-question welcome is shown only before the first chat ever.
   hasChats?: boolean | null;
+  // The inline alert question (or its follow-up notice), shown just above the input.
+  alertPrompt?: ReactNode;
 }
 
 const SOURCE_PANEL_ID = "source-preview-panel";
@@ -119,6 +121,7 @@ function ChatWindow({
   error,
   onDismissError,
   hasChats = false,
+  alertPrompt,
 }: ChatWindowProps) {
   const { t, locale } = useI18n();
   const firstRun = useFirstRun(hasChats);
@@ -235,6 +238,7 @@ function ChatWindow({
             </button>
           </div>
         )}
+        {alertPrompt}
         <ChatInput onSend={send} disabled={isTyping || isLoading} voice={voice} />
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}

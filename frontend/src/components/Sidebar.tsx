@@ -24,6 +24,9 @@ interface SidebarProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onNewChatInProject: (projectId: string) => void;
+  // Unread alerts per chat id (the chat's own subscription).
+  unreadAlertsByChat?: Record<string, number>;
+  onOpenChatAlerts?: (chat: ChatSummary) => void;
   trackerCount: number;
   isTrackersOpen: boolean;
   onOpenTrackers: () => void;
@@ -91,6 +94,8 @@ function Sidebar({
   onRenameProject,
   onDeleteProject,
   onNewChatInProject,
+  unreadAlertsByChat,
+  onOpenChatAlerts,
   trackerCount,
   isTrackersOpen,
   onOpenTrackers,
@@ -269,6 +274,8 @@ function Sidebar({
                     onSelectChat={onSelect}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
+                    unreadAlertsByChat={unreadAlertsByChat}
+                    onOpenChatAlerts={onOpenChatAlerts}
                   />
                 ))}
               </ul>
@@ -297,6 +304,8 @@ function Sidebar({
                       onSelect={onSelect}
                       onDelete={onDelete}
                       onMove={onMoveChat}
+                      unreadAlerts={unreadAlertsByChat?.[chat.id] ?? 0}
+                      onOpenAlerts={onOpenChatAlerts}
                     />
                   ))}
                 </ul>

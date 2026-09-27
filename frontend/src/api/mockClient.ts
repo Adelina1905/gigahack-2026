@@ -12,6 +12,7 @@ import type {
   ResponseView,
   SourcePreviewView,
 } from "./types";
+import { alertScope, parseScopeKey, scopeKey, type AlertScope } from "../types/alerts";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 // In-memory stand-in for the Spring Boot API, persisted to localStorage so
@@ -278,7 +279,8 @@ interface StoredAlertSettings {
 }
 
 interface StoredAlertTopic extends AlertTopicView {
-  projectId: string;
+  // scopeKey() of the subscription the topic belongs to.
+  scope: string;
   // Removed AUTO topics are kept so a refresh never brings them back.
   removed: boolean;
 }
@@ -293,8 +295,8 @@ interface MockStore {
   chats: ChatView[];
   responses: ResponseView[];
   nextResponseId: number;
-  // Missing in stores saved before alerts existed.
-  alertSettings?: Record<string, StoredAlertSettings>;
+  // Missing in stores saved before alerts existed. Keyed by scopeKey().
+  alertSubscriptions?: Record<string, StoredAlertSettings>;
   alertTopics?: StoredAlertTopic[];
   alerts?: StoredAlert[];
   nextAlertId?: number;
@@ -321,10 +323,30 @@ const titleFrom = (text: string) => {
   return singleLine.length <= 50 ? singleLine : `${singleLine.slice(0, 49).trim()}…`;
 };
 
+// Stores saved before chats had their own alerts kept project settings by
+// project id and topics with a projectId.
+type LegacyStore = MockStore & { alertSettings?: Record<string, StoredAlertSettings> };
+
+function migrate(store: LegacyStore): MockStore {
+  if (store.alertSettings) {
+    store.alertSubscriptions ??= {};
+    for (const [projectId, settings] of Object.entries(store.alertSettings)) {
+      store.alertSubscriptions[`project:${projectId}`] ??= settings;
+    }
+    delete store.alertSettings;
+  }
+  for (const topic of store.alertTopics ?? []) {
+    const legacy = topic as StoredAlertTopic & { projectId?: string };
+    if (!legacy.scope && legacy.projectId) legacy.scope = `project:${legacy.projectId}`;
+  }
+  for (const alert of store.alerts ?? []) alert.chatId ??= null;
+  return store;
+}
+
 function load(): MockStore {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as MockStore;
+    if (raw) return migrate(JSON.parse(raw) as LegacyStore);
   } catch {
     // Storage unavailable or corrupt: start empty.
   }
@@ -408,9 +430,7 @@ export async function deleteProject(projectId: string): Promise<void> {
   findProject(store, projectId);
   store.projects = projectsOf(store).filter((project) => project.id !== projectId);
   // Like ON DELETE CASCADE on the alert tables.
-  if (store.alertSettings) delete store.alertSettings[projectId];
-  store.alertTopics = alertTopicsOf(store).filter((topic) => topic.projectId !== projectId);
-  store.alerts = alertsOf(store).filter((alert) => alert.projectId !== projectId);
+  dropSubscription(store, { kind: "project", id: projectId });
   for (const chat of store.chats) {
     if (chat.projectId === projectId) chat.projectId = null;
   }
@@ -467,6 +487,7 @@ export async function deleteChat(chatId: string): Promise<void> {
   findChat(store, chatId);
   store.chats = store.chats.filter((chat) => chat.id !== chatId);
   store.responses = store.responses.filter((response) => response.chatId !== chatId);
+  dropSubscription(store, { kind: "chat", id: chatId });
   save(store);
 }
 
@@ -561,9 +582,10 @@ export async function regenerateResponse(
   return response;
 }
 
-// ---- Project alerts -------------------------------------------------------
+// ---- Alerts ---------------------------------------------------------------
 // A small demo feed stands in for the Python matcher: topics come from keyword
-// rules over the project's prompts, and documents match topics by shared words.
+// rules over the subscription's prompts (a project's chats, or one chat), and
+// documents match topics by shared words.
 
 interface FeedDocument {
   documentId: string;
@@ -685,27 +707,43 @@ const alertTopicsOf = (store: MockStore) => (store.alertTopics ??= []);
 // One sequence for alerts and topics is enough for the mock.
 const nextAlertId = (store: MockStore) => (store.nextAlertId = (store.nextAlertId ?? 0) + 1);
 const alertsOf = (store: MockStore) => (store.alerts ??= []);
+const subscriptionsOf = (store: MockStore) => (store.alertSubscriptions ??= {});
 
-function settingsOf(store: MockStore, projectId: string): StoredAlertSettings {
-  store.alertSettings ??= {};
-  return (store.alertSettings[projectId] ??= {
+const inScope = (alert: StoredAlert, scope: AlertScope) => scopeKey(alertScope(alert)) === scopeKey(scope);
+
+// Unknown project or chat -> 404, like the backend.
+function checkScope(store: MockStore, scope: AlertScope) {
+  if (scope.kind === "project") findProject(store, scope.id);
+  else findChat(store, scope.id);
+}
+
+function dropSubscription(store: MockStore, scope: AlertScope) {
+  const key = scopeKey(scope);
+  delete subscriptionsOf(store)[key];
+  store.alertTopics = alertTopicsOf(store).filter((topic) => topic.scope !== key);
+  store.alerts = alertsOf(store).filter((alert) => !inScope(alert, scope));
+}
+
+function settingsOf(store: MockStore, scope: AlertScope): StoredAlertSettings {
+  return (subscriptionsOf(store)[scopeKey(scope)] ??= {
     enabled: false, prompted: false, topicsRefreshedAt: null, lastScanAt: null,
   });
 }
 
-const liveTopics = (store: MockStore, projectId: string) =>
-  alertTopicsOf(store).filter((topic) => topic.projectId === projectId && !topic.removed);
+const liveTopics = (store: MockStore, scope: AlertScope) =>
+  alertTopicsOf(store).filter((topic) => topic.scope === scopeKey(scope) && !topic.removed);
 
 const topicView = ({ id, label, query, source, minScore }: StoredAlertTopic): AlertTopicView =>
   ({ id, label, query, source, minScore });
 
-function settingsView(store: MockStore, projectId: string): AlertSettingsView {
-  const settings = settingsOf(store, projectId);
+function settingsView(store: MockStore, scope: AlertScope): AlertSettingsView {
+  const settings = settingsOf(store, scope);
   return {
-    projectId,
+    projectId: scope.kind === "project" ? scope.id : null,
+    chatId: scope.kind === "chat" ? scope.id : null,
     enabled: settings.enabled,
     prompted: settings.prompted,
-    topics: liveTopics(store, projectId).map(topicView),
+    topics: liveTopics(store, scope).map(topicView),
     lastScanAt: settings.lastScanAt,
   };
 }
@@ -742,14 +780,22 @@ function scoreDocument(query: string, document: FeedDocument) {
   return hits === 0 ? 0 : Math.min(0.95, 0.5 + 0.1 * hits);
 }
 
-function refreshTopics(store: MockStore, projectId: string) {
-  const chatIds = new Set(store.chats.filter((chat) => chat.projectId === projectId).map((chat) => chat.id));
-  const prompts = store.responses
+// A project's topics come from all of its chats; a chat's from its own prompts.
+function promptsOf(store: MockStore, scope: AlertScope) {
+  const chatIds = scope.kind === "chat"
+    ? new Set([scope.id])
+    : new Set(store.chats.filter((chat) => chat.projectId === scope.id).map((chat) => chat.id));
+  return store.responses
     .filter((response) => chatIds.has(response.chatId) && response.prompt)
     .map((response) => response.prompt!);
+}
+
+function refreshTopics(store: MockStore, scope: AlertScope) {
+  const prompts = promptsOf(store, scope);
+  const key = scopeKey(scope);
   // Removed topics count as existing, so they are not re-created.
   const existing = new Set(
-    alertTopicsOf(store).filter((topic) => topic.projectId === projectId).map((topic) => topic.label.toLowerCase()),
+    alertTopicsOf(store).filter((topic) => topic.scope === key).map((topic) => topic.label.toLowerCase()),
   );
   let added = 0;
   for (const rule of TOPIC_RULES) {
@@ -757,20 +803,20 @@ function refreshTopics(store: MockStore, projectId: string) {
     if (!prompts.some((prompt) => rule.pattern.test(prompt))) continue;
     alertTopicsOf(store).push({
       id: nextAlertId(store),
-      projectId, label: rule.label, query: rule.query, source: "AUTO", minScore: null, removed: false,
+      scope: key, label: rule.label, query: rule.query, source: "AUTO", minScore: null, removed: false,
     });
     added += 1;
   }
-  settingsOf(store, projectId).topicsRefreshedAt = now();
+  settingsOf(store, scope).topicsRefreshedAt = now();
 }
 
-// Adds up to `limit` alerts for documents the project was never alerted about.
-function scan(store: MockStore, projectId: string, limit: number) {
-  const topics = liveTopics(store, projectId);
-  settingsOf(store, projectId).lastScanAt = now();
+// Adds up to `limit` alerts for documents the subscription was never alerted about.
+function scan(store: MockStore, scope: AlertScope, limit: number) {
+  const topics = liveTopics(store, scope);
+  settingsOf(store, scope).lastScanAt = now();
   if (topics.length === 0) return 0;
 
-  const seen = new Set(alertsOf(store).filter((alert) => alert.projectId === projectId).map((alert) => alert.documentId));
+  const seen = new Set(alertsOf(store).filter((alert) => inScope(alert, scope)).map((alert) => alert.documentId));
   const matches = DEMO_FEED.filter((document) => !seen.has(document.documentId))
     .map((document) => {
       const best = topics
@@ -787,7 +833,8 @@ function scan(store: MockStore, projectId: string, limit: number) {
     alertsOf(store).push({
       ...document,
       id: nextAlertId(store),
-      projectId,
+      projectId: scope.kind === "project" ? scope.id : null,
+      chatId: scope.kind === "chat" ? scope.id : null,
       topicId: topic.id,
       topicLabel: topic.label,
       score,
@@ -799,15 +846,14 @@ function scan(store: MockStore, projectId: string, limit: number) {
   return matches.length;
 }
 
-// Stands in for the scheduled task: enabled projects get new alerts over time.
+// Stands in for the scheduled task: enabled subscriptions get new alerts over time.
 function backgroundScan(store: MockStore) {
   let changed = false;
-  for (const project of projectsOf(store)) {
-    const settings = store.alertSettings?.[project.id];
-    if (!settings?.enabled) continue;
+  for (const [key, settings] of Object.entries(subscriptionsOf(store))) {
+    if (!settings.enabled) continue;
     const last = settings.lastScanAt ? Date.parse(settings.lastScanAt) : 0;
     if (Date.now() - last < BACKGROUND_SCAN_MS) continue;
-    scan(store, project.id, BACKGROUND_SCAN_LIMIT);
+    scan(store, parseScopeKey(key), BACKGROUND_SCAN_LIMIT);
     changed = true;
   }
   return changed;
@@ -819,6 +865,7 @@ export async function getAlerts(query: AlertListQuery = {}): Promise<AlertView[]
   await wait(150);
   return visibleAlerts(load())
     .filter((alert) => !query.projectId || alert.projectId === query.projectId)
+    .filter((alert) => !query.chatId || alert.chatId === query.chatId)
     .filter((alert) => !query.unreadOnly || !alert.readAt)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
     .slice(0, query.limit ?? 50)
@@ -830,10 +877,15 @@ export async function getAlertUnreadCount(): Promise<AlertUnreadCountView> {
   const store = load();
   if (backgroundScan(store)) save(store);
   const byProject: Record<string, number> = {};
+  const byChat: Record<string, number> = {};
+  let total = 0;
   for (const alert of visibleAlerts(store)) {
-    if (!alert.readAt) byProject[alert.projectId] = (byProject[alert.projectId] ?? 0) + 1;
+    if (alert.readAt) continue;
+    total += 1;
+    if (alert.projectId) byProject[alert.projectId] = (byProject[alert.projectId] ?? 0) + 1;
+    else if (alert.chatId) byChat[alert.chatId] = (byChat[alert.chatId] ?? 0) + 1;
   }
-  return { total: Object.values(byProject).reduce((sum, count) => sum + count, 0), byProject };
+  return { total, byProject, byChat };
 }
 
 export async function markAlertRead(alertId: number): Promise<AlertView> {
@@ -845,12 +897,16 @@ export async function markAlertRead(alertId: number): Promise<AlertView> {
   return alertView(alert);
 }
 
-export async function markAllAlertsRead(projectId: string | null = null): Promise<{ updated: number }> {
+export async function markAllAlertsRead(
+  request: { projectId?: string | null; chatId?: string | null } = {},
+): Promise<{ updated: number }> {
   await wait(80);
   const store = load();
   let updated = 0;
   for (const alert of visibleAlerts(store)) {
-    if (alert.readAt || (projectId && alert.projectId !== projectId)) continue;
+    if (alert.readAt) continue;
+    if (request.projectId && alert.projectId !== request.projectId) continue;
+    if (request.chatId && alert.chatId !== request.chatId) continue;
     alert.readAt = now();
     updated += 1;
   }
@@ -869,65 +925,67 @@ export async function markAlertNotRelevant(alertId: number): Promise<void> {
   save(store);
 }
 
-export async function getAlertSettings(projectId: string): Promise<AlertSettingsView> {
+// The same endpoints exist for a project and for a chat.
+
+async function getSettingsFor(scope: AlertScope): Promise<AlertSettingsView> {
   await wait(80);
   const store = load();
-  findProject(store, projectId);
-  return settingsView(store, projectId);
+  checkScope(store, scope);
+  return settingsView(store, scope);
 }
 
-export async function updateAlertSettings(projectId: string, enabled: boolean): Promise<AlertSettingsView> {
+async function updateSettingsFor(scope: AlertScope, enabled: boolean): Promise<AlertSettingsView> {
   await wait(150);
   const store = load();
-  findProject(store, projectId);
-  const settings = settingsOf(store, projectId);
+  checkScope(store, scope);
+  const settings = settingsOf(store, scope);
   const turnedOn = enabled && !settings.enabled;
   settings.enabled = enabled;
   settings.prompted = true;
   if (turnedOn) {
-    if (liveTopics(store, projectId).length === 0) refreshTopics(store, projectId);
-    scan(store, projectId, MANUAL_SCAN_LIMIT);
+    if (liveTopics(store, scope).length === 0) refreshTopics(store, scope);
+    scan(store, scope, MANUAL_SCAN_LIMIT);
   }
   save(store);
-  return settingsView(store, projectId);
+  return settingsView(store, scope);
 }
 
-export async function refreshAlertTopics(projectId: string): Promise<AlertSettingsView> {
+async function refreshTopicsFor(scope: AlertScope): Promise<AlertSettingsView> {
   await wait(300);
   const store = load();
-  findProject(store, projectId);
-  refreshTopics(store, projectId);
+  checkScope(store, scope);
+  refreshTopics(store, scope);
   save(store);
-  return settingsView(store, projectId);
+  return settingsView(store, scope);
 }
 
-export async function createAlertTopic(projectId: string, label: string): Promise<AlertTopicView> {
+async function createTopicFor(scope: AlertScope, label: string): Promise<AlertTopicView> {
   await wait(100);
   const store = load();
-  findProject(store, projectId);
+  checkScope(store, scope);
   const trimmed = validTopicLabel(label);
   // Like the backend: an existing label returns the existing topic.
-  const existing = liveTopics(store, projectId).find((topic) => topic.label.toLowerCase() === trimmed.toLowerCase());
+  const existing = liveTopics(store, scope).find((topic) => topic.label.toLowerCase() === trimmed.toLowerCase());
   if (existing) return topicView(existing);
   const topic: StoredAlertTopic = {
     id: nextAlertId(store),
-    projectId, label: trimmed, query: trimmed, source: "USER", minScore: null, removed: false,
+    scope: scopeKey(scope), label: trimmed, query: trimmed, source: "USER", minScore: null, removed: false,
   };
   alertTopicsOf(store).push(topic);
   save(store);
   return topicView(topic);
 }
 
-function findTopic(store: MockStore, projectId: string, topicId: number) {
-  const topic = liveTopics(store, projectId).find((candidate) => candidate.id === topicId);
+function findTopic(store: MockStore, scope: AlertScope, topicId: number) {
+  const topic = liveTopics(store, scope).find((candidate) => candidate.id === topicId);
   if (!topic) throw notFound("Topic");
   return topic;
 }
 
-export async function updateAlertTopic(projectId: string, topicId: number, label: string): Promise<AlertTopicView> {
+async function updateTopicFor(scope: AlertScope, topicId: number, label: string): Promise<AlertTopicView> {
   await wait(100);
   const store = load();
-  const topic = findTopic(store, projectId, topicId);
+  const topic = findTopic(store, scope, topicId);
   topic.label = validTopicLabel(label);
   topic.query = topic.label;
   topic.source = "USER";
@@ -935,21 +993,43 @@ export async function updateAlertTopic(projectId: string, topicId: number, label
   return topicView(topic);
 }
 
-export async function deleteAlertTopic(projectId: string, topicId: number): Promise<void> {
+async function deleteTopicFor(scope: AlertScope, topicId: number): Promise<void> {
   await wait(100);
   const store = load();
-  const topic = findTopic(store, projectId, topicId);
+  const topic = findTopic(store, scope, topicId);
   if (topic.source === "AUTO") topic.removed = true;
   else store.alertTopics = alertTopicsOf(store).filter((candidate) => candidate !== topic);
   save(store);
 }
 
-export async function scanProjectAlerts(projectId: string): Promise<AlertScanView> {
+async function scanFor(scope: AlertScope): Promise<AlertScanView> {
   await wait(400);
   const store = load();
-  findProject(store, projectId);
-  const hasTopics = liveTopics(store, projectId).length > 0;
-  const created = scan(store, projectId, MANUAL_SCAN_LIMIT);
+  checkScope(store, scope);
+  const hasTopics = liveTopics(store, scope).length > 0;
+  const created = scan(store, scope, MANUAL_SCAN_LIMIT);
   save(store);
   return { created, matcher: hasTopics ? "lexical" : "none" };
 }
+
+const projectScope = (id: string): AlertScope => ({ kind: "project", id });
+const chatScope = (id: string): AlertScope => ({ kind: "chat", id });
+
+export const getAlertSettings = (projectId: string) => getSettingsFor(projectScope(projectId));
+export const updateAlertSettings = (projectId: string, enabled: boolean) =>
+  updateSettingsFor(projectScope(projectId), enabled);
+export const refreshAlertTopics = (projectId: string) => refreshTopicsFor(projectScope(projectId));
+export const createAlertTopic = (projectId: string, label: string) => createTopicFor(projectScope(projectId), label);
+export const updateAlertTopic = (projectId: string, topicId: number, label: string) =>
+  updateTopicFor(projectScope(projectId), topicId, label);
+export const deleteAlertTopic = (projectId: string, topicId: number) => deleteTopicFor(projectScope(projectId), topicId);
+export const scanProjectAlerts = (projectId: string) => scanFor(projectScope(projectId));
+
+export const getChatAlertSettings = (chatId: string) => getSettingsFor(chatScope(chatId));
+export const updateChatAlertSettings = (chatId: string, enabled: boolean) => updateSettingsFor(chatScope(chatId), enabled);
+export const refreshChatAlertTopics = (chatId: string) => refreshTopicsFor(chatScope(chatId));
+export const createChatAlertTopic = (chatId: string, label: string) => createTopicFor(chatScope(chatId), label);
+export const updateChatAlertTopic = (chatId: string, topicId: number, label: string) =>
+  updateTopicFor(chatScope(chatId), topicId, label);
+export const deleteChatAlertTopic = (chatId: string, topicId: number) => deleteTopicFor(chatScope(chatId), topicId);
+export const scanChatAlerts = (chatId: string) => scanFor(chatScope(chatId));

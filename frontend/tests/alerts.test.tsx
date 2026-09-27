@@ -2,20 +2,21 @@ import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, render as renderRaw, screen, waitFor, within } from "@testing-library/react";
 import AlertBell from "../src/components/alerts/AlertBell";
-import AlertOptInDialog from "../src/components/alerts/AlertOptInDialog";
-import ProjectAlertsDialog from "../src/components/alerts/ProjectAlertsDialog";
+import AlertsDialog from "../src/components/alerts/AlertsDialog";
+import ChatAlertPrompt, { ChatAlertNotice } from "../src/components/alerts/ChatAlertPrompt";
 import Sidebar from "../src/components/Sidebar";
 import { toAlert, toAlertSettings, toUnreadAlertCounts } from "../src/api/mappers";
 import * as mockClient from "../src/api/mockClient";
 import type { AlertScanView, AlertSettingsView, AlertTopicView, AlertUnreadCountView, AlertView } from "../src/api/types";
 import { adjustUnread, useAlerts, type AlertsClient } from "../src/hooks/useAlerts";
-import { useAlertOptIn, type AlertOptInClient } from "../src/hooks/useAlertOptIn";
+import { alertScopeForChat, useAlertOptIn, type AlertOptInClient } from "../src/hooks/useAlertOptIn";
+import { useAlertOfferPreference } from "../src/hooks/useAlertOfferPreference";
 import type { AlertSettingsClient } from "../src/hooks/useAlertSettings";
 import { ApiError } from "../src/api/client";
 import { I18nContext } from "../src/i18n/context";
 import { MESSAGES } from "../src/i18n/messages";
-import type { Alert } from "../src/types/alerts";
-import type { ProjectSummary } from "../src/types/chat";
+import type { Alert, AlertScope } from "../src/types/alerts";
+import { DEFAULT_CHAT_NAME, type ChatSummary, type ProjectSummary } from "../src/types/chat";
 
 afterEach(cleanup);
 const en = MESSAGES.en;
@@ -23,7 +24,7 @@ const render = (ui: React.ReactElement) =>
   renderRaw(<I18nContext.Provider value={{ locale: "en", setLocale: () => {}, t: en }}>{ui}</I18nContext.Provider>);
 
 const alertView = (overrides: Partial<AlertView> = {}): AlertView => ({
-  id: 1, projectId: "p1", topicId: 7, topicLabel: "Transport public", documentId: "doc-1",
+  id: 1, projectId: "p1", chatId: null, topicId: 7, topicLabel: "Transport public", documentId: "doc-1",
   title: "New trolleybus schedule", url: "https://www.chisinau.md/", source: "RTEC", district: "Centru",
   category: "Transport", publishedDate: "2026-09-24", excerpt: "Buses run every 8 minutes.", score: 0.7,
   createdAt: "2026-09-26T10:00:00Z", readAt: null, ...overrides,
@@ -34,18 +35,29 @@ const topicView = (overrides: Partial<AlertTopicView> = {}): AlertTopicView => (
 });
 
 const settingsView = (overrides: Partial<AlertSettingsView> = {}): AlertSettingsView => ({
-  projectId: "p1", enabled: false, prompted: false, topics: [], lastScanAt: null, ...overrides,
+  projectId: "p1", chatId: null, enabled: false, prompted: false, topics: [], lastScanAt: null, ...overrides,
 });
+
+// The wire settings of one scope.
+const scopeSettings = (scope: AlertScope, overrides: Partial<AlertSettingsView> = {}) =>
+  settingsView({
+    projectId: scope.kind === "project" ? scope.id : null,
+    chatId: scope.kind === "chat" ? scope.id : null,
+    ...overrides,
+  });
+
+const label = (scope: AlertScope) => `${scope.kind} ${scope.id}`;
 
 describe("alert mappers", () => {
   it("maps an alert and derives its read state", () => {
     expect(toAlert(alertView())).toEqual({
-      id: 1, projectId: "p1", topicId: 7, topicLabel: "Transport public", documentId: "doc-1",
+      id: 1, projectId: "p1", chatId: null, topicId: 7, topicLabel: "Transport public", documentId: "doc-1",
       title: "New trolleybus schedule", url: "https://www.chisinau.md/", source: "RTEC", district: "Centru",
       category: "Transport", publishedDate: "2026-09-24", excerpt: "Buses run every 8 minutes.", score: 0.7,
       createdAt: Date.parse("2026-09-26T10:00:00Z"), isRead: false,
     });
     expect(toAlert(alertView({ readAt: "2026-09-26T11:00:00Z" })).isRead).toBe(true);
+    expect(toAlert(alertView({ projectId: null, chatId: "c1" }))).toMatchObject({ projectId: null, chatId: "c1" });
   });
   it("maps settings with their topics", () => {
     const settings = toAlertSettings(settingsView({
@@ -53,142 +65,233 @@ describe("alert mappers", () => {
       topics: [topicView(), topicView({ id: 8, label: "Parks", source: "USER", minScore: 0.8 })],
     }));
     expect(settings).toEqual({
-      projectId: "p1", enabled: true, prompted: true, lastScanAt: Date.parse("2026-09-26T12:00:00Z"),
+      projectId: "p1", chatId: null, enabled: true, prompted: true, lastScanAt: Date.parse("2026-09-26T12:00:00Z"),
       topics: [
         { id: 7, label: "Transport public", query: "transport public", isAuto: true, minScore: null },
         { id: 8, label: "Parks", query: "transport public", isAuto: false, minScore: 0.8 },
       ],
     });
     expect(toAlertSettings(settingsView()).lastScanAt).toBeNull();
+    expect(toAlertSettings(settingsView({ projectId: null, chatId: "c1" }))).toMatchObject({ projectId: null, chatId: "c1" });
   });
-  it("maps unread counts and adjusts them per project", () => {
-    const counts = toUnreadAlertCounts({ total: 3, byProject: { p1: 2, p2: 1 } });
-    expect(adjustUnread(counts, "p1", -1)).toEqual({ total: 2, byProject: { p1: 1, p2: 1 } });
-    expect(adjustUnread(counts, "p2", -5)).toEqual({ total: 2, byProject: { p1: 2 } });
-    expect(adjustUnread(counts, "p3", 1)).toEqual({ total: 4, byProject: { p1: 2, p2: 1, p3: 1 } });
+  it("maps unread counts and adjusts them per project or chat", () => {
+    const counts = toUnreadAlertCounts({ total: 4, byProject: { p1: 2, p2: 1 }, byChat: { c1: 1 } });
+    const project = (id: string): AlertScope => ({ kind: "project", id });
+    expect(adjustUnread(counts, project("p1"), -1)).toEqual({ total: 3, byProject: { p1: 1, p2: 1 }, byChat: { c1: 1 } });
+    expect(adjustUnread(counts, project("p2"), -5)).toEqual({ total: 3, byProject: { p1: 2 }, byChat: { c1: 1 } });
+    expect(adjustUnread(counts, { kind: "chat", id: "c1" }, -1)).toEqual({ total: 3, byProject: { p1: 2, p2: 1 }, byChat: {} });
+    expect(adjustUnread(counts, { kind: "chat", id: "c2" }, 1).byChat).toEqual({ c1: 1, c2: 1 });
+    // Older servers without byChat still map.
+    expect(toUnreadAlertCounts({ total: 0, byProject: {} } as unknown as AlertUnreadCountView).byChat).toEqual({});
   });
 });
 
-describe("AlertOptInDialog", () => {
-  const setup = (topics: string[]) => {
+describe("ChatAlertPrompt", () => {
+  const setup = (topics: string[], scopeKind: AlertScope["kind"] = "chat") => {
     const calls = { enabled: 0, declined: 0 };
-    render(<AlertOptInDialog projectName="Education" topics={topics}
+    render(<ChatAlertPrompt scopeKind={scopeKind} topics={topics}
       onEnable={() => { calls.enabled += 1; }} onDecline={() => { calls.declined += 1; }} />);
     return calls;
   };
 
-  it("lists the extracted topics and turns alerts on", () => {
+  it("names the topics and turns alerts on without taking focus", () => {
+    const input = document.createElement("textarea");
+    document.body.appendChild(input);
+    input.focus();
     const calls = setup(["Școli și grădinițe", "Transport public"]);
-    const dialog = screen.getByRole("dialog", { name: en.alerts.optIn.title });
-    expect(within(dialog).getByText(en.alerts.optIn.body("Education"))).toBeTruthy();
-    expect(within(dialog).getAllByRole("listitem").map(item => item.textContent))
-      .toEqual(["Școli și grădinițe", "Transport public"]);
-    fireEvent.click(within(dialog).getByRole("button", { name: en.alerts.optIn.enable }));
+    const region = screen.getByRole("region", { name: en.alerts.prompt.label });
+    expect(within(region).getByText(en.alerts.prompt.topics(["Școli și grădinițe", "Transport public"]))).toBeTruthy();
+    expect(document.activeElement).toBe(input);
+    fireEvent.click(within(region).getByRole("button", { name: en.alerts.prompt.enable }));
     expect(calls).toEqual({ enabled: 1, declined: 0 });
+    input.remove();
   });
-  it("shows a generic line without topics, and Not now or Escape declines", () => {
+  it("shows a generic line per scope, and Not now or × declines", () => {
     const calls = setup([]);
-    expect(screen.getByText(en.alerts.optIn.noTopics("Education"))).toBeTruthy();
-    expect(screen.queryByRole("list")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en.alerts.optIn.notNow }));
-    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(screen.getByText(en.alerts.prompt.generic.chat)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.prompt.notNow }));
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.prompt.dismiss }));
     expect(calls).toEqual({ enabled: 0, declined: 2 });
+    cleanup();
+    setup([], "project");
+    expect(screen.getByText(en.alerts.prompt.generic.project)).toBeTruthy();
+  });
+  it("disables its buttons while saving", () => {
+    render(<ChatAlertPrompt scopeKind="chat" topics={[]} isSaving onEnable={() => {}} onDecline={() => {}} />);
+    expect((screen.getByRole("button", { name: en.alerts.prompt.enable }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("status").textContent).toBe(en.alerts.prompt.saving);
   });
 });
 
-// Hand-written stand-in for the opt-in endpoints.
+describe("alertScopeForChat", () => {
+  it("uses the project for a chat in a project and the chat otherwise", () => {
+    expect(alertScopeForChat({ id: "c1", projectId: null })).toEqual({ kind: "chat", id: "c1" });
+    expect(alertScopeForChat({ id: "c2", projectId: "p1" })).toEqual({ kind: "project", id: "p1" });
+  });
+});
+
+// Hand-written stand-in for the opt-in endpoints of both scopes.
 class FakeOptInClient implements AlertOptInClient {
   calls: string[] = [];
   // The backend saves the answer, then answers 503 when the Python service is down.
   unavailable = false;
-  constructor(public prompted: boolean, public topics: AlertTopicView[] = []) {}
-  getAlertSettings = async (projectId: string) => {
-    this.calls.push(`get ${projectId}`);
-    return settingsView({ projectId, prompted: this.prompted });
-  };
-  refreshAlertTopics = async (projectId: string) => {
-    this.calls.push(`refresh ${projectId}`);
+  prompted = new Set<string>();
+  constructor(public topics: AlertTopicView[] = [], prompted: string[] = []) {
+    prompted.forEach(key => this.prompted.add(key));
+  }
+  private get(scope: AlertScope) {
+    this.calls.push(`get ${label(scope)}`);
+    return scopeSettings(scope, { prompted: this.prompted.has(label(scope)) });
+  }
+  private refresh(scope: AlertScope) {
+    this.calls.push(`refresh ${label(scope)}`);
     if (this.unavailable) throw new ApiError("Alerts unavailable", 503);
-    return settingsView({ projectId, prompted: this.prompted, topics: this.topics });
-  };
-  updateAlertSettings = async (projectId: string, enabled: boolean) => {
-    this.calls.push(`put ${projectId} ${enabled}`);
-    this.prompted = true;
+    return scopeSettings(scope, { prompted: this.prompted.has(label(scope)), topics: this.topics });
+  }
+  private put(scope: AlertScope, enabled: boolean) {
+    this.calls.push(`put ${label(scope)} ${enabled}`);
+    this.prompted.add(label(scope));
     if (this.unavailable) throw new ApiError("Alerts unavailable", 503);
-    return settingsView({ projectId, enabled, prompted: true, topics: this.topics });
-  };
+    return scopeSettings(scope, { enabled, prompted: true, topics: this.topics });
+  }
+  getAlertSettings = async (id: string) => this.get({ kind: "project", id });
+  refreshAlertTopics = async (id: string) => this.refresh({ kind: "project", id });
+  updateAlertSettings = async (id: string, enabled: boolean) => this.put({ kind: "project", id }, enabled);
+  getChatAlertSettings = async (id: string) => this.get({ kind: "chat", id });
+  refreshChatAlertTopics = async (id: string) => this.refresh({ kind: "chat", id });
+  updateChatAlertSettings = async (id: string, enabled: boolean) => this.put({ kind: "chat", id }, enabled);
 }
 
-function OptInHarness({ client, projectId, onEnabled }: { client: AlertOptInClient; projectId: string; onEnabled?: () => void }) {
-  const optIn = useAlertOptIn(client, { onEnabled });
+interface OptInHarnessProps {
+  client: AlertOptInClient;
+  // The open chat; its scope comes from alertScopeForChat like in the app.
+  chat: { id: string; projectId: string | null };
+  onEnabled?: () => void;
+  offerEnabled?: boolean;
+}
+
+function OptInHarness({ client, chat, onEnabled, offerEnabled = true }: OptInHarnessProps) {
+  const optIn = useAlertOptIn(client, { onEnabled, enabled: offerEnabled, noticeMs: 50 });
+  const offer = optIn.offer?.chatId === chat.id ? optIn.offer : null;
   return (
     <>
-      {optIn.notice && <p role="status">{en.errors[optIn.notice]}</p>}
-      <button type="button" onClick={() => void optIn.consider(projectId)}>reply arrived</button>
-      {optIn.offer && (
-        <AlertOptInDialog projectName="Education" topics={optIn.offer.topics.map(topic => topic.label)}
-          onEnable={optIn.enable} onDecline={optIn.decline} />
+      <button type="button" onClick={() => void optIn.consider(alertScopeForChat(chat), chat.id)}>reply arrived</button>
+      {offer && (
+        <ChatAlertPrompt scopeKind={offer.scope.kind} topics={offer.topics.map(topic => topic.label)}
+          isSaving={optIn.isSaving} error={optIn.error} onEnable={optIn.enable} onDecline={optIn.decline} />
+      )}
+      {!offer && optIn.notice && (
+        <ChatAlertNotice message={optIn.notice.kind === "enabled" ? en.alerts.prompt.enabled : en.errors.alertsUnavailable} />
       )}
     </>
   );
 }
 
+const promptRegion = () => screen.findByRole("region", { name: en.alerts.prompt.label });
+const noPrompt = () => expect(screen.queryByRole("region", { name: en.alerts.prompt.label })).toBeNull();
+
 describe("alert opt-in trigger", () => {
-  it("refreshes topics, offers alerts once, and saves the answer", async () => {
-    const client = new FakeOptInClient(false, [topicView()]);
+  it("asks about a chat outside projects with the chat's own topics, once", async () => {
+    const client = new FakeOptInClient([topicView()]);
     let enabled = 0;
-    render(<OptInHarness client={client} projectId="p1" onEnabled={() => { enabled += 1; }} />);
+    render(<OptInHarness client={client} chat={{ id: "c1", projectId: null }} onEnabled={() => { enabled += 1; }} />);
     fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Transport public")).toBeTruthy();
+    const region = await promptRegion();
+    expect(within(region).getByText(en.alerts.prompt.topics(["Transport public"]))).toBeTruthy();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: en.alerts.optIn.enable }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(within(region).getByRole("button", { name: en.alerts.prompt.enable }));
+    await waitFor(noPrompt);
     expect(enabled).toBe(1);
+    expect(screen.getByRole("status").textContent).toContain(en.alerts.prompt.enabled);
+    // The confirmation goes away on its own.
+    await waitFor(() => expect(screen.queryByTestId("chat-alert-notice")).toBeNull());
 
-    // Later replies in the same project never ask again.
+    // Later replies in the same chat never ask again.
     fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
     await act(async () => {});
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(client.calls).toEqual(["get p1", "refresh p1", "put p1 true"]);
+    noPrompt();
+    expect(client.calls).toEqual(["get chat c1", "refresh chat c1", "put chat c1 true"]);
   });
-  it("does not ask when the project was already prompted", async () => {
-    const client = new FakeOptInClient(true);
-    render(<OptInHarness client={client} projectId="p1" />);
+  it("asks about the project for a chat inside a project", async () => {
+    const client = new FakeOptInClient();
+    render(<OptInHarness client={client} chat={{ id: "c2", projectId: "p1" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
+    const region = await promptRegion();
+    expect(within(region).getByText(en.alerts.prompt.generic.project)).toBeTruthy();
+    fireEvent.click(within(region).getByRole("button", { name: en.alerts.prompt.notNow }));
+    await waitFor(noPrompt);
+    expect(client.calls).toEqual(["get project p1", "refresh project p1", "put project p1 false"]);
+  });
+  it("saves × as disabled", async () => {
+    const client = new FakeOptInClient();
+    render(<OptInHarness client={client} chat={{ id: "c1", projectId: null }} />);
+    fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
+    fireEvent.click(within(await promptRegion()).getByRole("button", { name: en.alerts.prompt.dismiss }));
+    await waitFor(noPrompt);
+    expect(client.calls.at(-1)).toBe("put chat c1 false");
+  });
+  it("does not ask when the scope was already prompted", async () => {
+    const client = new FakeOptInClient([], ["chat c1"]);
+    render(<OptInHarness client={client} chat={{ id: "c1", projectId: null }} />);
     fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
     await act(async () => {});
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(client.calls).toEqual(["get p1"]);
+    noPrompt();
+    expect(client.calls).toEqual(["get chat c1"]);
   });
-  it("asks with the generic line and closes after a saved answer when matching is unavailable", async () => {
-    const client = new FakeOptInClient(false);
+  it("never asks while the global switch is off", async () => {
+    const client = new FakeOptInClient();
+    render(<OptInHarness client={client} chat={{ id: "c1", projectId: null }} offerEnabled={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
+    await act(async () => {});
+    noPrompt();
+    expect(client.calls).toEqual([]);
+  });
+  it("asks with the generic line and never re-asks after a saved answer when matching is unavailable", async () => {
+    const client = new FakeOptInClient();
     client.unavailable = true;
     let enabled = 0;
-    render(<OptInHarness client={client} projectId="p1" onEnabled={() => { enabled += 1; }} />);
+    render(<OptInHarness client={client} chat={{ id: "c1", projectId: null }} onEnabled={() => { enabled += 1; }} />);
     fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
-    expect(await screen.findByText(en.alerts.optIn.noTopics("Education"))).toBeTruthy();
+    expect(within(await promptRegion()).getByText(en.alerts.prompt.generic.chat)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: en.alerts.optIn.enable }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByRole("status").textContent).toBe(en.errors.alertsUnavailable);
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.prompt.enable }));
+    await waitFor(noPrompt);
+    expect(screen.getByRole("status").textContent).toContain(en.errors.alertsUnavailable);
     expect(enabled).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
     await act(async () => {});
-    expect(screen.queryByRole("dialog")).toBeNull();
+    noPrompt();
   });
-  it("saves Not now as disabled", async () => {
-    const client = new FakeOptInClient(false);
-    render(<OptInHarness client={client} projectId="p1" />);
-    fireEvent.click(screen.getByRole("button", { name: "reply arrived" }));
-    fireEvent.click(await screen.findByRole("button", { name: en.alerts.optIn.notNow }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(client.calls.at(-1)).toBe("put p1 false");
+});
+
+function PreferenceHarness() {
+  const [enabled, setEnabled] = useAlertOfferPreference();
+  return <button type="button" aria-pressed={enabled} onClick={() => setEnabled(!enabled)}>offer</button>;
+}
+
+describe("useAlertOfferPreference", () => {
+  it("defaults to on and remembers the choice", () => {
+    localStorage.clear();
+    render(<PreferenceHarness />);
+    const toggle = screen.getByRole("button", { name: "offer" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    cleanup();
+    render(<PreferenceHarness />);
+    expect(screen.getByRole("button", { name: "offer" }).getAttribute("aria-pressed")).toBe("false");
+    localStorage.clear();
   });
 });
 
 const projects: ProjectSummary[] = [
   { id: "p1", name: "Transport", updatedAt: 2 },
   { id: "p2", name: "Education", updatedAt: 1 },
+];
+
+const chats: ChatSummary[] = [
+  { id: "c1", name: "Water outages", projectId: null, updatedAt: 3 },
+  { id: "c2", name: DEFAULT_CHAT_NAME, projectId: null, updatedAt: 2 },
 ];
 
 describe("AlertBell", () => {
@@ -199,13 +302,13 @@ describe("AlertBell", () => {
   ];
 
   const setup = (overrides: Partial<React.ComponentProps<typeof AlertBell>> = {}) => {
-    const calls = { opened: 0, read: [] as number[], allRead: 0, notRelevant: [] as number[], asked: [] as number[] };
-    render(<AlertBell alerts={alerts} unreadTotal={1} projects={projects}
+    const calls = { opened: 0, read: [] as number[], allRead: 0, notRelevant: [] as number[], asked: [] as Alert[] };
+    render(<AlertBell alerts={alerts} unreadTotal={1} projects={projects} chats={chats}
       onOpen={() => { calls.opened += 1; }}
       onMarkRead={id => calls.read.push(id)}
       onMarkAllRead={() => { calls.allRead += 1; }}
       onNotRelevant={id => calls.notRelevant.push(id)}
-      onAsk={alert => calls.asked.push(alert.id)} {...overrides} />);
+      onAsk={alert => calls.asked.push(alert)} {...overrides} />);
     return calls;
   };
   const bell = (count: number) => screen.getByRole("button", { name: en.alerts.bell(count) });
@@ -246,9 +349,34 @@ describe("AlertBell", () => {
     expect(calls).toMatchObject({ read: [1], notRelevant: [1], allRead: 1 });
 
     fireEvent.click(within(alert).getByRole("button", { name: en.alerts.askAbout }));
-    expect(calls.asked).toEqual([1]);
+    expect(calls.asked.map(alert => alert.id)).toEqual([1]);
     // Asking closes the panel.
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("labels conversation alerts with the conversation's name and asks there", () => {
+    const calls = setup({ alerts: [
+      toAlert(alertView({ id: 3, projectId: null, chatId: "c1", title: "Water outage on Alba Iulia" })),
+      toAlert(alertView({ id: 4, projectId: null, chatId: "c2", title: "Unnamed chat alert", documentId: "doc-4" })),
+      toAlert(alertView({ id: 5, projectId: null, chatId: "gone", title: "Orphan alert", documentId: "doc-5" })),
+    ] });
+    fireEvent.click(bell(1));
+    const water = screen.getByRole("region", { name: "Water outages" });
+    const alert = within(water).getByRole("listitem", { name: "Water outage on Alba Iulia" });
+    // The stored default name is shown translated.
+    expect(within(screen.getByRole("region", { name: en.sidebar.newChat })).getByRole("listitem")).toBeTruthy();
+    expect(screen.getByRole("region", { name: en.alerts.unknownChat })).toBeTruthy();
+
+    fireEvent.click(within(alert).getByRole("button", { name: en.alerts.askAbout }));
+    expect(calls.asked.map(asked => [asked.id, asked.chatId, asked.projectId])).toEqual([[3, "c1", null]]);
+  });
+  it("switches offering alerts in conversations from the panel", () => {
+    const changes: boolean[] = [];
+    setup({ offerAlerts: true, onOfferAlertsChange: value => changes.push(value) });
+    fireEvent.click(bell(1));
+    const toggle = screen.getByRole("switch", { name: en.alerts.offer.label });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(changes).toEqual([false]);
   });
   it("shows an empty state and closes on Escape", () => {
     setup({ alerts: [], unreadTotal: 0 });
@@ -268,8 +396,12 @@ class FakeAlertsClient implements AlertsClient {
   constructor(public rows: AlertView[]) {}
   private counts(): AlertUnreadCountView {
     const byProject: Record<string, number> = {};
-    for (const row of this.rows) if (!row.readAt) byProject[row.projectId] = (byProject[row.projectId] ?? 0) + 1;
-    return { total: Object.values(byProject).reduce((a, b) => a + b, 0), byProject };
+    const byChat: Record<string, number> = {};
+    for (const row of this.rows.filter(candidate => !candidate.readAt)) {
+      if (row.projectId) byProject[row.projectId] = (byProject[row.projectId] ?? 0) + 1;
+      else if (row.chatId) byChat[row.chatId] = (byChat[row.chatId] ?? 0) + 1;
+    }
+    return { total: this.rows.filter(row => !row.readAt).length, byProject, byChat };
   }
   getAlerts = async () => [...this.rows];
   getAlertUnreadCount = async () => this.counts();
@@ -279,8 +411,8 @@ class FakeAlertsClient implements AlertsClient {
     row.readAt = "2026-09-26T12:00:00Z";
     return row;
   };
-  markAllAlertsRead = async (projectId: string | null = null) => {
-    this.calls.push(`read-all ${projectId}`);
+  markAllAlertsRead = async (request: { projectId?: string | null; chatId?: string | null } = {}) => {
+    this.calls.push(`read-all ${JSON.stringify(request)}`);
     for (const row of this.rows) row.readAt ??= "2026-09-26T12:00:00Z";
     return { updated: this.rows.length };
   };
@@ -294,7 +426,7 @@ class FakeAlertsClient implements AlertsClient {
 function BellHarness({ client }: { client: AlertsClient }) {
   const alerts = useAlerts(client);
   return (
-    <AlertBell alerts={alerts.alerts} unreadTotal={alerts.unread.total} projects={projects}
+    <AlertBell alerts={alerts.alerts} unreadTotal={alerts.unread.total} projects={projects} chats={chats}
       isLoading={alerts.isLoading} error={alerts.error} onOpen={() => void alerts.loadAlerts()}
       onMarkRead={id => void alerts.markRead(id)} onMarkAllRead={() => void alerts.markAllRead(null)}
       onNotRelevant={id => void alerts.notRelevant(id)} onAsk={() => {}} onDismissError={alerts.dismissError} />
@@ -321,6 +453,15 @@ describe("useAlerts with the bell", () => {
     expect(screen.queryByTestId("alert-badge")).toBeNull();
     await waitFor(() => expect(client.calls).toEqual(["read 1", "not-relevant 2"]));
   });
+  it("counts a conversation's alerts and marks everything read", async () => {
+    const client = new FakeAlertsClient([alertView(), alertView({ id: 2, projectId: null, chatId: "c1", documentId: "doc-2" })]);
+    render(<BellHarness client={client} />);
+    fireEvent.click(await screen.findByRole("button", { name: en.alerts.bell(2) }));
+    await screen.findByRole("region", { name: "Water outages" });
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.markAllRead }));
+    expect(screen.queryByTestId("alert-badge")).toBeNull();
+    await waitFor(() => expect(client.calls).toEqual(["read-all {}"]));
+  });
   it("restores a dismissed alert when the server refuses", async () => {
     const client = new FakeAlertsClient(rows());
     client.failFeedback = true;
@@ -335,52 +476,77 @@ describe("useAlerts with the bell", () => {
   });
 });
 
-// Hand-written stand-in for one project's settings endpoints.
+// Hand-written stand-in for one subscription's settings endpoints; every call
+// records which scope it was made for.
 class FakeSettingsClient implements AlertSettingsClient {
   calls: string[] = [];
+  scopes = new Set<string>();
   unavailable = false;
   nextId = 100;
   scanCreated = [2, 0];
   constructor(public settings: AlertSettingsView) {}
-  getAlertSettings = async () => structuredClone(this.settings);
-  updateAlertSettings = async (_projectId: string, enabled: boolean) => {
+  private seen(scope: AlertScope) {
+    this.scopes.add(label(scope));
+  }
+  private get = async (scope: AlertScope) => {
+    this.seen(scope);
+    return structuredClone(this.settings);
+  };
+  private put = async (scope: AlertScope, enabled: boolean) => {
+    this.seen(scope);
     this.calls.push(`enabled ${enabled}`);
     this.settings = { ...this.settings, enabled, prompted: true };
     if (this.unavailable) throw new ApiError("Alerts unavailable", 503);
     return structuredClone(this.settings);
   };
-  createAlertTopic = async (_projectId: string, label: string) => {
-    this.calls.push(`add ${label}`);
-    const existing = this.settings.topics.find(topic => topic.label.toLowerCase() === label.toLowerCase());
+  private add = async (scope: AlertScope, topicLabel: string) => {
+    this.seen(scope);
+    this.calls.push(`add ${topicLabel}`);
+    const existing = this.settings.topics.find(topic => topic.label.toLowerCase() === topicLabel.toLowerCase());
     if (existing) return { ...existing };
-    const topic = topicView({ id: this.nextId++, label, query: label, source: "USER" });
+    const topic = topicView({ id: this.nextId++, label: topicLabel, query: topicLabel, source: "USER" });
     this.settings.topics.push(topic);
     return topic;
   };
-  updateAlertTopic = async (_projectId: string, topicId: number, label: string) => {
-    this.calls.push(`rename ${topicId} ${label}`);
+  private rename = async (scope: AlertScope, topicId: number, topicLabel: string) => {
+    this.seen(scope);
+    this.calls.push(`rename ${topicId} ${topicLabel}`);
     const topic = this.settings.topics.find(candidate => candidate.id === topicId)!;
-    Object.assign(topic, { label, query: label, source: "USER" });
+    Object.assign(topic, { label: topicLabel, query: topicLabel, source: "USER" });
     return { ...topic };
   };
-  deleteAlertTopic = async (_projectId: string, topicId: number) => {
+  private remove = async (scope: AlertScope, topicId: number) => {
+    this.seen(scope);
     this.calls.push(`remove ${topicId}`);
     this.settings.topics = this.settings.topics.filter(topic => topic.id !== topicId);
   };
-  scanProjectAlerts = async (): Promise<AlertScanView> => {
+  private scan = async (scope: AlertScope): Promise<AlertScanView> => {
+    this.seen(scope);
     this.calls.push("scan");
     if (this.unavailable) throw new ApiError("Alerts unavailable", 503);
     this.settings.lastScanAt = "2026-09-26T12:30:00Z";
     return { created: this.scanCreated.shift() ?? 0, matcher: "lexical" };
   };
+  getAlertSettings = (id: string) => this.get({ kind: "project", id });
+  updateAlertSettings = (id: string, enabled: boolean) => this.put({ kind: "project", id }, enabled);
+  createAlertTopic = (id: string, topicLabel: string) => this.add({ kind: "project", id }, topicLabel);
+  updateAlertTopic = (id: string, topicId: number, topicLabel: string) => this.rename({ kind: "project", id }, topicId, topicLabel);
+  deleteAlertTopic = (id: string, topicId: number) => this.remove({ kind: "project", id }, topicId);
+  scanProjectAlerts = (id: string) => this.scan({ kind: "project", id });
+  getChatAlertSettings = (id: string) => this.get({ kind: "chat", id });
+  updateChatAlertSettings = (id: string, enabled: boolean) => this.put({ kind: "chat", id }, enabled);
+  createChatAlertTopic = (id: string, topicLabel: string) => this.add({ kind: "chat", id }, topicLabel);
+  updateChatAlertTopic = (id: string, topicId: number, topicLabel: string) => this.rename({ kind: "chat", id }, topicId, topicLabel);
+  deleteChatAlertTopic = (id: string, topicId: number) => this.remove({ kind: "chat", id }, topicId);
+  scanChatAlerts = (id: string) => this.scan({ kind: "chat", id });
 }
 
-describe("ProjectAlertsDialog", () => {
+describe("AlertsDialog", () => {
   const setup = (unavailable = false) => {
     const client = new FakeSettingsClient(settingsView({ prompted: true, topics: [topicView()] }));
     client.unavailable = unavailable;
     const changes = { count: 0, closed: 0 };
-    render(<ProjectAlertsDialog projectId="p1" projectName="Transport" client={client}
+    render(<AlertsDialog scope={{ kind: "project", id: "p1" }} title="Transport" client={client}
       onAlertsChanged={() => { changes.count += 1; }} onClose={() => { changes.closed += 1; }} />);
     return { client, changes };
   };
@@ -457,6 +623,19 @@ describe("ProjectAlertsDialog", () => {
     expect(client.calls).toEqual(["scan", "scan"]);
     expect(changes.count).toBe(1);
   });
+  it("manages a conversation's own alerts through the chat endpoints", async () => {
+    const client = new FakeSettingsClient(scopeSettings({ kind: "chat", id: "c1" }, { prompted: true, topics: [topicView()] }));
+    render(<AlertsDialog scope={{ kind: "chat", id: "c1" }} title="Water outages" client={client} onClose={() => {}} />);
+    const toggle = await screen.findByRole("switch", { name: en.alerts.settings.chatSwitchLabel });
+    expect(screen.getByText(en.alerts.settings.chatOffHint)).toBeTruthy();
+    expect(screen.getByText("Water outages")).toBeTruthy();
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.remove("Transport public") }));
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.checkNow }));
+    await waitFor(() => expect(client.calls).toEqual(["enabled true", "remove 7", "scan"]));
+    expect([...client.scopes]).toEqual(["chat c1"]);
+  });
   it("closes without leaving the dialog when a topic edit is cancelled", async () => {
     const { changes } = setup();
     fireEvent.click(await screen.findByRole("button", { name: en.alerts.settings.rename("Transport public") }));
@@ -485,6 +664,39 @@ describe("Sidebar trackers", () => {
     const projectList = screen.getByRole("list", { name: "Education" });
     expect(within(projectList).queryByRole("button", { name: /plan/i })).toBeNull();
   });
+  it("shows a conversation's unread badge and opens its alert settings", () => {
+    const opened: string[] = [];
+    const now = Date.now();
+    const sidebarChats: ChatSummary[] = [
+      { id: "c1", name: "Water outages", projectId: null, updatedAt: now },
+      { id: "c2", name: "Fairs", projectId: null, updatedAt: now },
+      { id: "c3", name: "Buses", projectId: "p1", updatedAt: now },
+      { id: "c4", name: "Kindergartens", projectId: "p2", updatedAt: now },
+    ];
+    render(<Sidebar chats={sidebarChats} projects={projects} activeChatId="c3" draftProjectId={null} isLoaded
+      onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
+      onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
+      unreadAlertsByChat={{ c1: 2, c3: 1 }} onOpenChatAlerts={chat => opened.push(chat.id)}
+      isOpen onClose={noop} />);
+    const row = screen.getByRole("button", { name: "Water outages" });
+    expect(within(row).getByTestId("chat-alert-badge").textContent).toBe("2");
+    expect(document.getElementById(row.getAttribute("aria-describedby")!)!.textContent)
+      .toBe(en.alerts.projectUnread(2));
+    // Three actions need more room than two while they show.
+    expect(row.className).toContain("group-hover:pr-[5.5rem]");
+    expect(within(screen.getByRole("button", { name: "Fairs" })).queryByTestId("chat-alert-badge")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open("Fairs") }));
+    expect(opened).toEqual(["c2"]);
+
+    // A project chat with its own alerts keeps its badge and bell; others follow the project.
+    const buses = screen.getByRole("button", { name: "Buses" });
+    expect(within(buses).getByTestId("chat-alert-badge").textContent).toBe("1");
+    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open("Buses") }));
+    expect(opened).toEqual(["c2", "c3"]);
+    fireEvent.click(screen.getByRole("button", { name: "Education" }));
+    expect(screen.queryByRole("button", { name: en.alerts.settings.open("Kindergartens") })).toBeNull();
+  });
 });
 
 describe("mock alerts API", () => {
@@ -512,10 +724,32 @@ describe("mock alerts API", () => {
     const topic = (await mockClient.getAlertSettings(project.id)).topics[0];
     expect(topic.minScore).toBeCloseTo(alerts[0].score + 0.01);
 
-    await mockClient.markAllAlertsRead(project.id);
+    await mockClient.markAllAlertsRead({ projectId: project.id });
     expect((await mockClient.getAlertUnreadCount()).total).toBe(0);
     // Dismissed documents are never alerted again.
     await mockClient.scanProjectAlerts(project.id);
     expect((await mockClient.getAlerts()).map(alert => alert.documentId)).not.toContain(alerts[0].documentId);
+  });
+  it("gives a chat outside projects its own subscription", async () => {
+    localStorage.clear();
+    const chat = await mockClient.createChat("Buses");
+    await mockClient.createResponse(chat.id, "Ce rute de autobuz noi sunt în oraș?");
+
+    expect(await mockClient.getChatAlertSettings(chat.id)).toMatchObject({ chatId: chat.id, projectId: null, prompted: false });
+    const refreshed = await mockClient.refreshChatAlertTopics(chat.id);
+    expect(refreshed.topics.map(topic => topic.label)).toEqual(["Transport public"]);
+    await mockClient.updateChatAlertSettings(chat.id, true);
+    const alerts = await mockClient.getAlerts({ chatId: chat.id });
+    expect(alerts.length).toBeGreaterThan(0);
+    expect(alerts[0]).toMatchObject({ chatId: chat.id, projectId: null });
+    const counts = await mockClient.getAlertUnreadCount();
+    expect(counts).toMatchObject({ total: alerts.length, byProject: {}, byChat: { [chat.id]: alerts.length } });
+
+    await mockClient.markAllAlertsRead({ chatId: chat.id });
+    expect((await mockClient.getAlertUnreadCount()).total).toBe(0);
+    // Deleting the chat deletes its subscription and alerts.
+    await mockClient.deleteChat(chat.id);
+    expect(await mockClient.getAlerts()).toEqual([]);
+    await expect(mockClient.getChatAlertSettings(chat.id)).rejects.toMatchObject({ status: 404 });
   });
 });

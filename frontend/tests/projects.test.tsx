@@ -135,12 +135,19 @@ describe("Sidebar projects", () => {
     renderSidebar();
     // Active chat: the buttons are always visible, so the title always leaves room.
     const active = screen.getByRole("button", { name: "Schools" });
-    expect(active.className).toMatch(/(^|\s)pr-24(\s|$)/);
+    expect(active.className).toMatch(/(^|\s)pr-16(\s|$)/);
     // Other chats use the full width and give way on hover or keyboard focus.
     const other = screen.getByRole("button", { name: "Fairs" });
     expect(other.className).toMatch(/(^|\s)pr-3(\s|$)/);
-    expect(other.className).toContain("group-hover:pr-24");
-    expect(other.className).toContain("group-focus-within:pr-24");
+    expect(other.className).toContain("group-hover:pr-16");
+    expect(other.className).toContain("group-focus-within:pr-16");
+  });
+  it("does not offer renaming a chat; its name comes from the first question", () => {
+    renderSidebar();
+    const row = screen.getByRole("button", { name: "Fairs" }).closest("li")!;
+    const actions = within(row).getAllByRole("button").map((button) => button.getAttribute("aria-label"));
+    expect(actions).toEqual([null, en.projects.move("Fairs"), en.sidebar.remove("Fairs")]);
+    expect(within(row).queryByRole("textbox")).toBeNull();
   });
   it("offers a visible New chat button in an empty project", () => {
     const calls = renderSidebar();
