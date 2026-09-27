@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api";
+import { getSourceOpenUrl } from "../../api/client";
 import type { SourcePreviewView, SourceSectionView } from "../../api/types";
 import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
@@ -97,6 +98,9 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   const source = sources[activeIndex];
   const previewForSource = preview?.documentId === source?.documentId ? preview : null;
   const link = safeHttpUrl(source?.link ?? previewForSource?.sourceUrl);
+  const openLink = link && source?.documentId
+    ? getSourceOpenUrl(source.documentId, source.versionId ?? previewForSource?.versionId)
+    : link;
   const storedImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
   const generatedImageUrl = iframeFailed ? safePreviewImagePath(previewForSource?.screenshotUrl) : undefined;
   const previewImageUrl = [storedImageUrl, generatedImageUrl]
@@ -277,7 +281,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
                   className="cursor-pointer text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                   {t.message.showScreenshot}
                 </button>}
-                <a href={link} target="_blank" rel="noopener noreferrer"
+                <a href={openLink} target="_blank" rel="noopener noreferrer"
                   className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                   {t.message.openSource}<span aria-hidden="true">↗</span>
                 </a>

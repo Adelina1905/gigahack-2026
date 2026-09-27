@@ -125,9 +125,18 @@ Qdrant. Build the index offline, never while the service is serving users:
 
 Requires JDK 25 (`sudo apt install openjdk-25-jdk-headless` on Debian).
 Chrome or Chromium is used to capture a current screenshot when a cited HTML website
-cannot be displayed in the embedded source preview. PDFs up to 25 MB are rendered
+cannot be displayed in the embedded source preview. PDFs up to 50 MB are rendered
 directly to a first-page PNG fallback. Common browser executable locations are
 detected automatically; set `SCREENSHOT_BROWSER_PATH` in the root `.env` for another location.
+
+Existing Qdrant indexes created before source previews were introduced need a one-time,
+local-only backfill. It reuses stored evidence and does not call any AI provider:
+
+```bash
+cd "Manage Data"
+.venv/bin/python backfill_source_previews.py --replace
+# Windows: .\.venv\Scripts\python.exe backfill_source_previews.py --replace
+```
 
 ```bash
 cd backend

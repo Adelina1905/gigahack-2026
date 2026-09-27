@@ -39,7 +39,7 @@ public class WebsitePreviewService {
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
     private static final int MAX_CACHE_ENTRIES = 32;
     private static final int MAX_REDIRECTS = 5;
-    private static final int MAX_PDF_BYTES = 25 * 1024 * 1024;
+    private static final int MAX_PDF_BYTES = 50 * 1024 * 1024;
     private static final String USER_AGENT = "Mozilla/5.0 (compatible; MunicipalSourcePreview/1.0)";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -69,7 +69,7 @@ public class WebsitePreviewService {
         CacheEntry<byte[]> cached = cached(screenshotCache, key);
         if (cached != null) return cached.value().clone();
 
-        if (looksLikePdf(uri, sourceKind)) {
+        if (looksLikePdf(uri, sourceKind) || remoteLooksLikePdf(uri, sourceKind)) {
             try {
                 byte[] rendered = renderPdf(downloadPdf(uri));
                 put(screenshotCache, key, rendered.clone());
@@ -167,7 +167,7 @@ public class WebsitePreviewService {
                         .orElse("").toLowerCase(Locale.ROOT);
                 String disposition = response.headers().firstValue("content-disposition")
                         .orElse("").toLowerCase(Locale.ROOT);
-                boolean pdf = looksLikePdf(uri, sourceKind) || contentType.contains("application/pdf");
+                boolean pdf = looksLikePdf(uri, sourceKind, contentType, disposition);
                 if (pdf && disposition.contains("attachment")) return false;
                 if (!pdf && !contentType.isBlank() && !contentType.contains("text/html")
                         && !contentType.contains("application/xhtml+xml")
@@ -180,6 +180,53 @@ public class WebsitePreviewService {
                     if (frameAncestors != null && !frameAncestors.contains("*")) return false;
                 }
                 return true;
+            }
+        } catch (IllegalArgumentException | IOException error) {
+            return false;
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        return false;
+    }
+
+    public Optional<byte[]> inlinePdf(String value, String sourceKind) {
+        URI uri = publicHttpUri(value);
+        if (!looksLikePdf(uri, sourceKind) && !remoteLooksLikePdf(uri, sourceKind)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(downloadPdf(uri));
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "PDF download was interrupted", error);
+        } catch (IOException error) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "PDF download is unavailable", error);
+        }
+    }
+
+    private boolean remoteLooksLikePdf(URI initialUri, String sourceKind) {
+        URI uri = initialUri;
+        try {
+            for (int redirects = 0; redirects <= MAX_REDIRECTS; redirects++) {
+                HttpRequest request = HttpRequest.newBuilder(uri)
+                        .timeout(Duration.ofSeconds(7))
+                        .header("User-Agent", USER_AGENT)
+                        .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                        .build();
+                HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+                if (response.statusCode() >= 300 && response.statusCode() < 400) {
+                    String location = response.headers().firstValue("location").orElse("");
+                    if (location.isBlank() || redirects == MAX_REDIRECTS) return false;
+                    uri = publicHttpUri(uri.resolve(location).toString());
+                    continue;
+                }
+                if (response.statusCode() >= 400) return false;
+                return looksLikePdf(uri, sourceKind,
+                        response.headers().firstValue("content-type").orElse(""),
+                        response.headers().firstValue("content-disposition").orElse(""));
             }
         } catch (IllegalArgumentException | IOException error) {
             return false;
@@ -213,7 +260,7 @@ public class WebsitePreviewService {
                     throw new IOException("PDF request failed with status " + response.statusCode());
                 }
                 byte[] bytes = body.readNBytes(MAX_PDF_BYTES + 1);
-                if (bytes.length > MAX_PDF_BYTES) throw new IOException("PDF exceeds the 25 MB preview limit");
+                if (bytes.length > MAX_PDF_BYTES) throw new IOException("PDF exceeds the 50 MB preview limit");
                 if (bytes.length < 5 || bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D'
                         || bytes[3] != 'F' || bytes[4] != '-') {
                     throw new IOException("Source did not return a PDF document");
@@ -239,9 +286,17 @@ public class WebsitePreviewService {
     }
 
     static boolean looksLikePdf(URI uri, String sourceKind) {
+        return looksLikePdf(uri, sourceKind, "", "");
+    }
+
+    static boolean looksLikePdf(URI uri, String sourceKind, String contentType, String contentDisposition) {
         if (sourceKind != null && sourceKind.equalsIgnoreCase("pdf")) return true;
         String path = uri.getPath();
-        return path != null && path.toLowerCase(Locale.ROOT).endsWith(".pdf");
+        if (path != null && path.toLowerCase(Locale.ROOT).endsWith(".pdf")) return true;
+        String type = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
+        if (type.contains("application/pdf")) return true;
+        String disposition = contentDisposition == null ? "" : contentDisposition.toLowerCase(Locale.ROOT);
+        return disposition.matches("(?s).*filename\\*?\\s*=.*\\.pdf(?:[\\\"';\\s]|$).*");
     }
 
     private static String cacheKey(String value, String sourceKind) {
