@@ -8,7 +8,6 @@ export const api = {
   getChats: realClient.getChats,
   getChat: realClient.getChat,
   createChat: realClient.createChat,
-  updateChat: realClient.updateChat,
   deleteChat: realClient.deleteChat,
   setChatProject: realClient.setChatProject,
   getProjects: realClient.getProjects,
