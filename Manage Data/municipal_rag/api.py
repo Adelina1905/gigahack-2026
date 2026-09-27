@@ -2,13 +2,77 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
+from contextvars import ContextVar, Token
 from typing import Any
 
 
 BASE = "https://openrouter.ai/api/v1"
+_deadline: ContextVar[float | None] = ContextVar("managed_api_deadline", default=None)
+_interactive_timeout: ContextVar[float | None] = ContextVar("managed_api_timeout", default=None)
+_fallback_models: ContextVar[tuple[str, ...]] = ContextVar("managed_api_fallbacks", default=())
+_breaker_lock = threading.Lock()
+_breaker_failures = 0
+_breaker_open_until = 0.0
+BREAKER_FAILURE_THRESHOLD = 3
+BREAKER_COOLDOWN_SECONDS = 45.0
+
+
+class ManagedApiUnavailable(RuntimeError):
+    pass
+
+
+class ManagedApiDeadline(ManagedApiUnavailable):
+    pass
+
+
+def begin_interactive_request(deadline_seconds: float, per_call_timeout: float,
+                              fallback_models: list[str] | tuple[str, ...]
+                              ) -> tuple[Token, Token, Token]:
+    now = time.monotonic()
+    return (
+        _deadline.set(now + max(1.0, deadline_seconds)),
+        _interactive_timeout.set(max(1.0, per_call_timeout)),
+        _fallback_models.set(tuple(value for value in fallback_models if value)),
+    )
+
+
+def end_interactive_request(tokens: tuple[Token, Token, Token]) -> None:
+    _deadline.reset(tokens[0])
+    _interactive_timeout.reset(tokens[1])
+    _fallback_models.reset(tokens[2])
+
+
+def remaining_request_seconds() -> float | None:
+    deadline = _deadline.get()
+    return None if deadline is None else max(0.0, deadline - time.monotonic())
+
+
+def _before_managed_call() -> None:
+    remaining = remaining_request_seconds()
+    if remaining is not None and remaining <= 0:
+        raise ManagedApiDeadline("Interactive AI deadline exceeded")
+    with _breaker_lock:
+        if _breaker_open_until > time.monotonic():
+            raise ManagedApiUnavailable("Managed AI circuit breaker is open")
+
+
+def _record_managed_success() -> None:
+    global _breaker_failures, _breaker_open_until
+    with _breaker_lock:
+        _breaker_failures = 0
+        _breaker_open_until = 0.0
+
+
+def _record_managed_failure() -> None:
+    global _breaker_failures, _breaker_open_until
+    with _breaker_lock:
+        _breaker_failures += 1
+        if _breaker_failures >= BREAKER_FAILURE_THRESHOLD:
+            _breaker_open_until = time.monotonic() + BREAKER_COOLDOWN_SECONDS
 
 
 class ManagedAudioApiError(RuntimeError):
@@ -84,8 +148,18 @@ def request_audio_bytes(endpoint: str, payload: dict[str, Any], api_key: str,
 
 def request_json(endpoint: str, payload: dict[str, Any], api_key: str, timeout: float = 90, retries: int = 3) -> dict[str, Any]:
     if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY is not configured")
+        raise ManagedApiUnavailable("OPENROUTER_API_KEY is not configured")
+    interactive_timeout = _interactive_timeout.get()
+    interactive = interactive_timeout is not None
+    if interactive:
+        retries = 0  # OpenRouter handles provider/model failover inside this one request.
     for attempt in range(retries + 1):
+        _before_managed_call()
+        remaining = remaining_request_seconds()
+        effective_timeout = min(timeout, interactive_timeout or timeout,
+                                remaining if remaining is not None else timeout)
+        if effective_timeout <= 0:
+            raise ManagedApiDeadline("Interactive AI deadline exceeded")
         request = urllib.request.Request(
             f"{BASE}/{endpoint.lstrip('/')}",
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -93,21 +167,31 @@ def request_json(endpoint: str, payload: dict[str, Any], api_key: str, timeout: 
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with urllib.request.urlopen(request, timeout=effective_timeout) as response:
                 value = json.loads(response.read().decode("utf-8"))
             if not isinstance(value, dict):
-                raise RuntimeError("Managed API returned a non-object response")
+                raise ManagedApiUnavailable("Managed API returned a non-object response")
+            _record_managed_success()
             return value
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", errors="replace")[:1000]
             retryable = error.code == 429 or 500 <= error.code < 600
             if not retryable or attempt == retries:
-                raise RuntimeError(f"Managed API HTTP {error.code}: {detail}") from error
+                if retryable:
+                    _record_managed_failure()
+                raise ManagedApiUnavailable(f"Managed API HTTP {error.code}: {detail}") from error
         except (TimeoutError, urllib.error.URLError) as error:
             if attempt == retries:
-                raise RuntimeError(f"Managed API unavailable: {error}") from error
-        time.sleep(min(8, 2**attempt))
-    raise RuntimeError("Managed API retry loop exhausted")
+                _record_managed_failure()
+                if remaining_request_seconds() == 0:
+                    raise ManagedApiDeadline("Interactive AI deadline exceeded") from error
+                raise ManagedApiUnavailable(f"Managed API unavailable: {error}") from error
+        delay = min(8, 2**attempt)
+        remaining = remaining_request_seconds()
+        if remaining is not None:
+            delay = min(delay, remaining)
+        time.sleep(delay)
+    raise ManagedApiUnavailable("Managed API retry loop exhausted")
 
 
 def chat_json(model: str, system: str, user: str, api_key: str, schema: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -115,9 +199,12 @@ def chat_json(model: str, system: str, user: str, api_key: str, schema: dict[str
     response_format: dict[str, Any] = {"type": "json_object"}
     if schema is not None:
         response_format = {"type": "json_schema", "json_schema": {"name": "municipal_structured_response", "strict": True, "schema": schema}}
+    fallbacks = [value for value in _fallback_models.get() if value != model]
+    routing = {"models": [model, *fallbacks]} if fallbacks else {"model": model}
     response = request_json("chat/completions", {
-        "model": model,
+        **routing,
         "temperature": 0,
+        "provider": {"sort": "latency", "allow_fallbacks": True, "require_parameters": True},
         "response_format": response_format,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
     }, api_key)

@@ -127,7 +127,7 @@ public class ChatResponseMessage {
         generationVersion++;
         generationStatus = GenerationStatus.PENDING;
         generationStartedAt = now;
-        generationExpiresAt = now.plusMinutes(5);
+        generationExpiresAt = now.plusMinutes(2);
         errorCode = null;
     }
 

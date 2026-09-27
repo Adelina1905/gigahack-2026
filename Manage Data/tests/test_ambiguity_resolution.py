@@ -1,7 +1,16 @@
 import unittest
 
-from municipal_rag.answering import candidate_profile, headline_only_amount, partial_intro, resolve_ambiguity
-from municipal_rag.verification import deterministic_issues, minimize_numeric_evidence
+from municipal_rag.answering import (
+    candidate_profile,
+    coverage_ledger,
+    evidence_for_scopes,
+    format_scoped_answer,
+    headline_only_amount,
+    partial_intro,
+    requested_scopes,
+    resolve_ambiguity,
+)
+from municipal_rag.verification import claim_scope_constraints, deterministic_issues, minimize_numeric_evidence
 
 
 def evidence(document_id: str, title: str, quote: str, score: float) -> dict:
@@ -15,6 +24,54 @@ def evidence(document_id: str, title: str, quote: str, score: float) -> dict:
 
 
 class AmbiguityResolutionTests(unittest.TestCase):
+    def test_requested_scopes_are_deduplicated_without_hardcoded_districts(self) -> None:
+        interpreted = {"constraints": {"locations": ["Botanica", "botanica", "Durlești"]}}
+        self.assertEqual(requested_scopes(interpreted), ["Botanica", "Durlești"])
+
+    def test_coverage_requires_scope_in_claim_not_only_in_shared_evidence(self) -> None:
+        sources = [{
+            "id": "S1", "title": "Lucrări în Botanica și Buiucani",
+            "exactQuote": "În Botanica lucrările au început. Pentru Buiucani urmează achiziția.",
+        }]
+        claims = [{"text": "În Botanica lucrările au început.", "evidenceIds": ["S1"]}]
+        ledger = coverage_ledger(["Botanica", "Buiucani"], claims, sources)
+        self.assertEqual([item["status"] for item in ledger], ["CONFIRMED", "UNCONFIRMED"])
+        self.assertEqual(ledger[1]["candidateEvidenceCount"], 1)
+
+    def test_scoped_answer_never_silently_omits_requested_location(self) -> None:
+        claims = [{"text": "În Botanica lucrările au început.", "evidenceIds": ["S1"]}]
+        ledger = [
+            {"scope": "Botanica", "status": "CONFIRMED"},
+            {"scope": "Buiucani", "status": "UNCONFIRMED"},
+        ]
+        answer = format_scoped_answer(claims, ledger, "ro", True)
+        self.assertIn("În Botanica lucrările au început. [S1]", answer)
+        self.assertIn("Buiucani: informația pentru acest punct nu a putut fi confirmată", answer)
+
+    def test_claim_verification_scope_does_not_require_other_requested_locations(self) -> None:
+        constraints = {"locations": ["Botanica", "Buiucani", "Ciocana"], "multipleProjects": True}
+        scoped = claim_scope_constraints("În Botanica vor fi reabilitate 73 de accese.", constraints)
+        self.assertEqual(scoped["locations"], ["Botanica"])
+        self.assertFalse(scoped["multipleProjects"])
+
+    def test_recovery_evidence_is_isolated_per_requested_scope(self) -> None:
+        sources = [
+            {"id": "S1", "title": "Lucrări Buiucani", "exactQuote": "Lucrările au început la 24 iulie."},
+            {"id": "S2", "title": "Accese municipale", "exactQuote": "În Buiucani urmează achiziția."},
+        ]
+        self.assertEqual([item["id"] for item in evidence_for_scopes(sources, ["Buiucani"])], ["S2"])
+
+    def test_long_claim_with_details_absent_from_quote_is_rejected(self) -> None:
+        sources = {"S1": {
+            "documentId": "d1", "evidenceKind": "body", "title": "Lucrări Botanica",
+            "exactQuote": "Reparația acceselor către curțile de bloc din Botanica a început în octombrie 2022.",
+        }}
+        claim = {"text": (
+            "În Botanica, lucrările includ decaparea betonului asfaltic și a bordurilor, "
+            "ridicarea capacelor căminelor, amenajarea fundației și aplicarea straturilor de asfalt."
+        ), "evidenceIds": ["S1"]}
+        self.assertIn("LOW_LEXICAL_ENTAILMENT", deterministic_issues(claim, sources))
+
     def test_partial_intro_uses_dynamic_location_scope(self) -> None:
         text = partial_intro({"language": "ro", "constraints": {"locations": ["Botanica", "Buiucani"]}})
         self.assertIn("Botanica, Buiucani", text)

@@ -31,7 +31,9 @@ app:
   llm:
     base-url: ${LLM_SERVICE_URL:http://127.0.0.1:8000}
     connect-timeout: 5s
-    read-timeout: 180s
+    # Python enforces a 55s interactive deadline; this outer limit prevents
+    # orphaned requests if that process or the network stops responding.
+    read-timeout: 70s
     session-ttl: 30m
     max-history: 20 # messages (user + assistant) kept per chat
   alerts:

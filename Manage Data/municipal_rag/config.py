@@ -44,6 +44,22 @@ class RagConfig:
         return self.raw["models"]["verifier"]
 
     @property
+    def fallback_models(self) -> list[str]:
+        return [str(value) for value in self.raw["models"].get("fallbacks", []) if str(value).strip()]
+
+    @property
+    def interactive_deadline_seconds(self) -> float:
+        return float(self.raw.get("operations", {}).get("interactiveDeadlineSeconds", 55))
+
+    @property
+    def per_call_timeout_seconds(self) -> float:
+        return float(self.raw.get("operations", {}).get("perCallTimeoutSeconds", 25))
+
+    @property
+    def max_claims(self) -> int:
+        return int(self.raw.get("operations", {}).get("maxClaims", 5))
+
+    @property
     def evidence_alias(self) -> str:
         return self.raw["collections"]["evidenceAlias"]
 
