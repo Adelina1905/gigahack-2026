@@ -5,6 +5,7 @@ import type { SourcePreviewView, SourceSectionView } from "../../api/types";
 import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
 import { safeHttpUrl } from "./safeLink";
+import OlderDocumentBadge from "./OlderDocumentBadge";
 
 interface SourcePreviewProps {
   id: string;
@@ -96,7 +97,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   const link = safeHttpUrl(source?.link ?? previewForSource?.sourceUrl);
   const previewImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
   const hostname = link ? getHostname(link) : "";
-  const addedDate = source ? formatDate(source.added_date || previewForSource?.publishedDate || "", t.meta.intl) : "";
+  const addedDate = source ? formatDate(source.added_date || source.publishedDate || previewForSource?.publishedDate || "", t.meta.intl) : "";
   const cacheKey = source?.documentId ? `${source.documentId}:${source.versionId ?? "current"}` : "";
 
   useEffect(() => { onCloseRef.current = onClose; });
@@ -250,7 +251,8 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
         </header>
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          {(hostname || addedDate || source.documentId) && <div className="mb-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-subtle">
+          {(hostname || addedDate || source.documentId || source.outdated) && <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-subtle">
+            <OlderDocumentBadge source={source} />
             {hostname && <span>{hostname}</span>}{addedDate && <span>{addedDate}</span>}{source.documentId && <span className="truncate">{source.documentId}</span>}
           </div>}
 

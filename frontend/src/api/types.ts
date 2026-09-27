@@ -54,8 +54,16 @@ export interface ResponseView {
       documentId: string | null;
       sourceFile?: string | null;
       locator?: Record<string, unknown> | null;
+      // Absent on rows stored before the strict RAG contract.
+      publisher?: string | null;
+      publishedDate?: string | null; // YYYY-MM-DD
+      outdated?: boolean | null;
     }>;
     clarificationChoices: Array<{ documentId: string; label: string }> | null;
+    // Why there is no supported answer: a NOT_FOUND reason, or CONFLICTING_DOCUMENTS.
+    reason?: string | null;
+    // e.g. "OUTDATED_SOURCES", "OFF_TOPIC_DROPPED:2", "CLAIMS_REJECTED:1/3".
+    flags?: string[] | null;
   } | null;
 }
 

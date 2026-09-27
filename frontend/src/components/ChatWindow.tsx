@@ -8,7 +8,7 @@ import AssistantMessage from "./AssistantMessage";
 import { Skyline } from "./brand/Landmarks";
 import TitleRule from "./brand/TitleRule";
 import SupportNotice from "./SupportNotice";
-import { isUnanswered } from "../utils/unanswered";
+import { isUnanswered, notFoundReason } from "../utils/unanswered";
 import { useVoiceMode } from "../hooks/useVoiceMode";
 import SourcePreview from "./sources/SourcePreview";
 
@@ -129,8 +129,9 @@ function ChatWindow({
   // Offer the support line when the latest reply couldn't answer; dismissing hides it for that reply only.
   const [dismissedNoticeId, setDismissedNoticeId] = useState<string | null>(null);
   const lastMessage = messages.at(-1);
-  const noticeFor =
-    !isTyping && lastMessage?.role === "assistant" && isUnanswered(lastMessage.content) ? lastMessage.id : null;
+  const lastMissing = lastMessage ? notFoundReason(lastMessage) : null;
+  const noticeFor = !isTyping && lastMessage?.role === "assistant" &&
+    ((lastMissing && lastMissing !== "OUT_OF_SCOPE") || isUnanswered(lastMessage.content)) ? lastMessage.id : null;
   const previewMessage = sourcePreview
     ? messages.find(message => message.id === sourcePreview.messageId)
     : undefined;
@@ -157,7 +158,9 @@ function ChatWindow({
                   sourcePanelId={SOURCE_PANEL_ID}
                   onSelectSource={(message, sourceIndex, trigger) => {
                     setSourcePreview({ messageId: message.id, sourceIndex, trigger });
-                  }} />
+                  }}
+                  // Only the latest reply's clarification can still be answered.
+                  onChoose={m.id === lastMessage?.id && !isTyping ? (label) => { onSend(label); } : undefined} />
               ),
             )}
             {isTyping && !messages.some(message => message.generationStatus === "PENDING") && <AssistantMessage isTyping />}

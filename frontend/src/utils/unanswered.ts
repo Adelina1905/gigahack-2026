@@ -1,5 +1,7 @@
-// Heuristic: the backend doesn't say whether a reply actually answered the question,
-// so we look for the phrases the assistant uses when it can't (RO, RU and EN).
+import { NOT_FOUND_REASONS, type ChatMessage, type NotFoundReason } from "../types/chat";
+
+// Heuristic for LLM fallback and older replies, which don't say whether they answered
+// the question: we look for the phrases the assistant uses when it can't (RO, RU and EN).
 const PHRASES = [
   // Romanian
   "nu a fost gasit",
@@ -46,4 +48,13 @@ function normalize(text: string) {
 export function isUnanswered(text: string) {
   const normalized = normalize(text);
   return PHRASES.some((phrase) => normalized.includes(phrase));
+}
+
+// Replies the backend flags as NOT_FOUND carry no answer whatever their wording.
+// Returns the reason to explain, defaulting to "nothing relevant found".
+export function notFoundReason(message: Pick<ChatMessage, "replyStatus" | "reason">): NotFoundReason | null {
+  const reason = message.reason && (NOT_FOUND_REASONS as readonly string[]).includes(message.reason)
+    ? message.reason as NotFoundReason : null;
+  if (reason) return reason;
+  return message.replyStatus === "NOT_FOUND" ? "NO_RELEVANT_EVIDENCE" : null;
 }

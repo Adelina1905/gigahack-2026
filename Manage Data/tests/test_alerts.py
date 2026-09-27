@@ -18,7 +18,7 @@ try:
 except ImportError:  # pragma: no cover - server extras not installed
     TestClient = None
 
-from chat_fakes import RecordingLlm, RecordingRag
+from chat_fakes import RecordingRag
 from municipal_rag.alerts import (
     EMBEDDING_ENCODING, AlertService, EmbeddingMatcher, FeedDocument, JsonUpdateFeed, KeywordTopicExtractor,
     LexicalMatcher, LlmTopicExtractor, StaticUpdateFeed, Topic, TopicQuery, decode_vector, encode_vector,
@@ -228,7 +228,7 @@ class TopicExtractionTests(unittest.TestCase):
 
 def client_for(alerts: AlertService) -> "TestClient":
     from municipal_rag.server import create_app
-    return TestClient(create_app(ChatService(RecordingRag(False), RecordingLlm()), None, True, alert_service=alerts))
+    return TestClient(create_app(ChatService(RecordingRag(False)), None, True, alert_service=alerts))
 
 
 @unittest.skipIf(TestClient is None, "requirements-server.txt is not installed")
@@ -283,7 +283,8 @@ class AlertRoutesTests(unittest.TestCase):
 
     def test_default_app_without_alert_service_returns_503(self) -> None:
         from municipal_rag.server import create_app
-        client = TestClient(create_app(ChatService(RecordingRag(False), RecordingLlm()), None, True))
+        rag = RecordingRag(True, {"status": "NOT_FOUND", "answer": "Informația nu a fost găsită", "citations": []})
+        client = TestClient(create_app(ChatService(rag), None, True))
         response = client.post("/v1/alerts/match", json={"topics": [{"id": "1", "query": "x"}]})
         self.assertEqual(response.status_code, 503)
         self.assertEqual(client.post("/v1/chat", json={"chatId": str(uuid.uuid4()), "message": "hi"}).status_code, 200)
