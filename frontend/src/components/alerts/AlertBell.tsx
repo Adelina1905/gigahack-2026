@@ -3,6 +3,7 @@ import { useI18n } from "../../i18n/context";
 import type { ErrorKey } from "../../i18n/messages";
 import type { Alert } from "../../types/alerts";
 import type { ProjectSummary } from "../../types/chat";
+import type { PlanNotification } from "../../types/planNotification";
 import { iconProps } from "../sidebar/iconProps";
 import { safeHttpUrl } from "../sources/safeLink";
 import { formatCalendarDate } from "./format";
@@ -20,6 +21,12 @@ interface AlertBellProps {
   onNotRelevant: (alertId: number) => void;
   onAsk: (alert: Alert) => void;
   onDismissError?: () => void;
+  planNotifications?: PlanNotification[];
+  planUnreadTotal?: number;
+  onOpenPlanNotification?: (notification: PlanNotification) => void;
+  onMarkPlanRead?: (notificationId: string) => void;
+  onMarkAllPlanRead?: () => void;
+  onDismissPlanNotification?: (notificationId: string) => void;
 }
 
 const BellIcon = ({ className }: { className: string }) => (
@@ -114,6 +121,33 @@ function AlertCard({ alert, onMarkRead, onNotRelevant, onAsk }: AlertCardProps) 
   );
 }
 
+function PlanNotificationCard({ notification, onOpen, onMarkRead, onDismiss }: {
+  notification: PlanNotification;
+  onOpen: (notification: PlanNotification) => void;
+  onMarkRead: (notificationId: string) => void;
+  onDismiss: (notificationId: string) => void;
+}) {
+  const { t } = useI18n();
+  const scenario = t.planNotifications.scenarios[notification.scenarioId];
+  const link = safeHttpUrl(notification.sourceUrl);
+  return (
+    <li aria-label={scenario.title} className={`relative border-l-[3px] px-4 py-3 ${notification.isRead ? "border-transparent" : "border-accent bg-primary-50/40"}`}>
+      <span className="inline-flex rounded-[4px] bg-accent/20 px-2 py-1 text-[10px] font-bold text-primary-900">{t.planNotifications.exampleBadge}</span>
+      <h4 className="mt-2 font-serif text-[0.9375rem] leading-snug text-text">{scenario.title}</h4>
+      <p className="mt-0.5 text-xs font-semibold text-primary">{notification.trackerName}</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{scenario.summary}</p>
+      <p className="mt-2 text-xs text-text-muted">{t.planNotifications.why(notification.matchedTopic)}</p>
+      <p className="mt-1 text-xs text-text-subtle">{t.planNotifications.source}: {notification.sourceTitle} · {t.planNotifications.published(formatCalendarDate(notification.publishedDate, t.meta.intl))}</p>
+      <div className="mt-2 -ml-1.5 flex flex-wrap items-center gap-1">
+        <button type="button" onClick={() => onOpen(notification)} className={smallActionClass}>{t.planNotifications.viewUpdate}</button>
+        {link && <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => onMarkRead(notification.id)} className={smallActionClass}>{t.alerts.openSource}</a>}
+        {!notification.isRead && <button type="button" onClick={() => onMarkRead(notification.id)} className={smallActionClass}>{t.planNotifications.markRead}</button>}
+        <button type="button" onClick={() => onDismiss(notification.id)} className="rounded-[4px] px-1.5 py-1 text-xs text-text-subtle hover:bg-danger-light hover:text-danger">{t.planNotifications.dismiss}</button>
+      </div>
+    </li>
+  );
+}
+
 // The header bell with the unread count, and a popover listing the alerts.
 function AlertBell({
   alerts,
@@ -127,6 +161,12 @@ function AlertBell({
   onNotRelevant,
   onAsk,
   onDismissError,
+  planNotifications = [],
+  planUnreadTotal = 0,
+  onOpenPlanNotification = () => {},
+  onMarkPlanRead = () => {},
+  onMarkAllPlanRead = () => {},
+  onDismissPlanNotification = () => {},
 }: AlertBellProps) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -172,8 +212,9 @@ function AlertBell({
 
   const projectName = (projectId: string) =>
     projects.find((project) => project.id === projectId)?.name ?? t.alerts.unknownProject;
-  const hasUnread = unreadTotal > 0 || alerts.some((alert) => !alert.isRead);
-  const badge = unreadTotal > 99 ? "99+" : String(unreadTotal);
+  const combinedUnread = unreadTotal + planUnreadTotal;
+  const hasUnread = combinedUnread > 0 || alerts.some((alert) => !alert.isRead) || planNotifications.some((item) => !item.isRead);
+  const badge = combinedUnread > 99 ? "99+" : String(combinedUnread);
 
   return (
     <div ref={rootRef} className="relative">
@@ -181,7 +222,7 @@ function AlertBell({
         ref={buttonRef}
         type="button"
         onClick={toggle}
-        aria-label={t.alerts.bell(unreadTotal)}
+        aria-label={t.alerts.bell(combinedUnread)}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
@@ -190,7 +231,7 @@ function AlertBell({
         }`}
       >
         <BellIcon className="h-5 w-5" />
-        {unreadTotal > 0 && (
+        {combinedUnread > 0 && (
           <span
             data-testid="alert-badge"
             aria-hidden="true"
@@ -216,7 +257,7 @@ function AlertBell({
             </h2>
             <div className="flex items-center gap-1">
               {hasUnread && (
-                <button type="button" onClick={onMarkAllRead} className={smallActionClass}>
+                <button type="button" onClick={() => { onMarkAllRead(); onMarkAllPlanRead(); }} className={smallActionClass}>
                   {t.alerts.markAllRead}
                 </button>
               )}
@@ -245,7 +286,7 @@ function AlertBell({
           )}
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {alerts.length === 0 ? (
+            {alerts.length === 0 && planNotifications.length === 0 ? (
               <p className="flex items-start gap-3 px-4 py-6 text-sm text-text-subtle">
                 {isLoading ? (
                   t.alerts.loading
@@ -256,8 +297,16 @@ function AlertBell({
                   </>
                 )}
               </p>
-            ) : (
-              groupByProject(alerts).map(([projectId, items]) => (
+            ) : (<>
+              {planNotifications.length > 0 && <section aria-label={t.planNotifications.trackerUpdates} className="border-b border-border">
+                <h3 className="bg-background-canvas px-4 py-2 text-xs font-semibold text-primary">{t.planNotifications.trackerUpdates}</h3>
+                <ul className="divide-y divide-border/70">
+                  {planNotifications.map((notification) => <PlanNotificationCard key={notification.id} notification={notification}
+                    onOpen={(target) => { close(false); onOpenPlanNotification(target); }}
+                    onMarkRead={onMarkPlanRead} onDismiss={onDismissPlanNotification} />)}
+                </ul>
+              </section>}
+              {groupByProject(alerts).map(([projectId, items]) => (
                 <section key={projectId} aria-label={projectName(projectId)} className="border-b border-border last:border-b-0">
                   <h3 className="flex items-center gap-1.5 bg-background-secondary px-4 py-1.5 text-xs font-semibold text-text-muted">
                     <svg {...iconProps} className="h-3.5 w-3.5 text-primary" aria-hidden="true">
@@ -280,8 +329,8 @@ function AlertBell({
                     ))}
                   </ul>
                 </section>
-              ))
-            )}
+              ))}
+            </>)}
           </div>
         </div>
       )}

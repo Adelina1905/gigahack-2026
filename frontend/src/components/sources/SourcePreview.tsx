@@ -19,6 +19,9 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 const PAGE_SIZE = 40;
 const MIN_WIDTH = 360;
 const DEFAULT_WIDTH = 440;
+const MIN_IMAGE_ZOOM = 50;
+const MAX_IMAGE_ZOOM = 200;
+const IMAGE_ZOOM_STEP = 25;
 const previewCache = new Map<string, SourcePreviewView>();
 
 const isDesktopViewport = () => typeof window.matchMedia === "function"
@@ -27,6 +30,14 @@ const isDesktopViewport = () => typeof window.matchMedia === "function"
 
 const getHostname = (link: string) => {
   try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return ""; }
+};
+
+const safePreviewImagePath = (value?: string | null) => {
+  if (!value?.startsWith("/") || value.startsWith("//")) return undefined;
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : undefined;
+  } catch { return undefined; }
 };
 
 const formatDate = (iso: string, locale: string) => {
@@ -78,9 +89,12 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   const [preview, setPreview] = useState<SourcePreviewView | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [imageZoom, setImageZoom] = useState(100);
+  const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
   const source = sources[activeIndex];
   const previewForSource = preview?.documentId === source?.documentId ? preview : null;
   const link = safeHttpUrl(source?.link ?? previewForSource?.sourceUrl);
+  const previewImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
   const hostname = link ? getHostname(link) : "";
   const addedDate = source ? formatDate(source.added_date || previewForSource?.publishedDate || "", t.meta.intl) : "";
   const cacheKey = source?.documentId ? `${source.documentId}:${source.versionId ?? "current"}` : "";
@@ -125,6 +139,8 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
 
   useEffect(() => {
     const cached = cacheKey ? previewCache.get(cacheKey) ?? null : null;
+    setImageZoom(100);
+    setImageNaturalWidth(0);
     setPreview(cached);
     setFailed(false);
     const controller = new AbortController();
@@ -133,11 +149,14 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   }, [cacheKey, load]);
 
   useEffect(() => {
-    if (!preview?.focusSectionId) return;
+    // When a website is available, keep the panel at the top so the supporting
+    // quotation and embedded preview are visible immediately. Stored-only
+    // sources still jump to their focused extracted section.
+    if (link || !preview?.focusSectionId) return;
     requestAnimationFrame(() => Array.from(panelRef.current?.querySelectorAll<HTMLElement>("[data-source-section]") ?? [])
       .find(element => element.dataset.sourceSection === preview.focusSectionId)
       ?.scrollIntoView({ block: "center" }));
-  }, [preview?.focusSectionId]);
+  }, [link, preview?.focusSectionId]);
 
   useEffect(() => {
     if (!preview || loading || typeof IntersectionObserver === "undefined") return;
@@ -210,7 +229,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
         onClick={onClose} className="pointer-events-auto absolute inset-0 bg-black/40 lg:hidden" />
       <section ref={panelRef} id={id} role="dialog" aria-modal={desktop ? undefined : true} aria-labelledby={titleId}
         tabIndex={-1} style={desktop ? { width: panelWidth } : undefined}
-        className="pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:rounded-none lg:border-y-0 lg:border-r-0">
+        className="source-panel-enter pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col overflow-hidden rounded-t-2xl border border-border/70 bg-background shadow-[0_12px_40px_rgba(0,30,71,0.16)] lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:rounded-none lg:border-y-0 lg:border-r-0">
         {desktop && <div role="separator" aria-orientation="vertical" aria-label={t.message.resizeSources}
           aria-valuemin={MIN_WIDTH} aria-valuemax={Math.round(window.innerWidth * 0.45)} aria-valuenow={Math.round(panelWidth)}
           tabIndex={0} onPointerDown={beginResize}
@@ -221,7 +240,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
 
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">{t.message.sourcePosition(activeIndex + 1, sources.length)}</p>
+            <p className="text-xs font-semibold text-primary">{t.message.sourcePosition(activeIndex + 1, sources.length)}</p>
             <h2 id={titleId} className="mt-1 break-words font-serif text-xl leading-tight text-text">{source.title}</h2>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label={t.message.closeSources}
@@ -236,9 +255,53 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
           </div>}
 
           {source.exactQuote && <div className="mb-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{t.message.supportingQuote}</p>
+            <p className="mb-2 text-xs font-semibold text-text-muted">{t.message.supportingQuote}</p>
             <blockquote className="break-words border-l-4 border-accent bg-background-secondary px-4 py-3 text-sm leading-relaxed text-text">{source.exactQuote}</blockquote>
           </div>}
+
+          {link && <section className="mb-5 overflow-hidden rounded-sm border border-border bg-background-secondary">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+              <h3 className="text-xs font-semibold text-text-muted">{t.message.websitePreview}</h3>
+              <a href={link} target="_blank" rel="noopener noreferrer"
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                {t.message.openSource}<span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            {previewImageUrl ? <>
+              <div className="relative h-[55dvh] min-h-96 bg-white lg:h-[65dvh] lg:min-h-[32rem]">
+                <div className="absolute right-2 bottom-2 z-10 flex items-center gap-1 rounded-md border border-border/80 bg-background/90 p-1 shadow-md backdrop-blur-sm">
+                  <button type="button" aria-label={t.message.zoomOut} disabled={imageZoom <= MIN_IMAGE_ZOOM}
+                    onClick={() => setImageZoom(value => Math.max(MIN_IMAGE_ZOOM, value - IMAGE_ZOOM_STEP))}
+                    className="h-6 w-6 cursor-pointer rounded-sm text-sm font-semibold text-primary hover:bg-primary-50 disabled:cursor-default disabled:opacity-40">−</button>
+                  <button type="button" aria-label={t.message.resetZoom} onClick={() => setImageZoom(100)}
+                    className="min-w-11 cursor-pointer rounded-sm px-1 py-1 text-[11px] font-semibold text-text-muted hover:bg-background-secondary">{imageZoom}%</button>
+                  <button type="button" aria-label={t.message.zoomIn} disabled={imageZoom >= MAX_IMAGE_ZOOM}
+                    onClick={() => setImageZoom(value => Math.min(MAX_IMAGE_ZOOM, value + IMAGE_ZOOM_STEP))}
+                    className="h-6 w-6 cursor-pointer rounded-sm text-sm font-semibold text-primary hover:bg-primary-50 disabled:cursor-default disabled:opacity-40">+</button>
+                </div>
+                <div className="h-full overflow-auto">
+                  <img
+                    src={previewImageUrl}
+                    alt={`${t.message.websitePreview}: ${source.title}`}
+                    loading="lazy"
+                    onLoad={event => setImageNaturalWidth(event.currentTarget.naturalWidth)}
+                    style={imageNaturalWidth ? { width: `${Math.round(imageNaturalWidth * imageZoom / 100)}px` } : undefined}
+                    className="block h-auto max-w-none"
+                  />
+                </div>
+              </div>
+            </> : <iframe
+              src={link}
+              title={`${t.message.websitePreview}: ${source.title}`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+              className="h-[55dvh] min-h-96 w-full border-0 bg-white lg:h-[65dvh] lg:min-h-[32rem]"
+            />}
+            <p className="border-t border-border px-3 py-2 text-xs leading-relaxed text-text-subtle">
+              {t.message.websitePreviewHint}
+            </p>
+          </section>}
 
           {loading && !preview && <div role="status" className="space-y-3" aria-label={t.message.loadingSource}>
             {[0, 1, 2, 3].map(item => <div key={item} className="h-16 animate-pulse rounded-sm bg-background-secondary" />)}
@@ -253,7 +316,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
               return <section key={section.id} data-source-section={section.id}
                 className={`scroll-m-6 rounded-sm border px-4 py-3 ${focused ? "border-accent bg-accent/10 shadow-sm" : "border-border bg-background"}`}>
                 {section.headingPath.length > 0 && <p className="mb-1 text-xs font-semibold text-primary">{section.headingPath.join(" › ")}</p>}
-                {label && <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-subtle">{label}</p>}
+                {label && <p className="mb-2 text-[11px] font-medium text-text-subtle">{label}</p>}
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-text"><HighlightedText text={section.text} quote={focused ? source.exactQuote : null} /></p>
               </section>;
             })}
@@ -265,10 +328,7 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
             <p className="mb-3 text-sm text-text-muted">{t.message.previewUnavailable}</p>
           </div>}
 
-          {link ? <a href={link} target="_blank" rel="noopener noreferrer"
-            className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-sm bg-primary px-4 py-2.5 text-sm font-semibold text-text-inverted hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            {t.message.openSource}<span aria-hidden="true">↗</span></a>
-            : <p className="mt-6 text-sm text-text-subtle">{t.message.noLink}</p>}
+          {!link && <p className="mt-6 text-sm text-text-subtle">{t.message.noLink}</p>}
         </div>
 
         {sources.length > 1 && <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-5 py-3">

@@ -25,9 +25,11 @@ interface SidebarProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onNewChatInProject: (projectId: string) => void;
-  // Unread alerts per project id.
-  unreadAlertsByProject?: Record<string, number>;
-  onOpenProjectAlerts?: (project: ProjectSummary) => void;
+  trackerCount: number;
+  isTrackersOpen: boolean;
+  onOpenConversations?: () => void;
+  onOpenTrackers: () => void;
+  onCreateTracker: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -93,8 +95,11 @@ function Sidebar({
   onRenameProject,
   onDeleteProject,
   onNewChatInProject,
-  unreadAlertsByProject,
-  onOpenProjectAlerts,
+  trackerCount,
+  isTrackersOpen,
+  onOpenConversations,
+  onOpenTrackers,
+  onCreateTracker,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -164,7 +169,7 @@ function Sidebar({
 
         <div className="relative flex items-start justify-between gap-2 px-5 pt-5">
           <div>
-            <h2 className="text-[1.625rem] font-light leading-tight text-primary">{t.sidebar.title}</h2>
+            <h2 className="font-serif text-[1.45rem] leading-tight text-primary">{t.sidebar.workspace}</h2>
             <TitleRule className="mt-2.5" />
           </div>
           <button
@@ -179,11 +184,37 @@ function Sidebar({
           </button>
         </div>
 
-        <div className="relative px-4 pt-5 pb-2">
+        <div className="relative px-4 pt-5 pb-3">
+          <div className="mb-3 space-y-1" aria-label={t.sidebar.workspace}>
+            <button
+              type="button"
+              onClick={onOpenConversations}
+              aria-current={!isTrackersOpen ? "page" : undefined}
+              className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] px-3 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
+                !isTrackersOpen ? "bg-primary-50 text-primary-700" : "text-text-muted hover:bg-background-secondary hover:text-text"
+              }`}
+            >
+              <svg {...iconProps} className="h-4 w-4 shrink-0" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
+              <span className="flex-1">{t.sidebar.title}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenTrackers}
+              aria-label={t.trackers.open}
+              aria-current={isTrackersOpen ? "page" : undefined}
+              className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] px-3 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
+                isTrackersOpen ? "bg-primary-50 text-primary-700" : "text-text-muted hover:bg-background-secondary hover:text-text"
+              }`}
+            >
+              <svg {...iconProps} className="h-4 w-4 shrink-0" aria-hidden="true"><path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" /></svg>
+              <span className="min-w-0 flex-1 truncate">{t.trackers.title}</span>
+              <span className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${isTrackersOpen ? "bg-primary text-white" : "bg-background-secondary text-text-subtle"}`}>{trackerCount}</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={onNewChat}
-            className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary px-3 py-2.5 text-sm font-semibold text-text-inverted transition-colors hover:bg-primary-dark"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[5px] bg-primary px-3 py-2.5 text-sm font-semibold text-text-inverted transition-colors duration-200 hover:bg-primary-dark motion-reduce:transition-none"
           >
             <svg {...iconProps} className="h-4 w-4">
               <path d="M12 5v14M5 12h14" />
@@ -193,10 +224,10 @@ function Sidebar({
         </div>
 
         <nav className="relative flex-1 overflow-y-auto px-4 pb-4">
-          <section aria-labelledby="sidebar-projects-title" className="mt-2">
+          <section aria-labelledby="sidebar-projects-title" className="mt-3 border-t border-border/70 pt-3">
             <div className="flex items-center justify-between gap-2 pb-1.5">
               <h3 id="sidebar-projects-title">
-                <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
+                <span className="text-[11px] font-semibold text-text-subtle">
                   {t.projects.title}
                 </span>
               </h3>
@@ -234,8 +265,7 @@ function Sidebar({
                     onRenameChat={onRename}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
-                    unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
-                    onOpenAlerts={onOpenProjectAlerts}
+                    onCreateTracker={onCreateTracker}
                   />
                 ))}
               </ul>
@@ -249,9 +279,8 @@ function Sidebar({
           ) : (
             groups.map((group) => (
               <section key={group.label} className="mt-4">
-                {/* Outlined like the date stamps on chisinau.md news cards. */}
                 <h3 className="pb-1.5">
-                  <span className="inline-block rounded-sm border border-border-strong bg-background px-1.5 py-px text-[11px] font-medium text-text-muted">
+                  <span className="inline-block px-1 text-[11px] font-semibold text-text-subtle">
                     {t.sidebar.groups[group.label]}
                   </span>
                 </h3>

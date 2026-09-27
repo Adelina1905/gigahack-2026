@@ -21,6 +21,7 @@ interface ChatWindowProps {
   onSend: (text: string) => string | null;
   onRetry?: (id: string) => void;
   onRegenerate?: (id: string) => void;
+  onTrackPlan?: () => void;
   error?: ErrorKey | null;
   onDismissError?: () => void;
 }
@@ -38,24 +39,19 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
   const { t } = useI18n();
 
   return (
-    <div className="flex min-h-full flex-col justify-center gap-4 py-2">
-      {/* Modelled on the blue "Ședința PMC" tile of chisinau.md. */}
-      <section className="relative overflow-hidden rounded-sm bg-primary px-5 pt-5 pb-20 text-text-inverted sm:px-8 sm:pt-6 sm:pb-28">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-28 -right-24 h-80 w-80 rounded-full bg-primary-dark/60"
-        />
+    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-4 py-2">
+      <section className="relative overflow-hidden rounded-[6px] border border-border/60 bg-background px-5 pt-6 pb-20 sm:px-8 sm:pt-8 sm:pb-24">
         <div className="relative">
-          <p className="text-sm font-medium text-accent">{t.welcome.eyebrow}</p>
-          <h2 className="mt-2 font-serif text-[1.75rem] leading-tight sm:text-4xl">{t.welcome.title}</h2>
-          <TitleRule tone="light" className="mt-3 sm:mt-4" />
-          <p className="mt-3 max-w-xl text-[0.9375rem] font-light leading-relaxed text-white/85 sm:mt-4 sm:text-base">
+          <p className="text-sm font-semibold text-primary">{t.welcome.eyebrow}</p>
+          <h2 className="mt-2 font-serif text-[1.75rem] leading-tight text-primary sm:text-4xl">{t.welcome.title}</h2>
+          <TitleRule className="mt-3 sm:mt-4" />
+          <p className="mt-3 max-w-xl text-[0.9375rem] leading-relaxed text-text-muted sm:mt-4 sm:text-base">
             {t.welcome.body}
           </p>
         </div>
         <Skyline
           preserveAspectRatio="xMidYMax meet"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full text-white/35 sm:h-24"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full text-primary opacity-[0.09] sm:h-20"
         />
       </section>
 
@@ -66,7 +62,7 @@ function WelcomePanel({ onSend }: { onSend: (text: string) => void }) {
             key={question}
             type="button"
             onClick={() => onSend(question)}
-            className="group flex flex-col items-start gap-3 rounded-sm border border-border bg-background p-4 text-left transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="group flex min-h-36 flex-col items-start gap-3 rounded-[6px] border border-border/60 bg-background p-4 text-left transition-[border-color,background-color] duration-200 hover:border-primary-100 hover:bg-primary-50/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
           >
             <span className="rounded-sm border border-border-strong px-1.5 py-px text-[11px] font-medium text-text-muted">
               {topic}
@@ -102,6 +98,7 @@ function ChatWindow({
   onSend,
   onRetry,
   onRegenerate,
+  onTrackPlan,
   error,
   onDismissError,
 }: ChatWindowProps) {
@@ -149,7 +146,7 @@ function ChatWindow({
         ) : isEmpty ? (
           <WelcomePanel onSend={onSend} />
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-7">
             {messages.map((m) =>
               m.role === "user" ? (
                 <UserMessage key={m.id} message={m} onRetry={onRetry} />
@@ -169,7 +166,8 @@ function ChatWindow({
         )}
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pb-4">
+      <div className="px-4 pb-4">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
         {error && (
           <div
             role="alert"
@@ -191,10 +189,25 @@ function ChatWindow({
         {noticeFor && noticeFor !== dismissedNoticeId && (
           <SupportNotice onDismiss={() => setDismissedNoticeId(noticeFor)} />
         )}
+        {onTrackPlan && lastMessage?.role === "assistant" && !isTyping && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onTrackPlan}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] px-3 text-sm font-semibold text-primary transition-colors duration-200 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" />
+              </svg>
+              {t.trackers.trackThisPlan}
+            </button>
+          </div>
+        )}
         <ChatInput onSend={onSend} disabled={isTyping || isLoading} voice={voice} />
         <p className="text-center text-[11px] text-text-subtle">
           {t.chat.disclaimer}
         </p>
+        </div>
       </div>
 
       {sourcePreview && previewSources?.[sourcePreview.sourceIndex] && (
