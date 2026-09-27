@@ -10,6 +10,7 @@ import type {
   DocumentView,
   ProjectView,
   ResponseView,
+  SourcePreviewView,
 } from "./types";
 import { alertScope, parseScopeKey, scopeKey, type AlertScope } from "../types/alerts";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
@@ -22,8 +23,20 @@ const STORAGE_KEY = "smart-city-mock-api";
 // Replies shaped like the real gateway output (see Manage Data/municipal_rag):
 // grounded RAG answers are one claim per line ending in "[S1]" markers, with the
 // cited corpus documents attached; LLM fallback answers carry no documents; a
-// clarification lists its choices as "- " lines. Titles and links are real corpus sources.
-type MockReply = { text: string; documents: DocumentView[] };
+// clarification lists its choices as "- " lines. Titles and links are real corpus sources,
+// except in the flagged examples (not found, contradiction), which have no link.
+type MockAiReply = NonNullable<ResponseView["aiReply"]>;
+type MockCitation = MockAiReply["citations"][number];
+type MockReply = {
+  text: string;
+  documents: DocumentView[];
+  citations?: MockCitation[];
+  // RAG outcome; defaults to SUPPORTED when there are citations.
+  status?: string;
+  reason?: string;
+  flags?: string[];
+  choices?: MockAiReply["clarificationChoices"];
+};
 
 const EVENTS_DOCUMENT: DocumentView = {
   id: 1,
@@ -56,20 +69,167 @@ const EVENTS_REPLY: MockReply = {
     "Festivalul etniilor „Unitate prin diversitate” are loc în Grădina Publică „Ștefan cel Mare și Sfânt” pe 20.09.2026. [S1]",
   ].join("\n"),
   documents: [EVENTS_DOCUMENT],
+  citations: [{
+    id: "S1",
+    evidenceId: "events-calendar",
+    versionId: "demo-2026-09",
+    title: EVENTS_DOCUMENT.title,
+    url: null,
+    exactQuote: "Târgurile micilor antreprenori și ale producătorilor locali au loc în fiecare weekend din septembrie 2026.",
+    documentId: "events-2026",
+    sourceFile: "evenimente-municipale.txt",
+    locator: { startLine: 12, endLine: 16 },
+  }],
 };
 
+// The 2024 evaluation is older than the 2025 report, so it is flagged as outdated.
 const SCHOOLS_REPLY: MockReply = {
+  flags: ["OUTDATED_SOURCES"],
   text: [
     "Pe parcursul a 3 zile (20, 21 și 22 august 2024), 5 echipe de verificare create prin ordinul DGETS s-au deplasat la instituțiile de învățământ primar și secundar, ciclul I și II, din municipiu. [S1]",
     "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar 2024-2025. [S1] [S2]",
   ].join("\n"),
   documents: [SCHOOL_EVALUATION_DOCUMENT, DGETS_SCAN_DOCUMENT],
+  citations: [
+    {
+      id: "S1",
+      evidenceId: "school-visits",
+      versionId: "demo-2024-08",
+      title: SCHOOL_EVALUATION_DOCUMENT.title,
+      url: SCHOOL_EVALUATION_DOCUMENT.documentLink,
+      exactQuote: "Pe parcursul a 3 zile, 20, 21 și 22 august 2024, cinci echipe de verificare s-au deplasat la instituțiile de învățământ.",
+      documentId: "school-evaluation-2024",
+      sourceFile: "evaluarea-institutiilor.html",
+      locator: { startLine: 24, endLine: 27 },
+      publisher: "Direcția generală educație, tineret și sport",
+      publishedDate: "2024-08-23",
+      outdated: true,
+    },
+    {
+      id: "S2",
+      evidenceId: "school-readiness",
+      versionId: "demo-2025-09",
+      title: DGETS_SCAN_DOCUMENT.title,
+      url: DGETS_SCAN_DOCUMENT.documentLink,
+      exactQuote: "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar.",
+      documentId: "dgets-scan-2025",
+      sourceFile: "scan-dgets-2025-09-30.pdf",
+      locator: { page: 2 },
+      publisher: "Direcția generală educație, tineret și sport",
+      publishedDate: "2025-09-30",
+      outdated: false,
+    },
+  ],
+};
+
+const SOURCE_PREVIEWS: Record<string, SourcePreviewView> = {
+  "events-2026": {
+    documentId: "events-2026",
+    versionId: "demo-2026-09",
+    title: EVENTS_DOCUMENT.title,
+    sourceUrl: null,
+    sourceFile: "evenimente-municipale.txt",
+    sourceKind: "text",
+    publishedDate: "2026-09-01",
+    totalSections: 3,
+    start: 0,
+    focusIndex: 1,
+    focusSectionId: "events-calendar",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "events-intro", order: 0, headingPath: ["Agenda municipală"], text: "Programul reunește activitățile publice anunțate pentru luna septembrie 2026.", locator: { startLine: 1, endLine: 3 } },
+      { id: "events-calendar", order: 1, headingPath: ["Târguri locale"], text: "Târgurile micilor antreprenori și ale producătorilor locali au loc în fiecare weekend din septembrie 2026.", locator: { startLine: 12, endLine: 16 } },
+      { id: "events-festival", order: 2, headingPath: ["Festivaluri"], text: "Festivalul etniilor este programat în Grădina Publică «Ștefan cel Mare și Sfânt».", locator: { startLine: 18, endLine: 20 } },
+    ],
+  },
+  "school-evaluation-2024": {
+    documentId: "school-evaluation-2024",
+    versionId: "demo-2024-08",
+    title: SCHOOL_EVALUATION_DOCUMENT.title,
+    sourceUrl: SCHOOL_EVALUATION_DOCUMENT.documentLink,
+    sourceFile: "evaluarea-institutiilor.html",
+    sourceKind: "web",
+    publishedDate: "2024-08-23",
+    previewImageUrl: "/source-previews/school-evaluation-2024.png",
+    totalSections: 3,
+    start: 0,
+    focusIndex: 1,
+    focusSectionId: "school-visits",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "school-purpose", order: 0, headingPath: ["Pregătirea noului an școlar"], text: "DGETS a organizat evaluarea instituțiilor înainte de debutul anului de studii 2024–2025.", locator: { startLine: 18, endLine: 21 } },
+      { id: "school-visits", order: 1, headingPath: ["Vizite de verificare"], text: "Pe parcursul a 3 zile, 20, 21 și 22 august 2024, cinci echipe de verificare s-au deplasat la instituțiile de învățământ.", locator: { startLine: 24, endLine: 27 } },
+      { id: "school-result", order: 2, headingPath: ["Concluzii"], text: "Observațiile colectate au fost comunicate administrațiilor instituțiilor pentru remediere.", locator: { startLine: 31, endLine: 33 } },
+    ],
+  },
+  "dgets-scan-2025": {
+    documentId: "dgets-scan-2025",
+    versionId: "demo-2025-09",
+    title: DGETS_SCAN_DOCUMENT.title,
+    sourceUrl: DGETS_SCAN_DOCUMENT.documentLink,
+    sourceFile: "scan-dgets-2025-09-30.pdf",
+    sourceKind: "pdf",
+    publishedDate: "2025-09-30",
+    totalSections: 2,
+    start: 0,
+    focusIndex: 0,
+    focusSectionId: "school-readiness",
+    hasPrevious: false,
+    hasNext: false,
+    sections: [
+      { id: "school-readiness", order: 0, headingPath: ["Raport de verificare"], text: "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar.", locator: { page: 2 } },
+      { id: "school-actions", order: 1, headingPath: ["Măsuri recomandate"], text: "Instituțiile au primit recomandări privind siguranța, igiena și organizarea spațiilor educaționale.", locator: { page: 3 } },
+    ],
+  },
 };
 
 const CLARIFICATION_REPLY: MockReply = {
+  status: "NEEDS_CLARIFICATION",
   text: "La care document vă referiți?\n- Evenimente municipale\n- Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
   documents: [],
+  citations: [],
+  choices: [
+    { documentId: "events-2026", label: EVENTS_DOCUMENT.title },
+    { documentId: "school-evaluation-2024", label: SCHOOL_EVALUATION_DOCUMENT.title },
+  ],
 };
+
+// Two notices give different fares for the same route.
+const CONTRADICTION_REPLY: MockReply = {
+  status: "CONTRADICTION",
+  reason: "CONFLICTING_DOCUMENTS",
+  text: [
+    "Un anunț indică un tarif de 6 lei pentru o călătorie cu troleibuzul. [S1]",
+    "Un alt anunț indică un tarif de 8 lei pentru aceeași călătorie. [S2]",
+  ].join("\n"),
+  documents: [],
+  citations: [
+    {
+      id: "S1", evidenceId: "fare-notice-a", versionId: "demo-2025-01", title: "Anunț privind tariful de călătorie (ianuarie 2025)",
+      url: null, exactQuote: "Tariful pentru o călătorie cu troleibuzul este de 6 lei.", documentId: "demo-fare-2025-01",
+      sourceFile: "anunt-tarif-2025-01.txt", locator: { startLine: 3, endLine: 3 }, publishedDate: "2025-01-15", outdated: false,
+    },
+    {
+      id: "S2", evidenceId: "fare-notice-b", versionId: "demo-2025-02", title: "Anunț privind tariful de călătorie (februarie 2025)",
+      url: null, exactQuote: "Tariful pentru o călătorie cu troleibuzul este de 8 lei.", documentId: "demo-fare-2025-02",
+      sourceFile: "anunt-tarif-2025-02.txt", locator: { startLine: 4, endLine: 4 }, publishedDate: "2025-02-10", outdated: false,
+    },
+  ],
+};
+
+// Strict RAG replies without an answer, one per NOT_FOUND reason.
+const notFoundReply = (reason: string, text: string): MockReply =>
+  ({ status: "NOT_FOUND", reason, text, documents: [], citations: [] });
+const NO_EVIDENCE_REPLY = notFoundReply("NO_RELEVANT_EVIDENCE",
+  "Documentele municipale indexate nu conțin informații despre acest subiect.");
+const LACKS_VALUE_REPLY = notFoundReply("EVIDENCE_LACKS_VALUE",
+  "Documentele despre parcări nu menționează tariful cerut.");
+const UNVERIFIED_REPLY = notFoundReply("CLAIMS_UNVERIFIED",
+  "Afirmațiile despre buget nu au putut fi confirmate de fragmentele găsite.");
+const OUT_OF_SCOPE_REPLY = notFoundReply("OUT_OF_SCOPE",
+  "Pot răspunde doar la întrebări despre informațiile publicate de Primăria municipiului Chișinău.");
 
 // Plain LLM fallback, used when the corpus has no answer.
 const LLM_REPLIES: MockReply[] = [
@@ -88,15 +248,23 @@ const LLM_REPLY_RU: MockReply = {
   documents: [],
 };
 
-const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, ...LLM_REPLIES];
+const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, CONTRADICTION_REPLY, NO_EVIDENCE_REPLY, ...LLM_REPLIES];
 
 // Keywords steer the reply like retrieval would; anything else gets a random one.
 function pickReply(prompt: string, exclude?: string): MockReply {
   const text = prompt.toLowerCase();
   if (/[а-яё]/.test(text)) return LLM_REPLY_RU;
-  if (/t[aâ]rg|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
+  // Checked first, so choosing a clarification label gets its document's answer.
+  if (text === EVENTS_DOCUMENT.title.toLowerCase()) return EVENTS_REPLY;
+  if (text === SCHOOL_EVALUATION_DOCUMENT.title.toLowerCase()) return SCHOOLS_REPLY;
+  if (/t[aâ]rg|fair|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
   if (/[sș]coal|[sș]colar|educa|[iî]nv[aă][tț]|dgets|school/.test(text)) return SCHOOLS_REPLY;
   if (/document/.test(text)) return CLARIFICATION_REPLY;
+  if (/tarif|fare|troleibuz|trolleybus/.test(text)) return CONTRADICTION_REPLY;
+  if (/parc[aă]r|parking/.test(text)) return LACKS_VALUE_REPLY;
+  if (/buget|budget/.test(text)) return UNVERIFIED_REPLY;
+  if (/vreme|meteo|weather|fotbal|football|reet[aă]|recipe/.test(text)) return OUT_OF_SCOPE_REPLY;
+  if (/cimitir|cemetery|zoo/.test(text)) return NO_EVIDENCE_REPLY;
   const pool = ALL_REPLIES.filter((reply) => reply.text !== exclude);
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -137,6 +305,16 @@ interface MockStore {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const now = () => new Date().toISOString();
 const notFound = (what: string) => new ApiError(`${what} not found`, 404);
+const aiReplyFor = (reply: MockReply): ResponseView["aiReply"] => reply.citations ? {
+  mode: "rag",
+  status: reply.status ?? "SUPPORTED",
+  // Like the gateway, the stored answer excludes the "- " choice lines added to the text.
+  answer: reply.choices ? reply.text.split("\n")[0] : reply.text,
+  citations: reply.citations,
+  clarificationChoices: reply.choices ?? null,
+  reason: reply.reason ?? null,
+  flags: reply.flags ?? [],
+} : null;
 
 const titleFrom = (text: string) => {
   const singleLine = text.replace(/\s+/g, " ").trim();
@@ -318,6 +496,33 @@ export async function getResponses(chatId: string): Promise<ResponseView[]> {
   return store.responses.filter((response) => response.chatId === chatId);
 }
 
+export async function getSourcePreview(
+  documentId: string,
+  options: { versionId?: string | null; focusEvidenceId?: string | null; start?: number; limit?: number; signal?: AbortSignal } = {},
+): Promise<SourcePreviewView> {
+  await wait(250);
+  if (options.signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
+  const preview = SOURCE_PREVIEWS[documentId];
+  if (!preview || (options.versionId && options.versionId !== preview.versionId)) throw notFound("Source preview");
+
+  const start = Math.max(0, options.start ?? 0);
+  const limit = Math.max(1, options.limit ?? 40);
+  const sections = preview.sections.slice(start, start + limit);
+  const focusSectionId = options.focusEvidenceId ?? preview.focusSectionId;
+  const focusIndex = focusSectionId
+    ? preview.sections.findIndex((section) => section.id === focusSectionId)
+    : -1;
+  return {
+    ...preview,
+    start,
+    focusIndex: focusIndex >= 0 ? focusIndex : null,
+    focusSectionId: focusIndex >= 0 ? focusSectionId : null,
+    hasPrevious: start > 0,
+    hasNext: start + sections.length < preview.sections.length,
+    sections,
+  };
+}
+
 export async function createResponse(
   chatId: string,
   text: string,
@@ -342,6 +547,7 @@ export async function createResponse(
     requestId,
     generationStatus: "COMPLETED",
     generationVersion: 0,
+    aiReply: aiReplyFor(reply),
   };
 
   store.responses.push(response);
@@ -367,6 +573,7 @@ export async function regenerateResponse(
   const reply = pickReply(response.prompt ?? "", response.text ?? undefined);
   response.text = reply.text;
   response.documents = reply.documents;
+  response.aiReply = aiReplyFor(reply);
   response.generationVersion = (response.generationVersion ?? 0) + 1;
   chat.updatedAt = now();
   save(store);

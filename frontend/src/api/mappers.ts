@@ -1,4 +1,5 @@
-import type { ChatMessage, ChatSummary, ProjectSummary, SourceDocument } from "../types/chat";
+import { NOT_FOUND_REASONS, type ChatMessage, type ChatSummary, type ProjectSummary,
+  type ReplyReason, type SourceDocument } from "../types/chat";
 import type { Alert, AlertSettings, AlertTopic, UnreadAlertCounts } from "../types/alerts";
 import type {
   AlertSettingsView,
@@ -47,19 +48,35 @@ export function toSourceDocument(document: DocumentView): SourceDocument {
   };
 }
 
+const REPLY_REASONS: readonly string[] = [...NOT_FOUND_REASONS, "CONFLICTING_DOCUMENTS"];
+const toReason = (reason: string | null | undefined) =>
+  reason && REPLY_REASONS.includes(reason) ? reason as ReplyReason : undefined;
+
 export function toAssistantMessage(response: ResponseView): ChatMessage {
+  const flags = (response.aiReply?.flags ?? []).filter(flag => typeof flag === "string");
+  const citations = response.aiReply?.citations ?? [];
+  // Replies that only carry the flag mark every source; per-citation marks are exact.
+  const allOutdated = flags.includes("OUTDATED_SOURCES") && citations.every(citation => citation.outdated == null);
   return {
     id: String(response.id),
     role: "assistant",
     content: response.text ?? "",
     createdAt: toTimestamp(response.createdAt),
     sources: response.aiReply
-      ? (response.aiReply.citations ?? []).map((citation) => ({
+      ? citations.map((citation) => ({
+          id: citation.id,
+          evidenceId: citation.evidenceId,
+          versionId: citation.versionId,
           title: citation.title || citation.documentId || "Source",
           link: citation.url ?? "",
           added_date: "",
           exactQuote: citation.exactQuote,
           documentId: citation.documentId,
+          sourceFile: citation.sourceFile,
+          locator: citation.locator,
+          publisher: citation.publisher ?? null,
+          publishedDate: citation.publishedDate ?? null,
+          outdated: citation.outdated === true || allOutdated,
         }))
       : (response.documents ?? []).map(toSourceDocument),
     requestId: response.requestId ?? undefined,
@@ -67,6 +84,9 @@ export function toAssistantMessage(response: ResponseView): ChatMessage {
     generationVersion: response.generationVersion ?? 0,
     errorCode: response.errorCode,
     mode: response.aiReply?.mode,
+    replyStatus: response.aiReply?.status,
+    reason: toReason(response.aiReply?.reason),
+    flags: flags.length > 0 ? flags : undefined,
     clarificationChoices: (response.aiReply?.clarificationChoices ?? []).map(choice => choice.label),
   };
 }

@@ -10,6 +10,8 @@ public record LlmMessageView(
         String mode,
         String status,
         List<LlmSourceView> sources,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        String reason,
+        List<String> flags
 ) {
 }

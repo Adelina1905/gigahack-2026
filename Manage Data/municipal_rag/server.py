@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from typing import TYPE_CHECKING, Annotated, Literal, Protocol
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Protocol
 
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field, StringConstraints, field_validator
@@ -13,6 +13,7 @@ from .api import ManagedAudioApiError
 from .chat_service import ChatReply, ChatService, LlmUnavailableError
 from .config import load_config, load_dotenv
 from .voice_service import OpenRouterVoiceService
+from .source_preview import SourcePreviewNotFound, SourcePreviewUnavailable
 
 if TYPE_CHECKING:
     from .rag_service import RagService
@@ -45,10 +46,18 @@ class ChatRequest(BaseModel):
 
 
 class Citation(BaseModel):
+    id: str | None = None
+    evidenceId: str | None = None
+    versionId: str | None = None
     title: str | None = None
     url: str | None = None
     exactQuote: str | None = None
     documentId: str | None = None
+    sourceFile: str | None = None
+    locator: dict[str, Any] | None = None
+    publisher: str | None = None
+    publishedDate: str | None = None
+    outdated: bool = False
 
 
 class ClarificationChoice(BaseModel):
@@ -62,12 +71,45 @@ class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation]
     clarificationChoices: list[ClarificationChoice] | None = None
+    # NOT_FOUND: NO_RELEVANT_EVIDENCE | EVIDENCE_LACKS_VALUE | CLAIMS_UNVERIFIED | OUT_OF_SCOPE; CONTRADICTION: CONFLICTING_DOCUMENTS.
+    reason: str | None = None
+    flags: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
     mode: Literal["live", "demo"]
     llmConfigured: bool
     ragAvailable: bool
+
+
+class SourcePreviewService(Protocol):
+    def preview(self, document_id: str, version_id: str | None, focus_evidence_id: str | None,
+                start: int | None, limit: int) -> dict[str, Any]: ...
+
+
+class SourceSection(BaseModel):
+    id: str
+    order: int
+    headingPath: list[str]
+    text: str
+    locator: dict[str, Any]
+
+
+class SourcePreviewResponse(BaseModel):
+    documentId: str
+    versionId: str
+    title: str
+    sourceUrl: str | None = None
+    sourceFile: str | None = None
+    sourceKind: Literal["web", "pdf", "text"]
+    publishedDate: str | None = None
+    totalSections: int
+    start: int
+    focusIndex: int | None = None
+    focusSectionId: str | None = None
+    hasPrevious: bool
+    hasNext: bool
+    sections: list[SourceSection]
 
 
 class InputAudio(BaseModel):
@@ -138,10 +180,24 @@ class AlertMatchResponse(BaseModel):
     matches: list[AlertMatchOut]
 
 
+def citation(item: dict[str, Any]) -> Citation:
+    values: dict[str, Any] = {}
+    for key in Citation.model_fields:
+        value = item.get(key)
+        if key == "locator":
+            values[key] = value
+        elif key == "outdated":
+            values[key] = value is True
+        else:
+            values[key] = None if value is None else str(value)
+    return Citation(**values)
+
+
 def create_app(chat_service: ReplyService, rag: RagService | None, llm_configured: bool,
                *, mode: Literal["live", "demo"] = "live",
                voice_service: OpenRouterVoiceService | None = None,
-               alert_service: AlertService | None = None) -> FastAPI:
+               alert_service: AlertService | None = None,
+               source_preview_service: SourcePreviewService | None = None) -> FastAPI:
     app = FastAPI(title="Municipal chat service")
 
     @app.get("/health", response_model=HealthResponse)
@@ -159,9 +215,26 @@ def create_app(chat_service: ReplyService, rag: RagService | None, llm_configure
             LOGGER.warning("LLM unavailable for chat %s: %s", request.chatId, error)
             raise HTTPException(status_code=503, detail=str(error) or "LLM unavailable") from None
         return ChatResponse(mode=reply.mode, status=reply.status, answer=reply.answer,
-            citations=[Citation(**{key: None if item.get(key) is None else str(item.get(key)) for key in Citation.model_fields}) for item in reply.citations],
+            citations=[citation(item) for item in reply.citations],
             clarificationChoices=None if reply.clarification_choices is None else
-                [ClarificationChoice(documentId=str(item.get("documentId")), label=str(item.get("label"))) for item in reply.clarification_choices])
+                [ClarificationChoice(documentId=str(item.get("documentId")), label=str(item.get("label"))) for item in reply.clarification_choices],
+            reason=reply.reason, flags=list(reply.flags))
+
+    @app.get("/v1/sources/{document_id}/preview", response_model=SourcePreviewResponse)
+    def source_preview(document_id: str, versionId: str | None = None,
+                       focusEvidenceId: str | None = None, start: int | None = None,
+                       limit: int = 40) -> SourcePreviewResponse:
+        if source_preview_service is None:
+            raise HTTPException(status_code=503, detail="Source preview is unavailable")
+        if not 1 <= len(document_id) <= 256 or limit < 1 or limit > 100 or (start is not None and start < 0):
+            raise HTTPException(status_code=400, detail="Invalid source preview request")
+        try:
+            return SourcePreviewResponse(**source_preview_service.preview(
+                document_id, versionId, focusEvidenceId, start, limit))
+        except SourcePreviewNotFound:
+            raise HTTPException(status_code=404, detail="Source preview not found") from None
+        except SourcePreviewUnavailable:
+            raise HTTPException(status_code=503, detail="Source preview is unavailable") from None
 
     @app.post("/v1/audio/transcriptions", response_model=TranscriptionResponse)
     def transcribe(request: TranscriptionRequest) -> TranscriptionResponse:
@@ -227,8 +300,8 @@ def _create_live_app() -> FastAPI:
     # Demo mode needs only the HTTP server dependencies, never live clients or an index.
     from qdrant_client import QdrantClient
 
-    from .chat_model import OpenRouterChatModel
     from .rag_service import QdrantRagService
+    from .source_preview import QdrantSourcePreviewService
 
     config = load_config()
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
@@ -236,7 +309,6 @@ def _create_live_app() -> FastAPI:
     qdrant_key = os.environ.get("QDRANT_API_KEY", "").strip()
     client = QdrantClient(url=qdrant_url, api_key=qdrant_key or None, timeout=5)
     rag = QdrantRagService(client, config, qdrant_url)
-    llm = OpenRouterChatModel(config.generator_model, api_key)
     voice = OpenRouterVoiceService(
         api_key,
         os.environ.get("OPENROUTER_STT_MODEL", "openai/whisper-large-v3-turbo").strip(),
@@ -245,5 +317,6 @@ def _create_live_app() -> FastAPI:
     )
     LOGGER.info("Chat service starting: llmConfigured=%s qdrant=%s", bool(api_key), qdrant_url)
     alerts = create_alert_service(api_key, config.embedding_model, config.generator_model)
-    return create_app(ChatService(rag, llm), rag, llm_configured=bool(api_key),
-                      voice_service=voice, alert_service=alerts)
+    previews = QdrantSourcePreviewService(client, config.preview_collection)
+    return create_app(ChatService(rag), rag, llm_configured=bool(api_key),
+                      voice_service=voice, alert_service=alerts, source_preview_service=previews)

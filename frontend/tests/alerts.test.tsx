@@ -647,24 +647,24 @@ describe("AlertsDialog", () => {
   });
 });
 
-describe("Sidebar alerts", () => {
+describe("Sidebar trackers", () => {
   const noop = () => {};
-  it("shows a project's unread badge and opens its alert settings", () => {
+  it("opens the dedicated tracker area and creates one from an expanded project", () => {
     const opened: string[] = [];
+    const created: string[] = [];
     render(<Sidebar chats={[]} projects={projects} activeChatId={null} draftProjectId={null} isLoaded
       onNewChat={noop} onSelect={noop} onDelete={noop} onMoveChat={noop}
       onCreateProject={async () => null} onRenameProject={noop} onDeleteProject={noop} onNewChatInProject={noop}
-      unreadAlertsByProject={{ p1: 3 }} onOpenProjectAlerts={project => opened.push(project.id)}
+      trackerCount={2} isTrackersOpen={false} onOpenTrackers={() => opened.push("trackers")}
+      onCreateTracker={project => created.push(project.id)}
       isOpen onClose={noop} />);
-    // The badge doesn't change the row's name; it is announced as its description.
-    const row = screen.getByRole("button", { name: "Transport" });
-    expect(within(row).getByTestId("project-alert-badge").textContent).toBe("3");
-    expect(document.getElementById(row.getAttribute("aria-describedby")!)!.textContent)
-      .toBe(en.alerts.projectUnread(3));
-    expect(within(screen.getByRole("button", { name: "Education" })).queryByTestId("project-alert-badge")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: en.alerts.settings.open("Education") }));
-    expect(opened).toEqual(["p2"]);
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.open }));
+    expect(opened).toEqual(["trackers"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Education" }));
+    fireEvent.click(screen.getByRole("button", { name: en.trackers.createForProject }));
+    expect(created).toEqual(["p2"]);
   });
   it("shows a conversation's unread badge and opens its alert settings", () => {
     const opened: string[] = [];

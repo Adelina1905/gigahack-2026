@@ -51,6 +51,9 @@ class RagConfig:
     def catalog_alias(self) -> str:
         return self.raw["collections"]["catalogAlias"]
 
+    @property
+    def preview_collection(self) -> str:
+        return self.raw["collections"].get("previewCollection", "municipal_source_previews")
 
 def load_config(path: Path | None = None) -> RagConfig:
     source = (path or DEFAULT_CONFIG).expanduser().resolve()

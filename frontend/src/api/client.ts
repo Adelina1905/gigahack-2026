@@ -20,12 +20,20 @@ import type {
     ResponseCreateRequest,
     ResponseRegenerateRequest,
     ResponseView,
+    SourcePreviewView,
     TranscriptionView,
 } from "./types";
 import { DEFAULT_CHAT_NAME } from "../types/chat";
 
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+export function getSourceOpenUrl(documentId: string, versionId?: string | null): string {
+    const params = new URLSearchParams();
+    if (versionId) params.set("versionId", versionId);
+    const search = params.toString();
+    return `${API_BASE_URL}/sources/${encodeURIComponent(documentId)}/open${search ? `?${search}` : ""}`;
+}
 
 // status is 0 when the request never reached the server (offline, CORS, backend down).
 export class ApiError extends Error {
@@ -224,6 +232,21 @@ export function createDocument(
         method: "POST",
         body: JSON.stringify(request),
     });
+}
+
+export function getSourcePreview(
+    documentId: string,
+    options: { versionId?: string | null; focusEvidenceId?: string | null; start?: number; limit?: number; signal?: AbortSignal } = {},
+): Promise<SourcePreviewView> {
+    const params = new URLSearchParams();
+    if (options.versionId) params.set("versionId", options.versionId);
+    if (options.focusEvidenceId) params.set("focusEvidenceId", options.focusEvidenceId);
+    if (options.start !== undefined) params.set("start", String(options.start));
+    params.set("limit", String(options.limit ?? 40));
+    return apiRequest<SourcePreviewView>(
+        `/sources/${encodeURIComponent(documentId)}/preview?${params}`,
+        { signal: options.signal },
+    );
 }
 
 // language is the UI language when the recording is sent; the speech-to-text

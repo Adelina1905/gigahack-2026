@@ -20,6 +20,7 @@ export const api = {
   regenerateResponse: realClient.regenerateResponse,
   transcribeAudio: realClient.transcribeAudio,
   getResponseSpeech: realClient.getResponseSpeech,
+  getSourcePreview: realClient.getSourcePreview,
   getAlerts: realClient.getAlerts,
   getAlertUnreadCount: realClient.getAlertUnreadCount,
   markAlertRead: realClient.markAlertRead,

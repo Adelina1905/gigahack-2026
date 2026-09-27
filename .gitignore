@@ -40,3 +40,6 @@ Manage Data/data/07_embeddings/*
 Manage Data/data/09_review/*
 !Manage Data/data/09_review/.gitkeep
 Manage Data/data/10_traces/*.jsonl
+
+# Per-host compose tweaks
+compose.override.yaml

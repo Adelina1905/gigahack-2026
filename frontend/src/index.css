@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@media (min-width: 1024px) {
+  body:has([data-source-panel]) [data-chat-main] {
+    margin-right: var(--source-panel-width, 440px);
+  }
+}
+
 /* Tailwind v4 doesn't pick up JS/TS config files automatically — load ours explicitly. */
 @config "../tailwind.config.ts";
 
@@ -8,6 +14,75 @@
     @apply font-sans text-base text-text bg-background antialiased;
     /* Raleway defaults to old-style figures; dates and times read better as lining. */
     font-variant-numeric: lining-nums;
+  }
+
+  :focus-visible {
+    scroll-margin: 1rem;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes source-panel-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.source-panel-enter {
+  animation: source-panel-in 200ms ease-out;
+}
+
+.voice-wave {
+  display: inline-flex;
+  height: 2rem;
+  align-items: center;
+  gap: 3px;
+}
+
+.voice-wave > span {
+  display: block;
+  width: 3px;
+  border-radius: 9999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.voice-wave-active > span {
+  animation: voice-bar 700ms ease-in-out infinite;
+}
+
+.voice-wave-active > span:nth-child(2) { animation-delay: -420ms; }
+.voice-wave-active > span:nth-child(3) { animation-delay: -180ms; }
+.voice-wave-active > span:nth-child(4) { animation-delay: -520ms; }
+.voice-wave-active > span:nth-child(5) { animation-delay: -280ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .voice-wave-active > span {
+    animation: none;
+  }
+
+  .source-panel-enter {
+    animation: none;
   }
 }
 

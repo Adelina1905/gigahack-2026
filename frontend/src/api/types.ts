@@ -45,13 +45,55 @@ export interface ResponseView {
     status: string;
     answer: string;
     citations: Array<{
+      id?: string | null;
+      evidenceId?: string | null;
+      versionId?: string | null;
       title: string | null;
       url: string | null;
       exactQuote: string | null;
       documentId: string | null;
+      sourceFile?: string | null;
+      locator?: Record<string, unknown> | null;
+      // Absent on rows stored before the strict RAG contract.
+      publisher?: string | null;
+      publishedDate?: string | null; // YYYY-MM-DD
+      outdated?: boolean | null;
     }>;
     clarificationChoices: Array<{ documentId: string; label: string }> | null;
+    // Why there is no supported answer: a NOT_FOUND reason, or CONFLICTING_DOCUMENTS.
+    reason?: string | null;
+    // e.g. "OUTDATED_SOURCES", "OFF_TOPIC_DROPPED:2", "CLAIMS_REJECTED:1/3".
+    flags?: string[] | null;
   } | null;
+}
+
+export interface SourceSectionView {
+  id: string;
+  order: number;
+  headingPath: string[];
+  text: string;
+  locator: Record<string, unknown>;
+}
+
+export interface SourcePreviewView {
+  documentId: string;
+  versionId: string;
+  title: string;
+  sourceUrl: string | null;
+  sourceFile: string | null;
+  sourceKind: "web" | "pdf" | "text";
+  publishedDate: string | null;
+  // Optional static capture used when the original website cannot be embedded.
+  previewImageUrl?: string | null;
+  // On-demand server capture used when a live HTML or PDF frame fails.
+  screenshotUrl?: string | null;
+  totalSections: number;
+  start: number;
+  focusIndex: number | null;
+  focusSectionId: string | null;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  sections: SourceSectionView[];
 }
 
 export interface ChatCreateRequest {

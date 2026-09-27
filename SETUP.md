@@ -49,7 +49,7 @@ are cached only in the current browser session.
 ## 2. Databases
 
 ```bash
-docker compose up -d        # postgres + qdrant
+docker compose up -d postgres qdrant   # only the databases (apps run locally, sections 3-5)
 docker compose ps
 docker compose exec postgres psql -U smart_city_app -d smart_city -c "\dt"
 curl -s localhost:6333/collections
@@ -57,10 +57,31 @@ curl -s localhost:6333/collections
 
 ```bash
 docker compose down         # stop, keep data
-docker compose down -v      # delete both volumes
+docker compose down -v      # deletes the volumes, including the Qdrant RAG index
 ```
 
 Flyway creates and updates the PostgreSQL schema when the backend starts.
+
+### Everything in Docker
+
+`compose.yaml` also builds and runs the three applications, so sections 3-5 are optional:
+
+```bash
+docker compose up -d --build   # postgres, qdrant, llm, backend, frontend
+docker compose logs -f backend
+```
+
+| Service | Published on | Talks to |
+|---|---|---|
+| `frontend` (nginx serving the built UI, proxies `/api`) | `FRONTEND_PORT` (5173) | `backend:8080` |
+| `backend` | 127.0.0.1:`SERVER_PORT` (8081) | `postgres:5432`, `llm:8000` |
+| `llm` (Python service, live or `CHAT_MODE=demo`) | 127.0.0.1:`LLM_PORT` (8000) | `qdrant:6333`, OpenRouter |
+
+The containers read the same root `.env`; inside the network the service names replace
+`localhost`, so `QDRANT_URL`, `LLM_SERVICE_URL` and the JDBC URL are set by compose.
+Rebuild after pulling (`docker compose up -d --build`); the Qdrant index and PostgreSQL
+data live in named volumes and survive rebuilds and `docker compose down`. Indexing
+(`run_all.py`) still runs outside the containers against `localhost:6333`.
 
 ## 3. Python LLM/RAG service
 
@@ -103,6 +124,19 @@ Qdrant. Build the index offline, never while the service is serving users:
 ## 4. Java gateway
 
 Requires JDK 25 (`sudo apt install openjdk-25-jdk-headless` on Debian).
+Chrome or Chromium is used to capture a current screenshot when a cited HTML website
+cannot be displayed in the embedded source preview. PDFs up to 50 MB are rendered
+directly to a first-page PNG fallback. Common browser executable locations are
+detected automatically; set `SCREENSHOT_BROWSER_PATH` in the root `.env` for another location.
+
+Existing Qdrant indexes created before source previews were introduced need a one-time,
+local-only backfill. It reuses stored evidence and does not call any AI provider:
+
+```bash
+cd "Manage Data"
+.venv/bin/python backfill_source_previews.py --replace
+# Windows: .\.venv\Scripts\python.exe backfill_source_previews.py --replace
+```
 
 ```bash
 cd backend

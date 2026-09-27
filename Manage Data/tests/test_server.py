@@ -17,13 +17,14 @@ try:
 except ImportError:  # pragma: no cover - server extras not installed
     TestClient = None
 
-from chat_fakes import RecordingLlm, RecordingRag
+from chat_fakes import RecordingRag
 from municipal_rag.chat_service import ChatService
 
 
-def client_for(rag: RecordingRag, llm: RecordingLlm, llm_configured: bool = True) -> "TestClient":
+def client_for(rag: RecordingRag, llm_configured: bool = True, source_preview_service=None) -> "TestClient":
     from municipal_rag.server import create_app
-    return TestClient(create_app(ChatService(rag, llm), rag, llm_configured))
+    return TestClient(create_app(ChatService(rag), rag, llm_configured,
+                                 source_preview_service=source_preview_service))
 
 
 @unittest.skipIf(TestClient is None, "requirements-server.txt is not installed")
@@ -32,45 +33,87 @@ class ServerTests(unittest.TestCase):
         return {"chatId": str(uuid.uuid4()), "message": "Salut", "history": [], **overrides}
 
     def test_health_reports_flags(self) -> None:
-        response = client_for(RecordingRag(False), RecordingLlm(), llm_configured=False).get("/health")
+        response = client_for(RecordingRag(False), llm_configured=False).get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"mode": "live", "llmConfigured": False, "ragAvailable": False})
-        response = client_for(RecordingRag(True), RecordingLlm(), llm_configured=True).get("/health")
+        response = client_for(RecordingRag(True), llm_configured=True).get("/health")
         self.assertEqual(response.json(), {"mode": "live", "llmConfigured": True, "ragAvailable": True})
 
-    def test_chat_llm_response_matches_contract(self) -> None:
-        llm = RecordingLlm("Bună ziua")
-        history = [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}]
-        response = client_for(RecordingRag(False), llm).post("/v1/chat", json=self.body(message="  Salut  ", history=history))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"mode": "llm", "status": "LLM", "answer": "Bună ziua",
-                                           "citations": [], "clarificationChoices": None})
-        self.assertEqual([item["content"] for item in llm.calls[0][1:]], ["a", "b", "Salut"])
+    def test_chat_without_index_returns_503_instead_of_an_ungrounded_answer(self) -> None:
+        response = client_for(RecordingRag(False)).post("/v1/chat", json=self.body())
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"detail": "The municipal document index is not available"})
 
     def test_chat_rag_response_matches_contract(self) -> None:
-        rag = RecordingRag(True, {"status": "PARTIAL", "answer": "Parțial [S1]", "citations": [
-            {"id": "S1", "title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1", "locator": {}}]})
-        response = client_for(rag, RecordingLlm()).post("/v1/chat", json=self.body())
+        rag = RecordingRag(True, {"status": "PARTIAL", "answer": "Parțial [S1]", "flags": ["CLAIMS_REJECTED:1/2", "OUTDATED_SOURCES"],
+            "citations": [{"id": "S1", "title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1", "locator": {},
+                           "publisher": "detsriscani.md", "publishedDate": "2023-04-04", "outdated": True}]})
+        history = [{"role": "user", "content": "Înainte"}, {"role": "assistant", "content": "Răspuns"}]
+        response = client_for(rag).post("/v1/chat", json=self.body(history=history))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"mode": "rag", "status": "PARTIAL", "answer": "Parțial [S1]",
-            "citations": [{"title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1"}],
-            "clarificationChoices": None})
+            "citations": [{"id": "S1", "evidenceId": None, "versionId": None, "title": "Doc",
+                "url": None, "exactQuote": "citat", "documentId": "d1", "sourceFile": None,
+                "locator": {}, "publisher": "detsriscani.md", "publishedDate": "2023-04-04", "outdated": True}],
+            "clarificationChoices": None, "reason": None, "flags": ["CLAIMS_REJECTED:1/2", "OUTDATED_SOURCES"]})
+        self.assertEqual(rag.histories, [history])
+
+    def test_chat_not_found_carries_reason_and_no_citations(self) -> None:
+        rag = RecordingRag(True, {"status": "NOT_FOUND", "answer": "Nu am găsit.", "reason": "OUT_OF_SCOPE",
+                                  "flags": ["OFF_TOPIC_DROPPED:10"], "citations": []})
+        body = client_for(rag).post("/v1/chat", json=self.body()).json()
+        self.assertEqual((body["status"], body["reason"], body["flags"], body["citations"]),
+                         ("NOT_FOUND", "OUT_OF_SCOPE", ["OFF_TOPIC_DROPPED:10"], []))
+
+    def test_source_preview_forwards_only_known_identifiers(self) -> None:
+        class PreviewService:
+            calls = []
+
+            def preview(self, document_id, version_id, focus_evidence_id, start, limit):
+                self.calls.append((document_id, version_id, focus_evidence_id, start, limit))
+                return {
+                    "documentId": document_id, "versionId": version_id, "title": "Document",
+                    "sourceUrl": "https://example.com/doc.pdf", "sourceKind": "pdf",
+                    "totalSections": 1, "start": 0, "focusIndex": 0,
+                    "focusSectionId": "p1", "hasPrevious": False, "hasNext": False,
+                    "sections": [{"id": "p1", "order": 0, "headingPath": ["Intro"],
+                                  "text": "Safe stored text", "locator": {"page": 2}}],
+                }
+
+        service = PreviewService()
+        client = client_for(RecordingRag(False), source_preview_service=service)
+        response = client.get("/v1/sources/doc-1/preview",
+                              params={"versionId": "v1", "focusEvidenceId": "e1", "limit": 12})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(service.calls, [("doc-1", "v1", "e1", None, 12)])
+        self.assertEqual(response.json()["sections"][0]["text"], "Safe stored text")
+
+    def test_source_preview_validates_bounds_and_is_unavailable_without_service(self) -> None:
+        client = client_for(RecordingRag(False))
+        self.assertEqual(client.get("/v1/sources/doc/preview").status_code, 503)
+        class PreviewService:
+            def preview(self, *_args):
+                raise AssertionError("invalid requests must not reach the service")
+        client = client_for(RecordingRag(False), source_preview_service=PreviewService())
+        self.assertEqual(client.get("/v1/sources/doc/preview?start=-1").status_code, 400)
+        self.assertEqual(client.get("/v1/sources/doc/preview?limit=101").status_code, 400)
 
     def test_chat_clarification_choices(self) -> None:
         rag = RecordingRag(True, {"status": "NEEDS_CLARIFICATION", "clarificationQuestion": "Care?",
             "clarificationChoices": [{"documentId": "a", "label": "A"}], "citations": []})
-        response = client_for(rag, RecordingLlm()).post("/v1/chat", json=self.body())
+        response = client_for(rag).post("/v1/chat", json=self.body())
         self.assertEqual(response.json()["clarificationChoices"], [{"documentId": "a", "label": "A"}])
         self.assertEqual(response.json()["answer"], "Care?")
+        self.assertEqual((response.json()["reason"], response.json()["flags"]), (None, []))
 
-    def test_llm_failure_maps_to_503(self) -> None:
-        llm = RecordingLlm(error=RuntimeError("OPENROUTER_API_KEY is not configured"))
-        response = client_for(RecordingRag(False), llm).post("/v1/chat", json=self.body())
+    def test_rag_failure_maps_to_503(self) -> None:
+        rag = RecordingRag(True, {"status": "UNAVAILABLE", "confidence": {"reasons": ["OPENROUTER_API_KEY is not configured"]}})
+        response = client_for(rag).post("/v1/chat", json=self.body())
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json(), {"detail": "OPENROUTER_API_KEY is not configured"})
 
     def test_validation_errors_return_422(self) -> None:
-        client = client_for(RecordingRag(False), RecordingLlm())
+        client = client_for(RecordingRag(False))
         cases = [
             self.body(message="   "),
             self.body(message="x" * 8001),
@@ -105,7 +148,7 @@ class ServerTests(unittest.TestCase):
                           "integration and saved conversations. It is not an AI answer or official "
                           "municipal information.\n\nExample link for testing: https://example.com "
                           "(demonstration only; not a supporting source).",
-                "citations": [], "clarificationChoices": None,
+                "citations": [], "clarificationChoices": None, "reason": None, "flags": [],
             })
             self.assertEqual(client.post("/v1/chat", json=self.body(message="  ")).status_code, 422)
             self.assertEqual(client.post("/v1/chat", json=self.body(chatId="bad")).status_code, 422)

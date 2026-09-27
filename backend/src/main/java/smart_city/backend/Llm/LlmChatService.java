@@ -63,7 +63,9 @@ public class LlmChatService {
                 reply.mode(),
                 reply.status(),
                 toSources(reply),
-                OffsetDateTime.now(clock)
+                OffsetDateTime.now(clock),
+                reply.reason(),
+                reply.flagsOrEmpty()
         );
     }
 

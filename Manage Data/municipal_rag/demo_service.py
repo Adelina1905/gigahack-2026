@@ -16,4 +16,4 @@ class DemoChatService:
             "Example link for testing: https://example.com "
             "(demonstration only; not a supporting source)."
         )
-        return ChatReply(mode="demo", status="DEMO", answer=answer)
+        return ChatReply(mode="demo", status="DEMO", answer=answer, reason=None, flags=[])

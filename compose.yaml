@@ -33,8 +33,55 @@ services:
       timeout: 5s
       retries: 10
 
+  llm:
+    build: ./Manage Data
+    restart: unless-stopped
+    environment:
+      CHAT_MODE: ${CHAT_MODE:-live}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_STT_MODEL: ${OPENROUTER_STT_MODEL:-openai/whisper-large-v3-turbo}
+      OPENROUTER_TTS_MODEL: ${OPENROUTER_TTS_MODEL:-microsoft/mai-voice-2-flash}
+      OPENROUTER_TTS_VOICE: ${OPENROUTER_TTS_VOICE:-en-US-Harper:MAI-Voice-2}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+    ports:
+      - "127.0.0.1:${LLM_PORT:-8000}:8000"
+    volumes:
+      - llm_traces:/app/data/10_traces
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      LLM_SERVICE_URL: http://llm:8000
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://staging.faflist.solutions}
+      ALERTS_ENABLED: ${ALERTS_ENABLED:-true}
+    ports:
+      - "127.0.0.1:${SERVER_PORT:-8081}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      llm:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
     name: gigahack-postgres18-data
   qdrant_data:
     name: gigahack-qdrant-data
+  llm_traces:
+    name: gigahack-llm-traces
