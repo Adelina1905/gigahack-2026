@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.Duration;
+import java.net.URI;
 
 import smart_city.backend.Source.dto.SourcePreviewView;
 
@@ -66,5 +67,24 @@ public class SourcePreviewController {
                 .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
                 .contentType(MediaType.IMAGE_PNG)
                 .body(image);
+    }
+
+    @GetMapping("/{documentId}/open")
+    public ResponseEntity<byte[]> open(
+            @PathVariable @Size(min = 1, max = 256) String documentId,
+            @RequestParam(required = false) String versionId
+    ) {
+        SourcePreviewView source = client.get(documentId, versionId, null, null, 1);
+        var pdf = websitePreviewService.inlinePdf(source.sourceUrl(), source.sourceKind());
+        if (pdf.isPresent()) {
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header("Content-Disposition", "inline; filename=\"municipal-source.pdf\"")
+                    .body(pdf.get());
+        }
+        return ResponseEntity.status(302)
+                .location(URI.create(source.sourceUrl()))
+                .build();
     }
 }

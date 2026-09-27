@@ -37,6 +37,14 @@ class WebsitePreviewServiceTest {
                 .isTrue();
         assertThat(WebsitePreviewService.looksLikePdf(URI.create("https://8.8.8.8/page"), "web"))
                 .isFalse();
+        assertThat(WebsitePreviewService.looksLikePdf(
+                URI.create("https://8.8.8.8/download/123"), "text",
+                "application/octet-stream", "attachment; filename=\"municipal-act.pdf\""))
+                .isTrue();
+        assertThat(WebsitePreviewService.looksLikePdf(
+                URI.create("https://8.8.8.8/download/123"), "text",
+                "application/pdf", ""))
+                .isTrue();
     }
 
     @Test

@@ -1,4 +1,5 @@
 import { useI18n } from "../i18n/context";
+import { getSourceOpenUrl } from "../api/client";
 import type { SourceDocument } from "../types/chat";
 import { safeHttpUrl } from "./sources/safeLink";
 import OlderDocumentBadge from "./sources/OlderDocumentBadge";
@@ -29,6 +30,9 @@ function CitationPills({ sources, activeIndex = null, controlsId, onSelect }: Ci
     <ul aria-label={t.message.citedIn} className="mt-2 flex flex-wrap gap-1.5 whitespace-normal">
       {sources.map((source, i) => {
         const link = safeHttpUrl(source.link);
+        const openLink = link && source.documentId
+          ? getSourceOpenUrl(source.documentId, source.versionId)
+          : link;
         const hostname = link ? getHostname(link) : "";
         return (
           <li key={`${source.documentId ?? source.link}-${i}`} className="inline-flex items-center gap-1">
@@ -47,6 +51,18 @@ function CitationPills({ sources, activeIndex = null, controlsId, onSelect }: Ci
               <span className="font-semibold">{i + 1}</span>
               <span className="truncate">{hostname || source.title}</span>
             </button>
+            {openLink && (
+              <a
+                href={openLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${t.message.openSource}: ${source.title}`}
+                title={t.message.openSource}
+                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-700 hover:bg-primary-50 hover:text-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
             <OlderDocumentBadge source={source} />
           </li>
         );
