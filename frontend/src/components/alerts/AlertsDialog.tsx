@@ -151,8 +151,8 @@ function AlertsDialog({ scope, title, onClose, onAlertsChanged, client }: Alerts
               <span aria-hidden="true" className={enabled ? "text-primary-700" : "text-text-muted"}>
                 {enabled ? t.alerts.settings.on : t.alerts.settings.off}
               </span>
-              <span aria-hidden="true" className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? "bg-primary" : "bg-border-strong"}`}>
-                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+              <span aria-hidden="true" className={`relative block h-5 w-9 shrink-0 rounded-full transition-colors ${enabled ? "bg-primary" : "bg-border-strong"}`}>
+                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-4" : "translate-x-0"}`} />
               </span>
             </button>
           </div>
