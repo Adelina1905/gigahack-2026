@@ -22,9 +22,20 @@ const STORAGE_KEY = "smart-city-mock-api";
 // Replies shaped like the real gateway output (see Manage Data/municipal_rag):
 // grounded RAG answers are one claim per line ending in "[S1]" markers, with the
 // cited corpus documents attached; LLM fallback answers carry no documents; a
-// clarification lists its choices as "- " lines. Titles and links are real corpus sources.
-type MockCitation = NonNullable<ResponseView["aiReply"]>["citations"][number];
-type MockReply = { text: string; documents: DocumentView[]; citations?: MockCitation[] };
+// clarification lists its choices as "- " lines. Titles and links are real corpus sources,
+// except in the flagged examples (not found, contradiction), which have no link.
+type MockAiReply = NonNullable<ResponseView["aiReply"]>;
+type MockCitation = MockAiReply["citations"][number];
+type MockReply = {
+  text: string;
+  documents: DocumentView[];
+  citations?: MockCitation[];
+  // RAG outcome; defaults to SUPPORTED when there are citations.
+  status?: string;
+  reason?: string;
+  flags?: string[];
+  choices?: MockAiReply["clarificationChoices"];
+};
 
 const EVENTS_DOCUMENT: DocumentView = {
   id: 1,
@@ -70,7 +81,9 @@ const EVENTS_REPLY: MockReply = {
   }],
 };
 
+// The 2024 evaluation is older than the 2025 report, so it is flagged as outdated.
 const SCHOOLS_REPLY: MockReply = {
+  flags: ["OUTDATED_SOURCES"],
   text: [
     "Pe parcursul a 3 zile (20, 21 și 22 august 2024), 5 echipe de verificare create prin ordinul DGETS s-au deplasat la instituțiile de învățământ primar și secundar, ciclul I și II, din municipiu. [S1]",
     "Scopul vizitelor a fost verificarea pregătirii instituțiilor către noul an școlar 2024-2025. [S1] [S2]",
@@ -87,6 +100,9 @@ const SCHOOLS_REPLY: MockReply = {
       documentId: "school-evaluation-2024",
       sourceFile: "evaluarea-institutiilor.html",
       locator: { startLine: 24, endLine: 27 },
+      publisher: "Direcția generală educație, tineret și sport",
+      publishedDate: "2024-08-23",
+      outdated: true,
     },
     {
       id: "S2",
@@ -98,6 +114,9 @@ const SCHOOLS_REPLY: MockReply = {
       documentId: "dgets-scan-2025",
       sourceFile: "scan-dgets-2025-09-30.pdf",
       locator: { page: 2 },
+      publisher: "Direcția generală educație, tineret și sport",
+      publishedDate: "2025-09-30",
+      outdated: false,
     },
   ],
 };
@@ -166,9 +185,50 @@ const SOURCE_PREVIEWS: Record<string, SourcePreviewView> = {
 };
 
 const CLARIFICATION_REPLY: MockReply = {
+  status: "NEEDS_CLARIFICATION",
   text: "La care document vă referiți?\n- Evenimente municipale\n- Evaluarea instituțiilor de învățământ primar și secundar, ciclul I și II către debutul anului de studii 2024-2025",
   documents: [],
+  citations: [],
+  choices: [
+    { documentId: "events-2026", label: EVENTS_DOCUMENT.title },
+    { documentId: "school-evaluation-2024", label: SCHOOL_EVALUATION_DOCUMENT.title },
+  ],
 };
+
+// Two notices give different fares for the same route.
+const CONTRADICTION_REPLY: MockReply = {
+  status: "CONTRADICTION",
+  reason: "CONFLICTING_DOCUMENTS",
+  text: [
+    "Un anunț indică un tarif de 6 lei pentru o călătorie cu troleibuzul. [S1]",
+    "Un alt anunț indică un tarif de 8 lei pentru aceeași călătorie. [S2]",
+  ].join("\n"),
+  documents: [],
+  citations: [
+    {
+      id: "S1", evidenceId: "fare-notice-a", versionId: "demo-2025-01", title: "Anunț privind tariful de călătorie (ianuarie 2025)",
+      url: null, exactQuote: "Tariful pentru o călătorie cu troleibuzul este de 6 lei.", documentId: "demo-fare-2025-01",
+      sourceFile: "anunt-tarif-2025-01.txt", locator: { startLine: 3, endLine: 3 }, publishedDate: "2025-01-15", outdated: false,
+    },
+    {
+      id: "S2", evidenceId: "fare-notice-b", versionId: "demo-2025-02", title: "Anunț privind tariful de călătorie (februarie 2025)",
+      url: null, exactQuote: "Tariful pentru o călătorie cu troleibuzul este de 8 lei.", documentId: "demo-fare-2025-02",
+      sourceFile: "anunt-tarif-2025-02.txt", locator: { startLine: 4, endLine: 4 }, publishedDate: "2025-02-10", outdated: false,
+    },
+  ],
+};
+
+// Strict RAG replies without an answer, one per NOT_FOUND reason.
+const notFoundReply = (reason: string, text: string): MockReply =>
+  ({ status: "NOT_FOUND", reason, text, documents: [], citations: [] });
+const NO_EVIDENCE_REPLY = notFoundReply("NO_RELEVANT_EVIDENCE",
+  "Documentele municipale indexate nu conțin informații despre acest subiect.");
+const LACKS_VALUE_REPLY = notFoundReply("EVIDENCE_LACKS_VALUE",
+  "Documentele despre parcări nu menționează tariful cerut.");
+const UNVERIFIED_REPLY = notFoundReply("CLAIMS_UNVERIFIED",
+  "Afirmațiile despre buget nu au putut fi confirmate de fragmentele găsite.");
+const OUT_OF_SCOPE_REPLY = notFoundReply("OUT_OF_SCOPE",
+  "Pot răspunde doar la întrebări despre informațiile publicate de Primăria municipiului Chișinău.");
 
 // Plain LLM fallback, used when the corpus has no answer.
 const LLM_REPLIES: MockReply[] = [
@@ -187,15 +247,23 @@ const LLM_REPLY_RU: MockReply = {
   documents: [],
 };
 
-const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, ...LLM_REPLIES];
+const ALL_REPLIES = [EVENTS_REPLY, SCHOOLS_REPLY, CLARIFICATION_REPLY, CONTRADICTION_REPLY, NO_EVIDENCE_REPLY, ...LLM_REPLIES];
 
 // Keywords steer the reply like retrieval would; anything else gets a random one.
 function pickReply(prompt: string, exclude?: string): MockReply {
   const text = prompt.toLowerCase();
   if (/[а-яё]/.test(text)) return LLM_REPLY_RU;
+  // Checked first, so choosing a clarification label gets its document's answer.
+  if (text === EVENTS_DOCUMENT.title.toLowerCase()) return EVENTS_REPLY;
+  if (text === SCHOOL_EVALUATION_DOCUMENT.title.toLowerCase()) return SCHOOLS_REPLY;
   if (/t[aâ]rg|fair|eveniment|festival|event/.test(text)) return EVENTS_REPLY;
   if (/[sș]coal|[sș]colar|educa|[iî]nv[aă][tț]|dgets|school/.test(text)) return SCHOOLS_REPLY;
   if (/document/.test(text)) return CLARIFICATION_REPLY;
+  if (/tarif|fare|troleibuz|trolleybus/.test(text)) return CONTRADICTION_REPLY;
+  if (/parc[aă]r|parking/.test(text)) return LACKS_VALUE_REPLY;
+  if (/buget|budget/.test(text)) return UNVERIFIED_REPLY;
+  if (/vreme|meteo|weather|fotbal|football|reet[aă]|recipe/.test(text)) return OUT_OF_SCOPE_REPLY;
+  if (/cimitir|cemetery|zoo/.test(text)) return NO_EVIDENCE_REPLY;
   const pool = ALL_REPLIES.filter((reply) => reply.text !== exclude);
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -237,10 +305,13 @@ const now = () => new Date().toISOString();
 const notFound = (what: string) => new ApiError(`${what} not found`, 404);
 const aiReplyFor = (reply: MockReply): ResponseView["aiReply"] => reply.citations ? {
   mode: "rag",
-  status: "SUPPORTED",
-  answer: reply.text,
+  status: reply.status ?? "SUPPORTED",
+  // Like the gateway, the stored answer excludes the "- " choice lines added to the text.
+  answer: reply.choices ? reply.text.split("\n")[0] : reply.text,
   citations: reply.citations,
-  clarificationChoices: null,
+  clarificationChoices: reply.choices ?? null,
+  reason: reply.reason ?? null,
+  flags: reply.flags ?? [],
 } : null;
 
 const titleFrom = (text: string) => {

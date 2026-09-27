@@ -88,6 +88,8 @@ class LlmControllerTest {
                 .andExpect(jsonPath("$.sources[0].title").value("doc-9"))
                 .andExpect(jsonPath("$.sources[0].link").value("https://x"))
                 .andExpect(jsonPath("$.sources[0].quote").value("q"))
+                .andExpect(jsonPath("$.reason").doesNotExist())
+                .andExpect(jsonPath("$.flags").isEmpty())
                 .andExpect(jsonPath("$.createdAt").value("2026-01-01T10:00:00Z"));
     }
 

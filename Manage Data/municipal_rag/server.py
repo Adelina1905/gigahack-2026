@@ -55,6 +55,9 @@ class Citation(BaseModel):
     documentId: str | None = None
     sourceFile: str | None = None
     locator: dict[str, Any] | None = None
+    publisher: str | None = None
+    publishedDate: str | None = None
+    outdated: bool = False
 
 
 class ClarificationChoice(BaseModel):
@@ -68,6 +71,9 @@ class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation]
     clarificationChoices: list[ClarificationChoice] | None = None
+    # NOT_FOUND: NO_RELEVANT_EVIDENCE | EVIDENCE_LACKS_VALUE | CLAIMS_UNVERIFIED | OUT_OF_SCOPE; CONTRADICTION: CONFLICTING_DOCUMENTS.
+    reason: str | None = None
+    flags: list[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
@@ -174,6 +180,19 @@ class AlertMatchResponse(BaseModel):
     matches: list[AlertMatchOut]
 
 
+def citation(item: dict[str, Any]) -> Citation:
+    values: dict[str, Any] = {}
+    for key in Citation.model_fields:
+        value = item.get(key)
+        if key == "locator":
+            values[key] = value
+        elif key == "outdated":
+            values[key] = value is True
+        else:
+            values[key] = None if value is None else str(value)
+    return Citation(**values)
+
+
 def create_app(chat_service: ReplyService, rag: RagService | None, llm_configured: bool,
                *, mode: Literal["live", "demo"] = "live",
                voice_service: OpenRouterVoiceService | None = None,
@@ -196,11 +215,10 @@ def create_app(chat_service: ReplyService, rag: RagService | None, llm_configure
             LOGGER.warning("LLM unavailable for chat %s: %s", request.chatId, error)
             raise HTTPException(status_code=503, detail=str(error) or "LLM unavailable") from None
         return ChatResponse(mode=reply.mode, status=reply.status, answer=reply.answer,
-            citations=[Citation(**{key: item.get(key) if key == "locator" else
-                (None if item.get(key) is None else str(item.get(key))) for key in Citation.model_fields})
-                for item in reply.citations],
+            citations=[citation(item) for item in reply.citations],
             clarificationChoices=None if reply.clarification_choices is None else
-                [ClarificationChoice(documentId=str(item.get("documentId")), label=str(item.get("label"))) for item in reply.clarification_choices])
+                [ClarificationChoice(documentId=str(item.get("documentId")), label=str(item.get("label"))) for item in reply.clarification_choices],
+            reason=reply.reason, flags=list(reply.flags))
 
     @app.get("/v1/sources/{document_id}/preview", response_model=SourcePreviewResponse)
     def source_preview(document_id: str, versionId: str | None = None,

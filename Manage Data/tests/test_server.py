@@ -45,15 +45,25 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(response.json(), {"detail": "The municipal document index is not available"})
 
     def test_chat_rag_response_matches_contract(self) -> None:
-        rag = RecordingRag(True, {"status": "PARTIAL", "answer": "Parțial [S1]", "citations": [
-            {"id": "S1", "title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1", "locator": {}}]})
-        response = client_for(rag).post("/v1/chat", json=self.body())
+        rag = RecordingRag(True, {"status": "PARTIAL", "answer": "Parțial [S1]", "flags": ["CLAIMS_REJECTED:1/2", "OUTDATED_SOURCES"],
+            "citations": [{"id": "S1", "title": "Doc", "url": None, "exactQuote": "citat", "documentId": "d1", "locator": {},
+                           "publisher": "detsriscani.md", "publishedDate": "2023-04-04", "outdated": True}]})
+        history = [{"role": "user", "content": "Înainte"}, {"role": "assistant", "content": "Răspuns"}]
+        response = client_for(rag).post("/v1/chat", json=self.body(history=history))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"mode": "rag", "status": "PARTIAL", "answer": "Parțial [S1]",
             "citations": [{"id": "S1", "evidenceId": None, "versionId": None, "title": "Doc",
                 "url": None, "exactQuote": "citat", "documentId": "d1", "sourceFile": None,
-                "locator": {}}],
-            "clarificationChoices": None})
+                "locator": {}, "publisher": "detsriscani.md", "publishedDate": "2023-04-04", "outdated": True}],
+            "clarificationChoices": None, "reason": None, "flags": ["CLAIMS_REJECTED:1/2", "OUTDATED_SOURCES"]})
+        self.assertEqual(rag.histories, [history])
+
+    def test_chat_not_found_carries_reason_and_no_citations(self) -> None:
+        rag = RecordingRag(True, {"status": "NOT_FOUND", "answer": "Nu am găsit.", "reason": "OUT_OF_SCOPE",
+                                  "flags": ["OFF_TOPIC_DROPPED:10"], "citations": []})
+        body = client_for(rag).post("/v1/chat", json=self.body()).json()
+        self.assertEqual((body["status"], body["reason"], body["flags"], body["citations"]),
+                         ("NOT_FOUND", "OUT_OF_SCOPE", ["OFF_TOPIC_DROPPED:10"], []))
 
     def test_source_preview_forwards_only_known_identifiers(self) -> None:
         class PreviewService:
@@ -94,6 +104,7 @@ class ServerTests(unittest.TestCase):
         response = client_for(rag).post("/v1/chat", json=self.body())
         self.assertEqual(response.json()["clarificationChoices"], [{"documentId": "a", "label": "A"}])
         self.assertEqual(response.json()["answer"], "Care?")
+        self.assertEqual((response.json()["reason"], response.json()["flags"]), (None, []))
 
     def test_rag_failure_maps_to_503(self) -> None:
         rag = RecordingRag(True, {"status": "UNAVAILABLE", "confidence": {"reasons": ["OPENROUTER_API_KEY is not configured"]}})
@@ -137,7 +148,7 @@ class ServerTests(unittest.TestCase):
                           "integration and saved conversations. It is not an AI answer or official "
                           "municipal information.\n\nExample link for testing: https://example.com "
                           "(demonstration only; not a supporting source).",
-                "citations": [], "clarificationChoices": None,
+                "citations": [], "clarificationChoices": None, "reason": None, "flags": [],
             })
             self.assertEqual(client.post("/v1/chat", json=self.body(message="  ")).status_code, 422)
             self.assertEqual(client.post("/v1/chat", json=self.body(chatId="bad")).status_code, 422)

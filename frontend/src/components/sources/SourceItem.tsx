@@ -1,6 +1,7 @@
 import { useI18n } from "../../i18n/context";
 import type { SourceDocument } from "../../types/chat";
 import { safeHttpUrl } from "./safeLink";
+import OlderDocumentBadge from "./OlderDocumentBadge";
 
 interface SourceItemProps {
   source: SourceDocument;
@@ -38,6 +39,7 @@ function SourceItem({ source, index }: SourceItemProps) {
         <span className={`truncate text-sm font-medium text-primary${link ? " hover:underline" : ""}`}>
           {source.title}
         </span>
+        {source.outdated && <span className="mt-0.5"><OlderDocumentBadge source={source} /></span>}
         {source.exactQuote && <span className="mt-1 text-xs text-text-muted">{source.exactQuote}</span>}
         {(hostname || addedDate) && (
           <span className="truncate text-xs text-text-subtle">

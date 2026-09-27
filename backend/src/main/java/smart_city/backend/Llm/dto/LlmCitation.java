@@ -14,9 +14,18 @@ public record LlmCitation(
         String evidenceId,
         String versionId,
         String sourceFile,
-        Map<String, Object> locator
+        Map<String, Object> locator,
+        String publisher,
+        // "YYYY-MM-DD", kept as text exactly as the LLM service sends it.
+        String publishedDate,
+        Boolean outdated
 ) {
+    public LlmCitation {
+        // Older services and stored replies have no flag: not outdated.
+        outdated = Boolean.TRUE.equals(outdated);
+    }
+
     public LlmCitation(String title, String url, String exactQuote, String documentId) {
-        this(title, url, exactQuote, documentId, null, null, null, null, null);
+        this(title, url, exactQuote, documentId, null, null, null, null, null, null, null, false);
     }
 }

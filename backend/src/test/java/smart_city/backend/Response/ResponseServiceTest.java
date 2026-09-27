@@ -334,4 +334,47 @@ class ResponseServiceTest extends smart_city.backend.IsolatedDatabaseTest {
                 List.of(), java.util.Collections.singletonList(null)));
         assertThat(send("Clarify").errorCode()).isEqualTo("INVALID_AI_REPLY");
     }
+
+    @Test
+    void notFoundReplyWithReasonAndFlagsIsStored() {
+        LlmReply reply = new LlmReply("rag", "NOT_FOUND", "Nu am găsit informația.", List.of(), null,
+                "NO_RELEVANT_EVIDENCE", List.of("OFF_TOPIC_DROPPED:3"));
+        gateway.replyWith(reply);
+
+        ResponseView created = send("Cine a câștigat meciul?");
+
+        assertThat(created.generationStatus()).isEqualTo(GenerationStatus.COMPLETED);
+        assertThat(created.text()).isEqualTo("Nu am găsit informația.");
+        assertThat(created.documents()).isEmpty();
+        assertThat(responseService.getResponse(clientId, chatId, created.id()).aiReply()).isEqualTo(reply);
+    }
+
+    @Test
+    void citationProvenanceRoundTripsThroughStorage() {
+        LlmReply reply = new LlmReply("rag", "SUPPORTED", "Taxa este 10 lei.", List.of(new LlmCitation(
+                "Decizia 1", "https://cmc.md/1", "q", "d1", "S1", "e1", "v1", "decizia-1.pdf",
+                java.util.Map.of("page", 2), "Consiliul Municipal Chișinău", "2019-03-14", true)),
+                null, null, List.of("OUTDATED_SOURCES"));
+        gateway.replyWith(reply);
+
+        ResponseView created = send("Cât costă?");
+
+        assertThat(responseService.getResponse(clientId, chatId, created.id()).aiReply()).isEqualTo(reply);
+    }
+
+    @Test
+    void replyStoredBeforeReasonAndFlagsStillReads() {
+        var created = send("Old question");
+        jdbc.update("update responses set ai_reply = cast(? as jsonb) where id = ?", """
+                {"mode": "rag", "status": "SUPPORTED", "answer": "Old answer",
+                 "citations": [{"title": "T", "url": null, "exactQuote": "q", "documentId": "d"}],
+                 "clarificationChoices": null}
+                """, created.id());
+
+        LlmReply stored = responseService.getResponse(clientId, chatId, created.id()).aiReply();
+
+        assertThat(stored.reason()).isNull();
+        assertThat(stored.flagsOrEmpty()).isEmpty();
+        assertThat(stored.citations()).containsExactly(new LlmCitation("T", null, "q", "d"));
+    }
 }
