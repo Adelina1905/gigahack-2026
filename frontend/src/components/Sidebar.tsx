@@ -25,9 +25,10 @@ interface SidebarProps {
   onRenameProject: (projectId: string, name: string) => void;
   onDeleteProject: (projectId: string) => void;
   onNewChatInProject: (projectId: string) => void;
-  // Unread alerts per project id.
-  unreadAlertsByProject?: Record<string, number>;
-  onOpenProjectAlerts?: (project: ProjectSummary) => void;
+  trackerCount: number;
+  isTrackersOpen: boolean;
+  onOpenTrackers: () => void;
+  onCreateTracker: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
   isOpen: boolean;
   onClose: () => void;
@@ -93,8 +94,10 @@ function Sidebar({
   onRenameProject,
   onDeleteProject,
   onNewChatInProject,
-  unreadAlertsByProject,
-  onOpenProjectAlerts,
+  trackerCount,
+  isTrackersOpen,
+  onOpenTrackers,
+  onCreateTracker,
   isOpen,
   onClose,
 }: SidebarProps) {
@@ -193,6 +196,31 @@ function Sidebar({
         </div>
 
         <nav className="relative flex-1 overflow-y-auto px-4 pb-4">
+          <section className="mt-2 border-b border-border pb-3">
+            <button
+              type="button"
+              onClick={onOpenTrackers}
+              aria-label={t.trackers.open}
+              aria-current={isTrackersOpen ? "page" : undefined}
+              className={`flex w-full items-center gap-3 rounded-sm border px-3 py-3 text-left transition-colors ${
+                isTrackersOpen
+                  ? "border-primary bg-primary-50 text-primary-700"
+                  : "border-border bg-background hover:border-primary-200 hover:bg-background-secondary"
+              }`}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-primary text-white">
+                <svg {...iconProps} className="h-4 w-4" aria-hidden="true">
+                  <path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{t.trackers.title}</span>
+                <span className="mt-0.5 block text-xs text-text-subtle">{trackerCount}</span>
+              </span>
+              <svg {...iconProps} className="h-4 w-4 text-text-subtle" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+            </button>
+          </section>
+
           <section aria-labelledby="sidebar-projects-title" className="mt-2">
             <div className="flex items-center justify-between gap-2 pb-1.5">
               <h3 id="sidebar-projects-title">
@@ -234,8 +262,7 @@ function Sidebar({
                     onRenameChat={onRename}
                     onDeleteChat={onDelete}
                     onMoveChat={onMoveChat}
-                    unreadAlerts={unreadAlertsByProject?.[project.id] ?? 0}
-                    onOpenAlerts={onOpenProjectAlerts}
+                    onCreateTracker={onCreateTracker}
                   />
                 ))}
               </ul>

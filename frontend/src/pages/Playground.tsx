@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AlertBell from "../components/alerts/AlertBell";
-import AlertOptInDialog from "../components/alerts/AlertOptInDialog";
-import ProjectAlertsDialog from "../components/alerts/ProjectAlertsDialog";
 import { CityGatesArt, TriumphalArchArt } from "../components/brand/Landmarks";
 import ChatWindow from "../components/ChatWindow";
 import Sidebar from "../components/Sidebar";
 import SiteHeader from "../components/SiteHeader";
+import TrackersView from "../components/trackers/TrackersView";
 import { useActiveChatId } from "../hooks/useActiveChatId";
-import { useAlertOptIn } from "../hooks/useAlertOptIn";
 import { useAlerts } from "../hooks/useAlerts";
 import { useChat } from "../hooks/useChat";
 import { useChats } from "../hooks/useChats";
 import { useProjects } from "../hooks/useProjects";
+import { useTrackers } from "../hooks/useTrackers";
 import { useI18n } from "../i18n/context";
 import type { Alert } from "../types/alerts";
 import { DEFAULT_CHAT_NAME, type ProjectSummary } from "../types/chat";
@@ -22,11 +21,14 @@ function Playground() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const chatList = useChats();
   const projectList = useProjects();
+  const trackerList = useTrackers();
+  const [workspace, setWorkspace] = useState<"chat" | "trackers">("chat");
+  const [selectedTrackerId, setSelectedTrackerId] = useState<string | null>(null);
+  // undefined = overview; null = generic guided setup; project = setup from that project/conversation.
+  const [trackerConversationProject, setTrackerConversationProject] = useState<ProjectSummary | null | undefined>(undefined);
   // The project a chat started from the empty screen will be created in.
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const alerts = useAlerts();
-  const optIn = useAlertOptIn(undefined, { onEnabled: () => void alerts.refreshUnread() });
-  const [alertsProject, setAlertsProject] = useState<ProjectSummary | null>(null);
   // "Ask about this" sends its question once the new draft chat is open.
   const pendingAskRef = useRef<{ projectId: string | null; text: string } | null>(null);
   const [askNonce, setAskNonce] = useState(0);
@@ -55,6 +57,7 @@ function Playground() {
 
   const openChat = useCallback(
     (chatId: string | null) => {
+      setWorkspace("chat");
       if (chatId !== activeChatId) navigate(chatId);
       setIsSidebarOpen(false);
     },
@@ -117,7 +120,6 @@ function Playground() {
   };
 
   const activeChat = chatList.chats.find((candidate) => candidate.id === activeChatId);
-  const activeProjectId = activeChat?.projectId ?? null;
   const { send } = chat;
 
   useEffect(() => {
@@ -126,19 +128,6 @@ function Playground() {
     pendingAskRef.current = null;
     send(pending.text);
   }, [askNonce, activeChatId, draftProjectId, send]);
-
-  // The first answered question in a project may offer alerts for it
-  // (useAlertOptIn asks the server, and only once per project).
-  const hasAnswer = chat.messages.some(
-    (message) => message.role === "assistant" && message.generationStatus === "COMPLETED" && message.content.trim(),
-  );
-  const { consider } = optIn;
-  useEffect(() => {
-    if (activeProjectId && hasAnswer) void consider(activeProjectId);
-  }, [activeProjectId, hasAnswer, consider]);
-  const optInProject = optIn.offer
-    ? projectList.projects.find((project) => project.id === optIn.offer!.projectId)
-    : undefined;
 
   const activeName = activeChat?.name;
   const breadcrumbProjectId = activeChatId ? activeChat?.projectId : draftProjectId;
@@ -181,15 +170,45 @@ function Playground() {
           onRenameProject={(projectId, name) => void projectList.rename(projectId, name)}
           onDeleteProject={(projectId) => void deleteProject(projectId)}
           onNewChatInProject={startNewChatInProject}
-          unreadAlertsByProject={alerts.unread.byProject}
-          onOpenProjectAlerts={(project) => {
-            setAlertsProject(project);
+          trackerCount={trackerList.trackers.length}
+          isTrackersOpen={workspace === "trackers"}
+          onOpenTrackers={() => {
+            setWorkspace("trackers");
+            setTrackerConversationProject(undefined);
+            setSelectedTrackerId((current) => current ?? trackerList.trackers[0]?.id ?? null);
+            setIsSidebarOpen(false);
+          }}
+          onCreateTracker={(project) => {
+            setTrackerConversationProject(project);
+            setWorkspace("trackers");
             setIsSidebarOpen(false);
           }}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
 
+        {workspace === "trackers" ? (
+          <TrackersView
+            trackers={trackerList.trackers}
+            selectedId={selectedTrackerId}
+            projects={projectList.projects}
+            isCreating={trackerConversationProject !== undefined}
+            creationProject={trackerConversationProject}
+            onSelect={setSelectedTrackerId}
+            onStartCreate={() => setTrackerConversationProject(null)}
+            onCancelCreate={() => setTrackerConversationProject(undefined)}
+            onCompleteCreate={(details, project) => {
+              const tracker = trackerList.create(project, details);
+              setSelectedTrackerId(tracker.id);
+              setTrackerConversationProject(undefined);
+            }}
+            onUpdate={trackerList.update}
+            onRemove={(trackerId) => {
+              trackerList.remove(trackerId);
+              setSelectedTrackerId((current) => current === trackerId ? null : current);
+            }}
+          />
+        ) : (
         <div data-chat-main className="relative flex min-w-0 flex-1 flex-col bg-background-canvas transition-[margin] duration-200">
           {/* Landmarks in the margins, like the page background of chisinau.md. */}
           <div
@@ -215,6 +234,21 @@ function Playground() {
               <li aria-current="page" className="truncate text-text-muted">
                 {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
               </li>
+              {chat.messages.length > 0 && (
+                <li className="ml-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTrackerConversationProject(breadcrumbProject ?? null);
+                      setWorkspace("trackers");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-sm border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-xs font-semibold text-primary-700 hover:border-primary"
+                  >
+                    <span aria-hidden="true">+</span>
+                    {t.trackers.trackThisPlan}
+                  </button>
+                </li>
+              )}
             </ol>
           </nav>
 
@@ -227,38 +261,17 @@ function Playground() {
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
-              error={chat.error ?? chatList.error ?? projectList.error ?? optIn.notice}
+              error={chat.error ?? chatList.error ?? projectList.error}
               onDismissError={() => {
                 chat.dismissError();
                 chatList.dismissError();
                 projectList.dismissError();
-                optIn.dismissNotice();
               }}
             />
           </div>
         </div>
+        )}
       </main>
-
-      {alertsProject && (
-        <ProjectAlertsDialog
-          key={alertsProject.id}
-          projectId={alertsProject.id}
-          projectName={alertsProject.name}
-          onClose={() => setAlertsProject(null)}
-          onAlertsChanged={() => void alerts.refreshUnread()}
-        />
-      )}
-
-      {optIn.offer && (
-        <AlertOptInDialog
-          projectName={optInProject?.name ?? ""}
-          topics={optIn.offer.topics.map((topic) => topic.label)}
-          isSaving={optIn.isSaving}
-          error={optIn.error}
-          onEnable={optIn.enable}
-          onDecline={optIn.decline}
-        />
-      )}
     </div>
   );
 }
