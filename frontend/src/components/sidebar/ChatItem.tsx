@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "../../i18n/context";
+import ConfirmDialog from "../ConfirmDialog";
 import { DEFAULT_CHAT_NAME, type ChatSummary, type ProjectSummary } from "../../types/chat";
 import { actionButtonClass, dangerButtonClass, iconProps } from "./iconProps";
 
@@ -89,6 +90,7 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
   const title = chat.name === DEFAULT_CHAT_NAME ? t.sidebar.newChat : chat.name;
   const [isEditing, setIsEditing] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [draft, setDraft] = useState(chat.name);
   const inputRef = useRef<HTMLInputElement>(null);
   // Escape unmounts the input, which can fire a blur; don't save on that one.
@@ -118,8 +120,9 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
     }
   };
 
-  const handleDelete = () => {
-    if (window.confirm(t.sidebar.confirmRemove(title))) onDelete(chat.id);
+  const confirmDelete = () => {
+    setIsConfirmingDelete(false);
+    onDelete(chat.id);
   };
 
   const closeMenu = useCallback(() => setIsMoving(false), []);
@@ -199,8 +202,9 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             aria-label={t.sidebar.remove(title)}
+            aria-haspopup="dialog"
             className={dangerButtonClass}
           >
             <svg {...iconProps} className="h-3.5 w-3.5">
@@ -216,6 +220,15 @@ function ChatItem({ chat, isActive, projects, onSelect, onRename, onDelete, onMo
           projects={projects}
           onPick={pickProject}
           onClose={closeMenu}
+        />
+      )}
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t.sidebar.confirmRemoveTitle}
+          message={t.sidebar.confirmRemove(title)}
+          onConfirm={confirmDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
         />
       )}
     </li>

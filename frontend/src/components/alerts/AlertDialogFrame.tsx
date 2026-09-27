@@ -8,11 +8,22 @@ interface AlertDialogFrameProps {
   children: ReactNode;
   testId?: string;
   className?: string;
+  // "alertdialog" for confirmations; describedBy names the element that explains it.
+  role?: "dialog" | "alertdialog";
+  describedBy?: string;
 }
 
 // The modal shell of ProjectDialog: portalled to the body, closes on Escape
 // or the backdrop, and hands focus back when it unmounts.
-function AlertDialogFrame({ title, onClose, children, testId, className = "max-w-sm" }: AlertDialogFrameProps) {
+function AlertDialogFrame({
+  title,
+  onClose,
+  children,
+  testId,
+  className = "max-w-sm",
+  role = "dialog",
+  describedBy,
+}: AlertDialogFrameProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -49,9 +60,10 @@ function AlertDialogFrame({ title, onClose, children, testId, className = "max-w
       />
       <div
         ref={dialogRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={describedBy}
         className={`relative flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-y-auto rounded-sm border border-border bg-background p-5 shadow-lg ${className}`}
       >
         <h2 id={titleId} className="font-serif text-xl leading-tight text-primary">

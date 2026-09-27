@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useI18n } from "../../i18n/context";
 import type { ChatSummary, ProjectSummary } from "../../types/chat";
+import ConfirmDialog from "../ConfirmDialog";
 import ChatItem from "./ChatItem";
 import { actionButtonClass, dangerButtonClass, iconProps } from "./iconProps";
 
@@ -41,8 +43,11 @@ function ProjectItem({
 }: ProjectItemProps) {
   const { t } = useI18n();
 
-  const handleDelete = () => {
-    if (window.confirm(t.projects.confirmRemove(project.name))) onDelete(project.id);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  const confirmDelete = () => {
+    setIsConfirmingDelete(false);
+    onDelete(project.id);
   };
 
   return (
@@ -93,8 +98,9 @@ function ProjectItem({
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             aria-label={t.projects.remove(project.name)}
+            aria-haspopup="dialog"
             className={dangerButtonClass}
           >
             <svg {...iconProps} className="h-3.5 w-3.5">
@@ -103,6 +109,15 @@ function ProjectItem({
           </button>
         </div>
       </div>
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={t.projects.confirmRemoveTitle}
+          message={t.projects.confirmRemove(project.name)}
+          onConfirm={confirmDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
+      )}
 
       {isExpanded && (
         <ul aria-label={project.name} className="ml-4 flex flex-col gap-0.5 border-l border-border pl-1">
