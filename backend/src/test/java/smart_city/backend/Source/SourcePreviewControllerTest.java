@@ -1,6 +1,7 @@
 package smart_city.backend.Source;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +42,34 @@ class SourcePreviewControllerTest {
         assertThat(response.getBody()).containsExactly(1, 2, 3);
         assertThat(response.getHeaders().getContentType().toString()).isEqualTo("image/png");
         verify(websites).capture("https://example.com/page", "web");
+    }
+
+    @Test
+    void openServesPdfInlineInsteadOfPreservingTheRemoteAttachmentHeader() {
+        SourcePreviewView source = source("doc", "v1", "https://example.com/download/1", null);
+        when(client.get("doc", "v1", null, null, 1)).thenReturn(source);
+        when(websites.inlinePdf(source.sourceUrl(), source.sourceKind()))
+                .thenReturn(Optional.of(new byte[] {1, 2, 3}));
+
+        var response = controller.open("doc", "v1");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(org.springframework.http.MediaType.APPLICATION_PDF);
+        assertThat(response.getHeaders().getFirst("Content-Disposition"))
+                .isEqualTo("inline; filename=\"municipal-source.pdf\"");
+        assertThat(response.getBody()).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void openRedirectsNonPdfWebSources() {
+        SourcePreviewView source = source("doc", "v1", "https://example.com/page", null);
+        when(client.get("doc", "v1", null, null, 1)).thenReturn(source);
+        when(websites.inlinePdf(source.sourceUrl(), source.sourceKind())).thenReturn(Optional.empty());
+
+        var response = controller.open("doc", "v1");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(302);
+        assertThat(response.getHeaders().getLocation()).hasToString("https://example.com/page");
     }
 
     private static SourcePreviewView source(String documentId, String versionId, String url, String image) {

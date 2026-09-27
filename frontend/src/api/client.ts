@@ -28,6 +28,13 @@ import { DEFAULT_CHAT_NAME } from "../types/chat";
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+export function getSourceOpenUrl(documentId: string, versionId?: string | null): string {
+    const params = new URLSearchParams();
+    if (versionId) params.set("versionId", versionId);
+    const search = params.toString();
+    return `${API_BASE_URL}/sources/${encodeURIComponent(documentId)}/open${search ? `?${search}` : ""}`;
+}
+
 // status is 0 when the request never reached the server (offline, CORS, backend down).
 export class ApiError extends Error {
     readonly status: number;
