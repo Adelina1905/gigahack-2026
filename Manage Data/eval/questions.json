@@ -1,0 +1,675 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Strict-RAG evaluation cases for the Chișinău municipal assistant. Document ids were looked up read-only in the municipal_catalog_current / municipal_evidence_current Qdrant aliases (index built 2026-09-26). See README.md for the expectation fields.",
+  "cases": [
+    {
+      "id": "ans-football-pitch-cost-ro",
+      "question": "Cât au costat lucrările la terenul de fotbal de la Liceul „Liviu Deleanu”?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-1ae69b5d3aa977a333efe35a"],
+        "answerPattern": "704[\\s\\u00a0.]?000"
+      }
+    },
+    {
+      "id": "ans-football-pitch-cost-en",
+      "question": "How much did the football pitch works at the Liviu Deleanu lyceum in Chișinău cost?",
+      "language": "en",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-1ae69b5d3aa977a333efe35a"],
+        "answerPattern": "704[\\s\\u00a0.,]?000"
+      }
+    },
+    {
+      "id": "ans-football-pitch-cost-ru",
+      "question": "Сколько стоили работы по футбольному полю в лицее «Ливиу Деляну» в Кишинёве?",
+      "language": "ru",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-1ae69b5d3aa977a333efe35a"],
+        "answerPattern": "704[\\s\\u00a0.,]?000"
+      }
+    },
+    {
+      "id": "ans-debate-academy-dates-ro",
+      "question": "În ce perioadă se desfășoară Academia de Dezbateri Civice 2026 și ce vârstă trebuie să aibă participanții?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-c97bb0d2481c884c07fad354"],
+        "answerPattern": "5\\s*[-–]\\s*9 iulie|16\\s*(și|-|–)\\s*25"
+      }
+    },
+    {
+      "id": "ans-debate-academy-dates-ru",
+      "question": "Когда проходит Академия гражданских дебатов 2026 и какого возраста должны быть участники?",
+      "language": "ru",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-c97bb0d2481c884c07fad354"],
+        "answerPattern": "5\\s*[-–]\\s*9|16\\s*(и|-|–|до)\\s*25"
+      }
+    },
+    {
+      "id": "ans-youth-prize-amount-ro",
+      "question": "Care este valoarea premiului bănesc acordat laureaților Premiului Municipal pentru Tineret 2025?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": [
+          "municipal-463268184e437a0d9bb4bcf1",
+          "municipal-175c7ee9f86452994e65e1d8",
+          "municipal-9fb4ca6bdeae3ad1f5037ac2",
+          "municipal-703b55c707f8c319460c209f",
+          "municipal-a56ce4611697f67201803d81"
+        ],
+        "acceptableTitlePatterns": ["premiul municipal pentru tineret"],
+        "answerPattern": "20[\\s\\u00a0.]?000"
+      }
+    },
+    {
+      "id": "ans-youth-prize-deadline-ro",
+      "question": "Până când și la ce adresă se depun dosarele pentru Premiul Municipal pentru Tineret 2025?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-463268184e437a0d9bb4bcf1", "municipal-175c7ee9f86452994e65e1d8"],
+        "acceptableTitlePatterns": ["premiul municipal pentru tineret"],
+        "answerPattern": "21 noiembrie|Dosoftei"
+      }
+    },
+    {
+      "id": "ans-diabetes-day-checks-ro",
+      "question": "Câți cetățeni au beneficiat de examinări gratuite de Ziua Mondială a Diabetului organizată la Pretura sectorului Centru?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-5832aec82be9234861c696a5"],
+        "answerPattern": "100"
+      }
+    },
+    {
+      "id": "ans-buiucani-kindergartens-capacity-ro",
+      "question": "Ce capacitate au grădinițele nr. 3 și nr. 18 din sectorul Buiucani după reparația capitală?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-26d51aa398fbc8bb3b04d3b5", "municipal-eb708fe940b2f14019f8c4e5"],
+        "acceptableTitlePatterns": ["repara[țt]ia gr[ăa]dini[țt]elor din sectorul buiucani"],
+        "answerPattern": "150|\\b90\\b"
+      }
+    },
+    {
+      "id": "ans-honorary-citizen-ro",
+      "question": "Cui i s-a conferit titlul de Cetățean de Onoare al municipiului Chișinău prin decizia nr. 5/3 din 16 iulie 2026?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-6a4c1de92315eca94c8db78c"],
+        "answerPattern": "Malear"
+      }
+    },
+    {
+      "id": "ans-honorary-citizen-en",
+      "question": "Who was awarded the title of Honorary Citizen of Chișinău municipality in July 2026?",
+      "language": "en",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-6a4c1de92315eca94c8db78c"],
+        "answerPattern": "Malear"
+      }
+    },
+    {
+      "id": "ans-tour-romania-water-ro",
+      "question": "Câtă apă trebuie să asigure „Apă-Canal Chișinău” pentru scena de la Startul Oficial al Turului României 2026?",
+      "language": "ro",
+      "kind": "answerable",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "acceptableDocumentIds": ["municipal-2c1af72093f3cbf1507f2a6c"],
+        "answerPattern": "\\b4 tone|patru tone"
+      }
+    },
+    {
+      "id": "off-pizza-ro",
+      "question": "Dă-mi o rețetă de pizza margherita.",
+      "language": "ro",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-champions-league-en",
+      "question": "Who won the UEFA Champions League final?",
+      "language": "en",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-weather-paris-ru",
+      "question": "Какая погода будет завтра в Париже?",
+      "language": "ru",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-bitcoin-ro",
+      "question": "Care este prețul actual al Bitcoin în dolari?",
+      "language": "ro",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-python-sort-en",
+      "question": "Write a Python function that sorts a list of integers in descending order.",
+      "language": "en",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-australia-capital-ro",
+      "question": "Care este capitala Australiei?",
+      "language": "ro",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "off-movie-ru",
+      "question": "Посоветуй хороший фильм на вечер.",
+      "language": "ru",
+      "kind": "off_topic",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE"], "maxCitations": 0}
+    },
+    {
+      "id": "period-world-cup-2022-ro",
+      "question": "Cine a câștigat Campionatul Mondial de fotbal 2022?",
+      "language": "ro",
+      "kind": "wrong_period",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE", "EVIDENCE_LACKS_VALUE"], "maxCitations": 0}
+    },
+    {
+      "id": "period-world-cup-2022-en",
+      "question": "Who won the 2022 FIFA World Cup?",
+      "language": "en",
+      "kind": "wrong_period",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE", "EVIDENCE_LACKS_VALUE"], "maxCitations": 0}
+    },
+    {
+      "id": "period-world-cup-2018-ru",
+      "question": "Кто выиграл чемпионат мира по футболу 2018 года?",
+      "language": "ru",
+      "kind": "wrong_period",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE", "EVIDENCE_LACKS_VALUE"], "maxCitations": 0}
+    },
+    {
+      "id": "period-enrolment-2012-ro",
+      "question": "Care a fost calendarul înscrierii copiilor în clasa I pentru anul de studii 2012-2013 în Chișinău?",
+      "language": "ro",
+      "kind": "wrong_period",
+      "expect": {"status": ["NOT_FOUND"], "reasons": ["NO_RELEVANT_EVIDENCE", "OUT_OF_SCOPE", "EVIDENCE_LACKS_VALUE"], "maxCitations": 0}
+    },
+    {
+      "id": "lacks-dgets-hours-ro",
+      "question": "Care este programul de lucru al Direcției Generale Educație, Tineret și Sport de pe str. Mitropolit Dosoftei 99?",
+      "language": "ro",
+      "kind": "lacks_value",
+      "expect": {
+        "status": ["NOT_FOUND", "SUPPORTED", "PARTIAL"],
+        "reasons": ["EVIDENCE_LACKS_VALUE"],
+        "acceptableUrlPatterns": ["chisinauedu\\.dgets\\.md", "chisinauedu\\.md"],
+        "acceptableTitlePatterns": ["Direc[țt]i(a|ei) General(ă|a|e) Educa[țt]ie"],
+        "valuePattern": "\\d{1,2}[:.]\\d{2}\\s*[-–]\\s*\\d{1,2}[:.]\\d{2}|luni\\s*[-–]\\s*vineri"
+      }
+    },
+    {
+      "id": "lacks-dgets-hours-ru",
+      "question": "Какой график работы у Генеральной дирекции образования, молодёжи и спорта мэрии Кишинёва?",
+      "language": "ru",
+      "kind": "lacks_value",
+      "expect": {
+        "status": ["NOT_FOUND", "SUPPORTED", "PARTIAL"],
+        "reasons": ["EVIDENCE_LACKS_VALUE"],
+        "acceptableUrlPatterns": ["chisinauedu\\.dgets\\.md", "chisinauedu\\.md"],
+        "acceptableTitlePatterns": ["Direc[țt]i(a|ei) General(ă|a|e) Educa[țt]ie"],
+        "valuePattern": "\\d{1,2}[:.]\\d{2}\\s*[-–]\\s*\\d{1,2}[:.]\\d{2}|понедельник"
+      }
+    },
+    {
+      "id": "lacks-football-pitch-finish-date-ro",
+      "question": "La ce dată au fost finalizate lucrările la terenul de fotbal de la Liceul „Liviu Deleanu”?",
+      "language": "ro",
+      "kind": "lacks_value",
+      "expect": {
+        "status": ["NOT_FOUND", "SUPPORTED", "PARTIAL"],
+        "reasons": ["EVIDENCE_LACKS_VALUE"],
+        "acceptableDocumentIds": ["municipal-1ae69b5d3aa977a333efe35a"],
+        "valuePattern": "\\b\\d{1,2}[./]\\d{1,2}[./](19|20)\\d{2}\\b|\\b\\d{1,2} (ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)"
+      }
+    },
+    {
+      "id": "lacks-diabetes-day-hour-ro",
+      "question": "La ce oră a început măsurarea gratuită a glicemiei de Ziua Mondială a Diabetului la Pretura sectorului Centru?",
+      "language": "ro",
+      "kind": "lacks_value",
+      "expect": {
+        "status": ["NOT_FOUND", "SUPPORTED", "PARTIAL"],
+        "reasons": ["EVIDENCE_LACKS_VALUE"],
+        "acceptableDocumentIds": ["municipal-5832aec82be9234861c696a5"],
+        "valuePattern": "\\bora\\s+\\d{1,2}|\\d{1,2}[:.]\\d{2}"
+      }
+    },
+    {
+      "id": "lacks-debate-academy-budget-en",
+      "question": "What is the total budget, in lei, of the Civic Debate Academy 2026?",
+      "language": "en",
+      "kind": "lacks_value",
+      "expect": {
+        "status": ["NOT_FOUND", "SUPPORTED", "PARTIAL"],
+        "reasons": ["EVIDENCE_LACKS_VALUE"],
+        "acceptableDocumentIds": ["municipal-c97bb0d2481c884c07fad354"],
+        "valuePattern": "\\d[\\d\\s\\u00a0.,]*\\s*(lei|MDL|EUR|euro|USD|\\$|€)"
+      }
+    },
+    {
+      "id": "amb-amt-hours-ro",
+      "question": "Care este programul de lucru al Asociației Medicale Teritoriale?",
+      "language": "ro",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-fd5d8aaa7e136f1d1d5212ab",
+          "municipal-660fce22a7a22ee61e22b09c",
+          "municipal-4cb5e4bb2804f69c851ef57b",
+          "municipal-968a7805a7be8dce83f1be6f",
+          "municipal-be2699815e98e86cb91281bb",
+          "municipal-59281d0ab80593bc7e27b6bf",
+          "municipal-e8a795f277db9f6113a41320",
+          "municipal-3d94c6a7d5f8cfc006fb34d3",
+          "municipal-b3e503002f3b6ac05bf4a89b",
+          "municipal-01933e59a2930a3db521ec88"
+        ],
+        "acceptableUrlPatterns": ["amt-?(centru|ciocana|botanica|buiucani|riscani)\\.md", "amtriscani\\.md", "amtbuiucani\\.md"],
+        "acceptableTitlePatterns": ["asocia[țt]ia medical[ăa] teritorial[ăa]", "\\bAMT\\b", "program(ul)? de lucru", "grafic(ul)? de lucru"]
+      }
+    },
+    {
+      "id": "amb-amt-hours-ru",
+      "question": "Какой график работы у Территориальной медицинской ассоциации?",
+      "language": "ru",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-fd5d8aaa7e136f1d1d5212ab",
+          "municipal-660fce22a7a22ee61e22b09c",
+          "municipal-4cb5e4bb2804f69c851ef57b",
+          "municipal-968a7805a7be8dce83f1be6f",
+          "municipal-be2699815e98e86cb91281bb",
+          "municipal-59281d0ab80593bc7e27b6bf",
+          "municipal-e8a795f277db9f6113a41320",
+          "municipal-3d94c6a7d5f8cfc006fb34d3",
+          "municipal-b3e503002f3b6ac05bf4a89b",
+          "municipal-01933e59a2930a3db521ec88"
+        ],
+        "acceptableUrlPatterns": ["amt-?(centru|ciocana|botanica|buiucani|riscani)\\.md", "amtriscani\\.md", "amtbuiucani\\.md"],
+        "acceptableTitlePatterns": ["asocia[țt]ia medical[ăa] teritorial[ăa]", "\\bAMT\\b", "program(ul)? de lucru", "grafic(ul)? de lucru"]
+      }
+    },
+    {
+      "id": "amb-minifootball-tournament-ro",
+      "question": "Când are loc turneul de mini-fotbal pentru copii?",
+      "language": "ro",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-0b965d8e41a21a5d8ad12f4e",
+          "municipal-5f65c7bb52dfba76625219d5",
+          "municipal-0435bb65ebb9bf3c942c7aba",
+          "municipal-3914ad5f709991fb12188533",
+          "municipal-dd448f65258f12f62b519e8f",
+          "municipal-c7e15c3300581a7b5eff9b35",
+          "municipal-48c64bc0bd0f732cd023a107"
+        ],
+        "acceptableTitlePatterns": ["mini-?\\s?fotbal", "minifotbal"]
+      }
+    },
+    {
+      "id": "amb-minifootball-tournament-en",
+      "question": "When does the mini-football tournament for children take place?",
+      "language": "en",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-0b965d8e41a21a5d8ad12f4e",
+          "municipal-5f65c7bb52dfba76625219d5",
+          "municipal-0435bb65ebb9bf3c942c7aba",
+          "municipal-3914ad5f709991fb12188533",
+          "municipal-dd448f65258f12f62b519e8f",
+          "municipal-c7e15c3300581a7b5eff9b35",
+          "municipal-48c64bc0bd0f732cd023a107"
+        ],
+        "acceptableTitlePatterns": ["mini-?\\s?fotbal", "minifotbal"]
+      }
+    },
+    {
+      "id": "amb-school-football-pitch-ro",
+      "question": "Ce lucrări s-au făcut la terenul de fotbal al liceului?",
+      "language": "ro",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-1ae69b5d3aa977a333efe35a",
+          "municipal-98d141a188af77065a364883",
+          "municipal-0eb7a3f06913d699565b64d7"
+        ],
+        "acceptableTitlePatterns": ["teren(ul|ului)? de fotbal", "stadion"]
+      }
+    },
+    {
+      "id": "amb-grade1-applications-count-ro",
+      "question": "Câte cereri au fost depuse pentru înscrierea copiilor în clasa I?",
+      "language": "ro",
+      "kind": "ambiguous",
+      "expect": {
+        "status": ["NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-ec38f83f590df7c79970442b",
+          "municipal-44edd26c70f2679767043369",
+          "municipal-660e3ff6c57a7724aa0d3bf1",
+          "municipal-8741b4a1bf5b074fdee202c6"
+        ],
+        "acceptableTitlePatterns": ["clasa (I|1|întâi)\\b", "[îi]nscri"]
+      }
+    },
+    {
+      "id": "dup-kindergarten-online-ro",
+      "question": "Cum se face înscrierea copiilor la grădinițele din Chișinău?",
+      "language": "ro",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-fdfd260111c3af5fc5590dc5",
+          "municipal-4afe5073a1c04cc7f9a704b4",
+          "municipal-e591d466121afa3745bd2ca1",
+          "municipal-1d7fad9862ea9253d7573ba5",
+          "municipal-6d1b853f8a38dde35e81e1b1",
+          "municipal-7cb300d370c53a0791a89934"
+        ],
+        "acceptableTitlePatterns": ["gr[ăa]dini[țt]", "egradinita"],
+        "duplicateGroups": [
+          ["municipal-fdfd260111c3af5fc5590dc5", "municipal-4afe5073a1c04cc7f9a704b4", "municipal-e591d466121afa3745bd2ca1"],
+          ["municipal-1d7fad9862ea9253d7573ba5", "municipal-6d1b853f8a38dde35e81e1b1"]
+        ]
+      }
+    },
+    {
+      "id": "dup-kindergarten-online-ru",
+      "question": "Как записать ребёнка в детский сад в Кишинёве?",
+      "language": "ru",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-fdfd260111c3af5fc5590dc5",
+          "municipal-4afe5073a1c04cc7f9a704b4",
+          "municipal-e591d466121afa3745bd2ca1",
+          "municipal-1d7fad9862ea9253d7573ba5",
+          "municipal-6d1b853f8a38dde35e81e1b1",
+          "municipal-7cb300d370c53a0791a89934"
+        ],
+        "acceptableTitlePatterns": ["gr[ăa]dini[țt]", "egradinita"],
+        "duplicateGroups": [
+          ["municipal-fdfd260111c3af5fc5590dc5", "municipal-4afe5073a1c04cc7f9a704b4", "municipal-e591d466121afa3745bd2ca1"],
+          ["municipal-1d7fad9862ea9253d7573ba5", "municipal-6d1b853f8a38dde35e81e1b1"]
+        ]
+      }
+    },
+    {
+      "id": "dup-queue-number-certificate-ro",
+      "question": "Cum obțin certificatul cu privire la numărul de rând la locuință?",
+      "language": "ro",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-d4ba8232ea6ec23cb64ebf26",
+          "municipal-5a18dd1c1d7ff5ef1314b5fd",
+          "municipal-f54a45658e09eb720d551f1c"
+        ],
+        "acceptableTitlePatterns": ["num[ăa]rul de r[âa]nd"],
+        "duplicateGroups": [
+          ["municipal-d4ba8232ea6ec23cb64ebf26", "municipal-5a18dd1c1d7ff5ef1314b5fd", "municipal-f54a45658e09eb720d551f1c"]
+        ]
+      }
+    },
+    {
+      "id": "dup-medical-tariff-catalogue-ro",
+      "question": "Unde găsesc catalogul tarifelor unice pentru serviciile medico-sanitare prestate contra plată?",
+      "language": "ro",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": [
+          "municipal-86071fa59283b4728f38f31d",
+          "municipal-ed7faa125d9d426f0a312035",
+          "municipal-3148b12cdb0d1acef120976b",
+          "municipal-bf8d69ee4b24d38fb96ae137"
+        ],
+        "acceptableTitlePatterns": ["tarifelor unice", "catalog(ul)? de tarife"],
+        "duplicateGroups": [
+          ["municipal-86071fa59283b4728f38f31d", "municipal-ed7faa125d9d426f0a312035", "municipal-3148b12cdb0d1acef120976b", "municipal-bf8d69ee4b24d38fb96ae137"]
+        ]
+      }
+    },
+    {
+      "id": "dup-eminescu-square-ro",
+      "question": "Ce lucrări au fost făcute la reabilitarea scuarului „Mihai Eminescu” și când au început?",
+      "language": "ro",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": ["municipal-ff81342bea558b6faa1eab95", "municipal-9a0028babd7356b68bb2f7ad", "municipal-b793e2b52b1a4149058bba3c"],
+        "acceptableTitlePatterns": ["scuar(ul)? .?mihai eminescu"],
+        "duplicateGroups": [["municipal-ff81342bea558b6faa1eab95", "municipal-9a0028babd7356b68bb2f7ad"]]
+      }
+    },
+    {
+      "id": "dup-buiucani-kindergarten-repairs-ro",
+      "question": "Ce grădinițe au fost reparate în sectorul Buiucani și cât au costat investițiile?",
+      "language": "ro",
+      "kind": "duplicate_heavy",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL", "NEEDS_CLARIFICATION"],
+        "acceptableDocumentIds": ["municipal-26d51aa398fbc8bb3b04d3b5", "municipal-eb708fe940b2f14019f8c4e5"],
+        "acceptableTitlePatterns": ["repara[țt]ia gr[ăa]dini[țt]elor"],
+        "duplicateGroups": [["municipal-26d51aa398fbc8bb3b04d3b5", "municipal-eb708fe940b2f14019f8c4e5"]]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-ro",
+      "question": "Când începe înscrierea copiilor în clasa I pentru anul de studii 2026-2027?",
+      "language": "ro",
+      "kind": "yearly_topic",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "requiredDocumentIds": ["municipal-6391b1ed92a78864ebb8fef5"],
+        "acceptableDocumentIds": [
+          "municipal-6391b1ed92a78864ebb8fef5",
+          "municipal-0fbd2ebbb6d6156d3b29fa56",
+          "municipal-2897e24bd4186bdba8f816ac",
+          "municipal-b0ac8c1ae83fd9b770d03abe",
+          "municipal-64e08fac7efa9db901dc29e4",
+          "municipal-0ee9b5ce7ddb2210f1a94b3c",
+          "municipal-98e326cc712ba63481eabae7",
+          "municipal-c12f83842470ed130f1f8d7d",
+          "municipal-8f505a10faa7f031a604fdea"
+        ],
+        "acceptableTitlePatterns": ["E-școală - Admitere online în clasa I"],
+        "forbiddenDocumentIds": [
+          "municipal-4eee98680b335f45c0132aef",
+          "municipal-c236d53840cea31d8a0683c0",
+          "municipal-7d9f0c759ec76e54571a9996",
+          "municipal-a25d1da41832fba8f7e0ccce",
+          "municipal-06633efc2646626a8dcd91f4",
+          "municipal-2c4dc19f9b96de7c4ca410c9",
+          "municipal-375aee9c216d5a876a90fe3c",
+          "municipal-8d3efdb72f58f5d7551aa05f",
+          "municipal-8741b4a1bf5b074fdee202c6",
+          "municipal-818cae42c304c758ca53879c",
+          "municipal-1fbae3a4558ddfdf9fe1c8aa",
+          "municipal-5719a2af183d28f7c51e25c5",
+          "municipal-660e3ff6c57a7724aa0d3bf1",
+          "municipal-cacda8c75b0777644a25cc67",
+          "municipal-b4eb14afd314dae14eb19c09"
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-ru",
+      "question": "Когда начинается запись детей в первый класс на 2026-2027 учебный год в Кишинёве?",
+      "language": "ru",
+      "kind": "yearly_topic",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "requiredDocumentIds": ["municipal-6391b1ed92a78864ebb8fef5"],
+        "acceptableDocumentIds": [
+          "municipal-6391b1ed92a78864ebb8fef5",
+          "municipal-0fbd2ebbb6d6156d3b29fa56",
+          "municipal-2897e24bd4186bdba8f816ac",
+          "municipal-b0ac8c1ae83fd9b770d03abe",
+          "municipal-64e08fac7efa9db901dc29e4",
+          "municipal-0ee9b5ce7ddb2210f1a94b3c",
+          "municipal-98e326cc712ba63481eabae7",
+          "municipal-c12f83842470ed130f1f8d7d",
+          "municipal-8f505a10faa7f031a604fdea"
+        ],
+        "acceptableTitlePatterns": ["E-școală - Admitere online în clasa I"],
+        "forbiddenDocumentIds": [
+          "municipal-4eee98680b335f45c0132aef",
+          "municipal-c236d53840cea31d8a0683c0",
+          "municipal-7d9f0c759ec76e54571a9996",
+          "municipal-a25d1da41832fba8f7e0ccce",
+          "municipal-06633efc2646626a8dcd91f4",
+          "municipal-2c4dc19f9b96de7c4ca410c9",
+          "municipal-375aee9c216d5a876a90fe3c",
+          "municipal-8d3efdb72f58f5d7551aa05f",
+          "municipal-8741b4a1bf5b074fdee202c6",
+          "municipal-818cae42c304c758ca53879c",
+          "municipal-1fbae3a4558ddfdf9fe1c8aa",
+          "municipal-5719a2af183d28f7c51e25c5",
+          "municipal-660e3ff6c57a7724aa0d3bf1",
+          "municipal-cacda8c75b0777644a25cc67",
+          "municipal-b4eb14afd314dae14eb19c09"
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-en",
+      "question": "When does first-grade school enrolment start in Chișinău for the 2026-2027 school year?",
+      "language": "en",
+      "kind": "yearly_topic",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "requiredDocumentIds": ["municipal-6391b1ed92a78864ebb8fef5"],
+        "acceptableDocumentIds": [
+          "municipal-6391b1ed92a78864ebb8fef5",
+          "municipal-0fbd2ebbb6d6156d3b29fa56",
+          "municipal-2897e24bd4186bdba8f816ac",
+          "municipal-b0ac8c1ae83fd9b770d03abe",
+          "municipal-64e08fac7efa9db901dc29e4",
+          "municipal-0ee9b5ce7ddb2210f1a94b3c",
+          "municipal-98e326cc712ba63481eabae7",
+          "municipal-c12f83842470ed130f1f8d7d",
+          "municipal-8f505a10faa7f031a604fdea"
+        ],
+        "acceptableTitlePatterns": ["E-școală - Admitere online în clasa I"],
+        "forbiddenDocumentIds": [
+          "municipal-4eee98680b335f45c0132aef",
+          "municipal-c236d53840cea31d8a0683c0",
+          "municipal-7d9f0c759ec76e54571a9996",
+          "municipal-a25d1da41832fba8f7e0ccce",
+          "municipal-06633efc2646626a8dcd91f4",
+          "municipal-2c4dc19f9b96de7c4ca410c9",
+          "municipal-375aee9c216d5a876a90fe3c",
+          "municipal-8d3efdb72f58f5d7551aa05f",
+          "municipal-8741b4a1bf5b074fdee202c6",
+          "municipal-818cae42c304c758ca53879c",
+          "municipal-1fbae3a4558ddfdf9fe1c8aa",
+          "municipal-5719a2af183d28f7c51e25c5",
+          "municipal-660e3ff6c57a7724aa0d3bf1",
+          "municipal-cacda8c75b0777644a25cc67",
+          "municipal-b4eb14afd314dae14eb19c09"
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-documents-ro",
+      "question": "Ce acte sunt necesare pentru înscrierea copilului în clasa I în 2026?",
+      "language": "ro",
+      "kind": "yearly_topic",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "requiredDocumentIds": ["municipal-6391b1ed92a78864ebb8fef5"],
+        "acceptableDocumentIds": [
+          "municipal-6391b1ed92a78864ebb8fef5",
+          "municipal-0fbd2ebbb6d6156d3b29fa56",
+          "municipal-2897e24bd4186bdba8f816ac",
+          "municipal-b0ac8c1ae83fd9b770d03abe",
+          "municipal-64e08fac7efa9db901dc29e4",
+          "municipal-0ee9b5ce7ddb2210f1a94b3c",
+          "municipal-98e326cc712ba63481eabae7",
+          "municipal-c12f83842470ed130f1f8d7d",
+          "municipal-8f505a10faa7f031a604fdea"
+        ],
+        "acceptableTitlePatterns": ["E-școală - Admitere online în clasa I"],
+        "forbiddenDocumentIds": [
+          "municipal-4eee98680b335f45c0132aef",
+          "municipal-c236d53840cea31d8a0683c0",
+          "municipal-7d9f0c759ec76e54571a9996",
+          "municipal-a25d1da41832fba8f7e0ccce",
+          "municipal-06633efc2646626a8dcd91f4",
+          "municipal-2c4dc19f9b96de7c4ca410c9",
+          "municipal-375aee9c216d5a876a90fe3c",
+          "municipal-8d3efdb72f58f5d7551aa05f",
+          "municipal-8741b4a1bf5b074fdee202c6",
+          "municipal-818cae42c304c758ca53879c",
+          "municipal-1fbae3a4558ddfdf9fe1c8aa",
+          "municipal-5719a2af183d28f7c51e25c5",
+          "municipal-660e3ff6c57a7724aa0d3bf1",
+          "municipal-cacda8c75b0777644a25cc67",
+          "municipal-b4eb14afd314dae14eb19c09",
+          "municipal-bf894bb428be366925418e42"
+        ]
+      }
+    },
+    {
+      "id": "year-grade5-2026-ro",
+      "question": "Cum se organizează înscrierea elevilor în clasa a V-a cu profil arte și sport pentru anul de studii 2026-2027?",
+      "language": "ro",
+      "kind": "yearly_topic",
+      "expect": {
+        "status": ["SUPPORTED", "PARTIAL"],
+        "requiredDocumentIds": ["municipal-a1d2e63f3289e41e8c74df15"],
+        "acceptableDocumentIds": ["municipal-a1d2e63f3289e41e8c74df15", "municipal-6391b1ed92a78864ebb8fef5"],
+        "forbiddenDocumentIds": []
+      }
+    }
+  ]
+}

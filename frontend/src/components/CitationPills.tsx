@@ -1,6 +1,7 @@
 import { useI18n } from "../i18n/context";
 import type { SourceDocument } from "../types/chat";
 import { safeHttpUrl } from "./sources/safeLink";
+import OlderDocumentBadge from "./sources/OlderDocumentBadge";
 
 interface CitationPillsProps {
   sources: SourceDocument[];
@@ -30,7 +31,7 @@ function CitationPills({ sources, activeIndex = null, controlsId, onSelect }: Ci
         const link = safeHttpUrl(source.link);
         const hostname = link ? getHostname(link) : "";
         return (
-          <li key={`${source.documentId ?? source.link}-${i}`}>
+          <li key={`${source.documentId ?? source.link}-${i}`} className="inline-flex items-center gap-1">
             <button
               type="button"
               aria-haspopup="dialog"
@@ -46,6 +47,7 @@ function CitationPills({ sources, activeIndex = null, controlsId, onSelect }: Ci
               <span className="font-semibold">{i + 1}</span>
               <span className="truncate">{hostname || source.title}</span>
             </button>
+            <OlderDocumentBadge source={source} />
           </li>
         );
       })}

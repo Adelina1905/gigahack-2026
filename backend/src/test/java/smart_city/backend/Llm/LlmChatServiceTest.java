@@ -106,6 +106,8 @@ class LlmChatServiceTest {
         assertThat(view.text()).isEqualTo("Taxa este 10 lei.");
         assertThat(view.mode()).isEqualTo("rag");
         assertThat(view.status()).isEqualTo("SUPPORTED");
+        assertThat(view.reason()).isNull();
+        assertThat(view.flags()).isEmpty();
         assertThat(view.createdAt())
                 .isEqualTo(OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
         assertThat(view.sources()).containsExactly(
@@ -137,5 +139,26 @@ class LlmChatServiceTest {
         service.send(chatId, "A");
         assertThat(gateway.calls.get(1).history().get(1))
                 .isEqualTo(LlmTurn.assistant("Care document?"));
+    }
+
+    @Test
+    void passesReasonAndFlagsThrough() {
+        gateway.replyWith(new LlmReply(
+                "rag",
+                "NOT_FOUND",
+                "Nu am găsit.",
+                List.of(),
+                null,
+                "EVIDENCE_LACKS_VALUE",
+                List.of("CORRECTION_ROUND")
+        ));
+
+        LlmMessageView view = service.send(chatId, "cat costa?");
+
+        assertThat(view.text()).isEqualTo("Nu am găsit.");
+        assertThat(view.status()).isEqualTo("NOT_FOUND");
+        assertThat(view.reason()).isEqualTo("EVIDENCE_LACKS_VALUE");
+        assertThat(view.flags()).containsExactly("CORRECTION_ROUND");
+        assertThat(view.sources()).isEmpty();
     }
 }

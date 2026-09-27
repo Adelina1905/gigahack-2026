@@ -1,0 +1,2861 @@
+{
+  "url": "http://127.0.0.1:8000/v1/chat",
+  "rescoredFrom": "/tmp/claude-1000/-home-debian-gigahack-2026-dani/b2ef1777-dcf7-4d61-af06-1f94909f324a/scratchpad/baseline-raw.json",
+  "casesFile": "/home/debian/gigahack-2026-dani/Manage Data/eval/questions.json",
+  "startedAt": "2026-09-27T03:15:40+00:00",
+  "finishedAt": "2026-09-27T03:15:40+00:00",
+  "metrics": {
+    "cases": 45,
+    "passed": 10,
+    "failed": 35,
+    "requestErrors": 1,
+    "unrelatedCitations": 2,
+    "scoredCitations": 17,
+    "unrelatedCitationRate": 0.1176,
+    "uncitedAnswers": 4,
+    "answerBearingReplies": 12,
+    "uncitedAnswerRate": 0.3333,
+    "uncitedSentenceRate": 0.2791,
+    "falseNotFound": 0,
+    "answerableCases": 23,
+    "falseNotFoundRate": 0.0,
+    "clarificationPrecision": 0.4583,
+    "scoredChoices": 96,
+    "ambiguousClarifiedRate": 0.8,
+    "outdatedSourceCases": 1,
+    "yearlyCases": 5,
+    "outdatedSourceRate": 0.2,
+    "duplicateChoices": 8,
+    "latencyP50Ms": 10645.8,
+    "latencyP95Ms": 18388.0,
+    "reasonReported": false,
+    "flagsReported": false,
+    "reasonChecksScored": 0,
+    "byKind": {
+      "answerable": {
+        "cases": 12,
+        "passed": 5
+      },
+      "off_topic": {
+        "cases": 7,
+        "passed": 0
+      },
+      "wrong_period": {
+        "cases": 4,
+        "passed": 0
+      },
+      "lacks_value": {
+        "cases": 5,
+        "passed": 0
+      },
+      "ambiguous": {
+        "cases": 6,
+        "passed": 4
+      },
+      "duplicate_heavy": {
+        "cases": 6,
+        "passed": 1
+      },
+      "yearly_topic": {
+        "cases": 5,
+        "passed": 0
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "ans-football-pitch-cost-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Cât au costat lucrările la terenul de fotbal de la Liceul „Liviu Deleanu”?",
+      "latencyMs": 10352.6,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "pass"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 1,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Lucrările la terenul de fotbal de la Liceul „Liviu Deleanu” au costat 704 000 lei. [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-1ae69b5d3aa977a333efe35a",
+            "title": "Teren de fotbal la Liceul \"Liviu Deleanu\"",
+            "url": "https://proiecte.chisinau.md/ro/pv-1069-teren-de-fotbal-la-liceul-liviu-deleanu/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-football-pitch-cost-en",
+      "kind": "answerable",
+      "language": "en",
+      "question": "How much did the football pitch works at the Liviu Deleanu lyceum in Chișinău cost?",
+      "latencyMs": 12565.4,
+      "passed": false,
+      "failures": [
+        "status: got LLM, expected one of ['SUPPORTED', 'PARTIAL']",
+        "answerCited: answer has no citations"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "fail",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": true,
+        "uncitedSentences": 2,
+        "sentences": 2,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "llm",
+        "status": "LLM",
+        "answer": "Nu am informații oficiale privind costul lucrărilor la terenul de fotbal de la Liceul Liviu Deleanu din Chișinău. Pentru detalii precise, vă recomand să consultați site-ul oficial al Primăriei Chișinău sau să contactați direct serviciul de informare al administrației locale.",
+        "citations": [],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-football-pitch-cost-ru",
+      "kind": "answerable",
+      "language": "ru",
+      "question": "Сколько стоили работы по футбольному полю в лицее «Ливиу Деляну» в Кишинёве?",
+      "latencyMs": 13083.5,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "pass"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 1,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Работы по футбольному полю в лицее «Ливиу Деляну» в Кишинёве стоили 704 000 леев. [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-1ae69b5d3aa977a333efe35a",
+            "title": "Teren de fotbal la Liceul \"Liviu Deleanu\"",
+            "url": "https://proiecte.chisinau.md/ro/pv-1069-teren-de-fotbal-la-liceul-liviu-deleanu/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-debate-academy-dates-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "În ce perioadă se desfășoară Academia de Dezbateri Civice 2026 și ce vârstă trebuie să aibă participanții?",
+      "latencyMs": 18388.0,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "pass"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 1,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "PARTIAL",
+        "answer": "Academia de Dezbateri Civice 2026 se desfășoară în perioada 5-9 iulie 2026. [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-c97bb0d2481c884c07fad354",
+            "title": "Ultima șansă de înscriere la Academia de Dezbateri Civice 2026: Transport, cazare și instruire gratuite pentru tineri",
+            "url": "https://e-tineret.md/ultima-sansa-de-inscriere-la-academia-de-dezbateri-civice-2026-transport-cazare-si-instruire-gratuite-pentru-tineri/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-debate-academy-dates-ru",
+      "kind": "answerable",
+      "language": "ru",
+      "question": "Когда проходит Академия гражданских дебатов 2026 и какого возраста должны быть участники?",
+      "latencyMs": 14501.8,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "pass"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 2,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Академия гражданских дебатов 2026 проходит с 5 по 9 июля 2026 года. [S1]\nУчастники Академии гражданских дебатов 2026 должны быть в возрасте от 16 до 25 лет. [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-c97bb0d2481c884c07fad354",
+            "title": "Ultima șansă de înscriere la Academia de Dezbateri Civice 2026: Transport, cazare și instruire gratuite pentru tineri",
+            "url": "https://e-tineret.md/ultima-sansa-de-inscriere-la-academia-de-dezbateri-civice-2026-transport-cazare-si-instruire-gratuite-pentru-tineri/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-youth-prize-amount-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Care este valoarea premiului bănesc acordat laureaților Premiului Municipal pentru Tineret 2025?",
+      "latencyMs": 15118.5,
+      "passed": false,
+      "failures": [
+        "status: got LLM, expected one of ['SUPPORTED', 'PARTIAL']",
+        "answerCited: answer has no citations"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "fail",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": true,
+        "uncitedSentences": 3,
+        "sentences": 3,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "llm",
+        "status": "LLM",
+        "answer": "La momentul actual, valoarea premiului bănesc pentru Premiul Municipal pentru Tineret 2025 nu este oficial anunțată. Informațiile detaliate vor fi publicate ulterior, în conformitate cu regulamentul și decizia autorităților locale. Vă recomand să urmăriți site-ul oficial al Primăriei Chișinău pentru actualizări.",
+        "citations": [],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-youth-prize-deadline-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Până când și la ce adresă se depun dosarele pentru Premiul Municipal pentru Tineret 2025?",
+      "latencyMs": 6782.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-4792c9887a94714adfdcaac8 (Tinerii din suburbii pot aplica la Programului de cofinanțar), municipal-869770b2aaa5e35cb5acebf4 (Ordin nr. 01/1-7/1698 din 28.11.2025 Cu privire la lansarea )"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 2,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-463268184e437a0d9bb4bcf1",
+            "label": "Premiul Municipal pentru Tineret 2025 – Înscrierile sunt acum deschise"
+          },
+          {
+            "documentId": "municipal-4792c9887a94714adfdcaac8",
+            "label": "Tinerii din suburbii pot aplica la Programului de cofinanțare a proiectelor pentru tineret, lansat de Primăria Chișinău - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-869770b2aaa5e35cb5acebf4",
+            "label": "Ordin nr. 01/1-7/1698 din 28.11.2025 Cu privire la lansarea Concursului municipal pentru acordarea Premiului de merit pentru încurajarea elevilor, sportivilor și persoanelor în etate, ediția 2025"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ans-diabetes-day-checks-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Câți cetățeni au beneficiat de examinări gratuite de Ziua Mondială a Diabetului organizată la Pretura sectorului Centru?",
+      "latencyMs": 10620.7,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "pass"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 1,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Peste 100 de cetățeni au beneficiat de examinări gratuite la Ziua Mondială a Diabetului organizată la Pretura sectorului Centru. [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-5832aec82be9234861c696a5",
+            "title": "De Ziua Mondială a Diabetului, locuitorii capitalei pot beneficia de măsurarea gratuită a glicemiei",
+            "url": "https://chisinaucentru.md/de-ziua-mondiala-a-diabetului-locuitorii-capitalei-pot-beneficia-de-masurarea-gratuita-a-glicemiei/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-buiucani-kindergartens-capacity-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Ce capacitate au grădinițele nr. 3 și nr. 18 din sectorul Buiucani după reparația capitală?",
+      "latencyMs": 9838.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-add46f9e4221336a84a4e8f5 (Raport de activitate săptămânală al Direcției Educație, Tine)",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-eb708fe940b2f14019f8c4e5",
+            "label": "Reparația grădinițelor din sectorul Buiucani"
+          },
+          {
+            "documentId": "municipal-26d51aa398fbc8bb3b04d3b5",
+            "label": "Reparația grădinițelor din sectorul Buiucani"
+          },
+          {
+            "documentId": "municipal-add46f9e4221336a84a4e8f5",
+            "label": "Raport de activitate săptămânală al Direcției Educație, Tineret și Sport sectorul Buiucani pe săptămâna 11 – 15 octombrie 2021"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ans-honorary-citizen-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Cui i s-a conferit titlul de Cetățean de Onoare al municipiului Chișinău prin decizia nr. 5/3 din 16 iulie 2026?",
+      "latencyMs": 14690.1,
+      "passed": false,
+      "failures": [
+        "status: got LLM, expected one of ['SUPPORTED', 'PARTIAL']",
+        "answerCited: answer has no citations"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "fail",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": true,
+        "uncitedSentences": 4,
+        "sentences": 4,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "llm",
+        "status": "LLM",
+        "answer": "Nu am informații oficiale despre decizia nr. 5/3 din 16 iulie 2026 sau despre persoana care i-a fost conferit titlul de Cetățean de Onoare al municipiului Chișinău în acea dată. Această decizie nu poate fi verificată în bazele de date publice disponibile până în prezent, iar data menționată (2026) este în viitor. Vă recomand să verificați informațiile oficiale la Primăria Municipiului Chișinău sau pe site-ul oficial al autorității locale.",
+        "citations": [],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "ans-honorary-citizen-en",
+      "kind": "answerable",
+      "language": "en",
+      "question": "Who was awarded the title of Honorary Citizen of Chișinău municipality in July 2026?",
+      "latencyMs": 10645.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-f7606e277f3728e8cff5eccd (Decizie nr. 5/7 din 2026-07-16 — Cu privire la conferirea ti), municipal-ac262065ddf8d2f0647c04ce (Decizie nr. 5/2 din 2026-07-16 — Cu privire la conferirea ti), municipal-a99e643aeff30cac15a2d2f5 (Decizie nr. 5/8 din 2026-07-16 — Cu privire la conferirea ti)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-f7606e277f3728e8cff5eccd",
+            "label": "Decizie nr. 5/7 din 2026-07-16 — Cu privire la conferirea titlului de Cetățean de Onoare al Municipiului Chișinău dnei Ilona Stepan"
+          },
+          {
+            "documentId": "municipal-ac262065ddf8d2f0647c04ce",
+            "label": "Decizie nr. 5/2 din 2026-07-16 — Cu privire la conferirea titlului de Cetățean de Onoare al Municipiului Chișinău dlui Constantin Rusnac"
+          },
+          {
+            "documentId": "municipal-a99e643aeff30cac15a2d2f5",
+            "label": "Decizie nr. 5/8 din 2026-07-16 — Cu privire la conferirea titlului de Cetățean de Onoare al Municipiului Chișinău dnei Ana Buimistru (Anișoara Puică)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ans-tour-romania-water-ro",
+      "kind": "answerable",
+      "language": "ro",
+      "question": "Câtă apă trebuie să asigure „Apă-Canal Chișinău” pentru scena de la Startul Oficial al Turului României 2026?",
+      "latencyMs": 5837.0,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-fa63a1e21e9ba3a5baae554f (Dispoziție nr. 130-d din 2026-04-30 — Cu privire la organiza), municipal-a1613b1958db2d8061890232 (Dispoziție nr. 188-d din 2026-05-29 — Cu privire la organiza)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 2,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-2c1af72093f3cbf1507f2a6c",
+            "label": "Dispoziție nr. 397-d din 2026-09-07 — Cu privire la organizarea și desfășurarea Startului Oficial al Turului României 2026"
+          },
+          {
+            "documentId": "municipal-fa63a1e21e9ba3a5baae554f",
+            "label": "Dispoziție nr. 130-d din 2026-04-30 — Cu privire la organizarea și desfășurare acțiunilor și manifestărilor cultural-artistice cu prilejul Zilei Europei"
+          },
+          {
+            "documentId": "municipal-a1613b1958db2d8061890232",
+            "label": "Dispoziție nr. 188-d din 2026-05-29 — Cu privire la organizarea și desfășurarea unui eveniment sportiv de către Asociația Obștească „Uniunea Juriștilor din Moldova”"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-pizza-ro",
+      "kind": "off_topic",
+      "language": "ro",
+      "question": "Dă-mi o rețetă de pizza margherita.",
+      "latencyMs": 10334.9,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-681e15ecf32b4ff7874aa498 (Gimnaziul nr. 99), municipal-5319ee8b7b05155fadac54c6 (Extrage [21.84 KB]), municipal-0cf551faa8393418b53b0fae (Creșa-grădiniță nr. 164)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-681e15ecf32b4ff7874aa498",
+            "label": "Gimnaziul nr. 99"
+          },
+          {
+            "documentId": "municipal-5319ee8b7b05155fadac54c6",
+            "label": "Extrage [21.84 KB]"
+          },
+          {
+            "documentId": "municipal-0cf551faa8393418b53b0fae",
+            "label": "Creșa-grădiniță nr. 164"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-champions-league-en",
+      "kind": "off_topic",
+      "language": "en",
+      "question": "Who won the UEFA Champions League final?",
+      "latencyMs": 11974.2,
+      "passed": false,
+      "failures": [
+        "status: got LLM, expected one of ['NOT_FOUND']",
+        "answerCited: answer has no citations"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "fail",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": true,
+        "uncitedSentences": 3,
+        "sentences": 3,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "llm",
+        "status": "LLM",
+        "answer": "Finalul UEFA Champions League din 2024 a fost câștigat de **Manchester City**, care a învins **Inter Milano** cu scorul de 1–0. Finalul a avut loc pe data de 28 mai 2024, la Stadionul Ataturk din Istanbul, Turcia. Golul a fost marcat de Rodri în timpul meciului.",
+        "citations": [],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "off-weather-paris-ru",
+      "kind": "off_topic",
+      "language": "ru",
+      "question": "Какая погода будет завтра в Париже?",
+      "latencyMs": 10709.0,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-ab68b8ac5dd26d6bbf046595 (str. Paris), municipal-8a4179fb7a1547324b67d032 (str. Paris), municipal-2cc0481298f615197e846fcc (Noutăți)",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "Какой проект вы имеете в виду?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-ab68b8ac5dd26d6bbf046595",
+            "label": "str. Paris"
+          },
+          {
+            "documentId": "municipal-8a4179fb7a1547324b67d032",
+            "label": "str. Paris"
+          },
+          {
+            "documentId": "municipal-2cc0481298f615197e846fcc",
+            "label": "Noutăți"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-bitcoin-ro",
+      "kind": "off_topic",
+      "language": "ro",
+      "question": "Care este prețul actual al Bitcoin în dolari?",
+      "latencyMs": 15228.5,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-21b346cc8ba3069031d28571 (Fișa de date.semnat), municipal-9de209d16d17fa270353a92e (fișa de date.semnat), municipal-33b8078fd11c342634edff6b (fișa de date)",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-21b346cc8ba3069031d28571",
+            "label": "Fișa de date.semnat"
+          },
+          {
+            "documentId": "municipal-9de209d16d17fa270353a92e",
+            "label": "fișa de date.semnat"
+          },
+          {
+            "documentId": "municipal-33b8078fd11c342634edff6b",
+            "label": "fișa de date"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-python-sort-en",
+      "kind": "off_topic",
+      "language": "en",
+      "question": "Write a Python function that sorts a list of integers in descending order.",
+      "latencyMs": 10087.4,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-98a2a905e8ff084cc9211fe7 (Test Barem), municipal-78ce84e6389f41c9931c80a8 (Dispoziție nr. 376-dc din 2025-09-05 — Cu privire la aprobar), municipal-4425d34e87fac824202892f0 (Regulamentul-cadru privind organizarea și desfășurarea Progr)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-98a2a905e8ff084cc9211fe7",
+            "label": "Test Barem"
+          },
+          {
+            "documentId": "municipal-78ce84e6389f41c9931c80a8",
+            "label": "Dispoziție nr. 376-dc din 2025-09-05 — Cu privire la aprobarea Regulamentului pentru stabilirea Regulilor de organizare și desfășurare a concursului pentru ocuparea funcției publice vacante în cadrul Preturii sectorului Centru"
+          },
+          {
+            "documentId": "municipal-4425d34e87fac824202892f0",
+            "label": "Regulamentul-cadru privind organizarea și desfășurarea Programului municipal de Granturi – 2021 pentru organizațiile de tineret și grupurile de inițiativă ale tinerilor"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-australia-capital-ro",
+      "kind": "off_topic",
+      "language": "ro",
+      "question": "Care este capitala Australiei?",
+      "latencyMs": 15237.7,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-97dace0da92a5600e7bc7a1c (Creșa-grădiniță nr. 145), municipal-1b234268707657d7a820858d (Creșa-grădiniță nr. 52), municipal-06f11bca04e65c4e9bb41e81 (Test Barem)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-97dace0da92a5600e7bc7a1c",
+            "label": "Creșa-grădiniță nr. 145"
+          },
+          {
+            "documentId": "municipal-1b234268707657d7a820858d",
+            "label": "Creșa-grădiniță nr. 52"
+          },
+          {
+            "documentId": "municipal-06f11bca04e65c4e9bb41e81",
+            "label": "Test Barem"
+          }
+        ]
+      }
+    },
+    {
+      "id": "off-movie-ru",
+      "kind": "off_topic",
+      "language": "ru",
+      "question": "Посоветуй хороший фильм на вечер.",
+      "latencyMs": 21008.2,
+      "passed": false,
+      "failures": [
+        "status: got SUPPORTED, expected one of ['NOT_FOUND']",
+        "citationCount: 1 citation(s), at most 0 allowed",
+        "citationRelevance: unrelated: municipal-051c27743d2d4755f269c7ee (Proiecția filmului „Egregora” și întâlnire cu regizorul Andr)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "fail",
+        "citationRelevance": "fail",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 1,
+        "relevanceScored": true,
+        "unrelatedCitations": 1,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 1,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Рекомендуется посмотреть фильм «Egregora». [S1]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-051c27743d2d4755f269c7ee",
+            "title": "Proiecția filmului „Egregora” și întâlnire cu regizorul Andrei Chiriac la Centrul Municipal de Tineret Chișinău",
+            "url": "https://e-tineret.md/proiectia-filmului-egregora-si-intalnire-cu-regizorul-andrei-chiriac-la-centrul-municipal-de-tineret-chisinau/",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "period-world-cup-2022-ro",
+      "kind": "wrong_period",
+      "language": "ro",
+      "question": "Cine a câștigat Campionatul Mondial de fotbal 2022?",
+      "latencyMs": 6307.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-6b6d0f83d07ea084d4b3d541 (Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organiza), municipal-12aeff976ad2cc25a363f17a (TEREN DE SPORT LT „A.I.CUZA”), municipal-24917fe483902cb37294e79a (Dispoziție nr. 113-d din 2025-07-30 — Cu privire la desfășur)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6b6d0f83d07ea084d4b3d541",
+            "label": "Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organizarea și desfășurarea evenimentului social-sportiv „Orășelul Sportiv” de către S.R.L. „Bis-Concert Internațional”"
+          },
+          {
+            "documentId": "municipal-12aeff976ad2cc25a363f17a",
+            "label": "TEREN DE SPORT LT „A.I.CUZA”"
+          },
+          {
+            "documentId": "municipal-24917fe483902cb37294e79a",
+            "label": "Dispoziție nr. 113-d din 2025-07-30 — Cu privire la desfășurarea Turneului de calificare al Campionatului European la fotbal pe plajă - EBSL 2025"
+          }
+        ]
+      }
+    },
+    {
+      "id": "period-world-cup-2022-en",
+      "kind": "wrong_period",
+      "language": "en",
+      "question": "Who won the 2022 FIFA World Cup?",
+      "latencyMs": 12625.7,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-6b6d0f83d07ea084d4b3d541 (Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organiza), municipal-d6abc7830f1a46f57940e98d (E-Tineret.md | Oportunități, Evenimente și Centre pentru Tin), municipal-24917fe483902cb37294e79a (Dispoziție nr. 113-d din 2025-07-30 — Cu privire la desfășur)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6b6d0f83d07ea084d4b3d541",
+            "label": "Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organizarea și desfășurarea evenimentului social-sportiv „Orășelul Sportiv” de către S.R.L. „Bis-Concert Internațional”"
+          },
+          {
+            "documentId": "municipal-d6abc7830f1a46f57940e98d",
+            "label": "E-Tineret.md | Oportunități, Evenimente și Centre pentru Tineri din Chișinău și Moldova"
+          },
+          {
+            "documentId": "municipal-24917fe483902cb37294e79a",
+            "label": "Dispoziție nr. 113-d din 2025-07-30 — Cu privire la desfășurarea Turneului de calificare al Campionatului European la fotbal pe plajă - EBSL 2025"
+          }
+        ]
+      }
+    },
+    {
+      "id": "period-world-cup-2018-ru",
+      "kind": "wrong_period",
+      "language": "ru",
+      "question": "Кто выиграл чемпионат мира по футболу 2018 года?",
+      "latencyMs": 17001.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-6cbf6ef98c7ae4033edf6155 (4031), municipal-6b6d0f83d07ea084d4b3d541 (Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organiza), municipal-12aeff976ad2cc25a363f17a (TEREN DE SPORT LT „A.I.CUZA”)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "Какой проект вы имеете в виду?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6cbf6ef98c7ae4033edf6155",
+            "label": "4031"
+          },
+          {
+            "documentId": "municipal-6b6d0f83d07ea084d4b3d541",
+            "label": "Dispoziție nr. 244-d din 2026-06-29 — Cu privire la organizarea și desfășurarea evenimentului social-sportiv „Orășelul Sportiv” de către S.R.L. „Bis-Concert Internațional”"
+          },
+          {
+            "documentId": "municipal-12aeff976ad2cc25a363f17a",
+            "label": "TEREN DE SPORT LT „A.I.CUZA”"
+          }
+        ]
+      }
+    },
+    {
+      "id": "period-enrolment-2012-ro",
+      "kind": "wrong_period",
+      "language": "ro",
+      "question": "Care a fost calendarul înscrierii copiilor în clasa I pentru anul de studii 2012-2013 în Chișinău?",
+      "latencyMs": 8048.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND']",
+        "choiceRelevance: unrelated choices: municipal-44edd26c70f2679767043369 (În municipiul Chișinău continuă procesul de înscriere a copi), municipal-a25d1da41832fba8f7e0ccce (Ordinului DGETS nr. 01/1-7/338 din 28.03.2023 Cu privire la ), municipal-2c4dc19f9b96de7c4ca410c9 (Ordinul DGETS nr. 240 din 26.03.2021 Cu privire la înscriere)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "pass",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-44edd26c70f2679767043369",
+            "label": "În municipiul Chișinău continuă procesul de înscriere a copiilor în clasa I, în patru zile – aproape 5 mii de cereri - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-a25d1da41832fba8f7e0ccce",
+            "label": "Ordinului DGETS nr. 01/1-7/338 din 28.03.2023 Cu privire la organizarea înscrierii în clasa I-i în anul de studii 2023-2024"
+          },
+          {
+            "documentId": "municipal-2c4dc19f9b96de7c4ca410c9",
+            "label": "Ordinul DGETS nr. 240 din 26.03.2021 Cu privire la înscrierea copiilor în clasa I în anul de studii 2021-2022"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lacks-dgets-hours-ro",
+      "kind": "lacks_value",
+      "language": "ro",
+      "question": "Care este programul de lucru al Direcției Generale Educație, Tineret și Sport de pe str. Mitropolit Dosoftei 99?",
+      "latencyMs": 13138.8,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND', 'SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-3fd77b02aaa7bacd7358b8f1 (Regulamentul de organizare și funcționare a DGETS)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-03276d6e26e87f11de9d1255",
+            "label": "Direcția Generală Educație, Tineret și Sport Chișinău | DGETS"
+          },
+          {
+            "documentId": "municipal-3fd77b02aaa7bacd7358b8f1",
+            "label": "Regulamentul de organizare și funcționare a DGETS"
+          },
+          {
+            "documentId": "municipal-6296703c9a2ae8829d6bd9a8",
+            "label": "Ordin nr. 01/1-7/42 din 19.01.2026 Cu referire la elaborarea proiectului Planului de acțiuni al Direcției Generale Educație, Tineret și Sport a Consiliului municipal Chișinău, anul 2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lacks-dgets-hours-ru",
+      "kind": "lacks_value",
+      "language": "ru",
+      "question": "Какой график работы у Генеральной дирекции образования, молодёжи и спорта мэрии Кишинёва?",
+      "latencyMs": 11757.9,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND', 'SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-6eb588e8d9682780a9fc3684 (✅CHIȘINĂUL INVESTEȘTE ÎN EDUCAȚIE Educația timpurie, școala,), municipal-1bc80a3d0a9c4ebf81192594 (Ordin nr. 57 din 29 decemrie 2017 Cu privire la efectuarea s), municipal-1e7673f72322c970c5ef7b56 (Ordin serviciu 14 octombrie)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "Какой проект вы имеете в виду?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6eb588e8d9682780a9fc3684",
+            "label": "✅CHIȘINĂUL INVESTEȘTE ÎN EDUCAȚIE Educația timpurie, școala, incluziunea, creația și sportul"
+          },
+          {
+            "documentId": "municipal-1bc80a3d0a9c4ebf81192594",
+            "label": "Ordin nr. 57 din 29 decemrie 2017 Cu privire la efectuarea serviciului în zilele de odihnă din 1 și 8 ianuarie 2018"
+          },
+          {
+            "documentId": "municipal-1e7673f72322c970c5ef7b56",
+            "label": "Ordin serviciu 14 octombrie"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lacks-football-pitch-finish-date-ro",
+      "kind": "lacks_value",
+      "language": "ro",
+      "question": "La ce dată au fost finalizate lucrările la terenul de fotbal de la Liceul „Liviu Deleanu”?",
+      "latencyMs": 8040.3,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND', 'SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-156e579ffa280dabac770908 (Trotuar pe strada Liviu Deleanu partea pară), municipal-98d141a188af77065a364883 (A demarat construcția unui teren de fotbal modern la Liceul )"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 2,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-1ae69b5d3aa977a333efe35a",
+            "label": "Teren de fotbal la Liceul \"Liviu Deleanu\""
+          },
+          {
+            "documentId": "municipal-156e579ffa280dabac770908",
+            "label": "Trotuar pe strada Liviu Deleanu partea pară"
+          },
+          {
+            "documentId": "municipal-98d141a188af77065a364883",
+            "label": "A demarat construcția unui teren de fotbal modern la Liceul Teoretic „Titu Maiorescu”"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lacks-diabetes-day-hour-ro",
+      "kind": "lacks_value",
+      "language": "ro",
+      "question": "La ce oră a început măsurarea gratuită a glicemiei de Ziua Mondială a Diabetului la Pretura sectorului Centru?",
+      "latencyMs": 6518.4,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND', 'SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-27be5164ecbaf2f620fb6133 (Descarcă), municipal-0a86c037dd19f7db1e055f71 (Comunicat_15 mai_Ziua Internațională a Familiei (1))"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 2,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-5832aec82be9234861c696a5",
+            "label": "De Ziua Mondială a Diabetului, locuitorii capitalei pot beneficia de măsurarea gratuită a glicemiei"
+          },
+          {
+            "documentId": "municipal-27be5164ecbaf2f620fb6133",
+            "label": "Descarcă"
+          },
+          {
+            "documentId": "municipal-0a86c037dd19f7db1e055f71",
+            "label": "Comunicat_15 mai_Ziua Internațională a Familiei (1)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lacks-debate-academy-budget-en",
+      "kind": "lacks_value",
+      "language": "en",
+      "question": "What is the total budget, in lei, of the Civic Debate Academy 2026?",
+      "latencyMs": 11493.4,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['NOT_FOUND', 'SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-a1587c7af4a50b80f5efe35b (Dispoziție nr. 177-d din 2026-05-22 — Cu privire la implemen), municipal-7504226047ca75bf4fb7e144 (Plan de achiziții din 27.01.2026 - Plan provizoriu de achizi), municipal-f109c78737d81982f435a8bb (https://chisinauedu.dgets.md/storage/orders/attachments/1770)"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 3,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-a1587c7af4a50b80f5efe35b",
+            "label": "Dispoziție nr. 177-d din 2026-05-22 — Cu privire la implementarea proiectelor depuse spre finanțare prin intermediul Programului Buget Civil Chișinău, ediția 2026"
+          },
+          {
+            "documentId": "municipal-7504226047ca75bf4fb7e144",
+            "label": "Plan de achiziții din 27.01.2026 - Plan provizoriu de achiziție al Direcției Generale Educație, Tineret și Sport pentru anul 2026"
+          },
+          {
+            "documentId": "municipal-f109c78737d81982f435a8bb",
+            "label": "https://chisinauedu.dgets.md/storage/orders/attachments/1770635541_regulament-program-de-co-finantaretineret-2026_V9ujR9.doc"
+          }
+        ]
+      }
+    },
+    {
+      "id": "amb-amt-hours-ro",
+      "kind": "ambiguous",
+      "language": "ro",
+      "question": "Care este programul de lucru al Asociației Medicale Teritoriale?",
+      "latencyMs": 18242.3,
+      "passed": false,
+      "failures": [
+        "status: got SUPPORTED, expected one of ['NEEDS_CLARIFICATION']",
+        "citationRelevance: unrelated: municipal-9b0f43bdd1e22c7ea9657119 (Ordinul Ministerului Sănătății nr. 1015/674A din 29.12.2015 )"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "fail",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 4,
+        "relevanceScored": true,
+        "unrelatedCitations": 1,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 3,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Programul de lucru pentru specialiști profil terapeutic și chirurgical la Asociația Medicală Teritorială Centru este de la 08:00 la 18:00, cu o pauză de la 09:00 la 13:00. [S1]\nProgramul de lucru pentru reabilitare medicală și medicină fizică la Asociația Medicală Teritorială Centru este de la 08:00 la 18:00, cu o pauză de la 08:00 la 13:00. [S2]\nProgramul de lucru al instituției medicale primare, inclusiv al Asociației Medicale Teritoriale, se stabilește în funcție de specificul localității (rural/urban), anotimp (vară/iarnă) și numărul medicilor de familie sau asistenților medicali, asigurând accesul populației la asistența medicală primară conform cererii, în interval optimal de timp. [S3] [S4]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-fd5d8aaa7e136f1d1d5212ab",
+            "title": "PROGRAM DE LUCRU » Instituția Medico-Sanitară Publică Asociația Medicală Teritorială Centru",
+            "url": "https://amt-centru.md/grafic-de-lucru/",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-fd5d8aaa7e136f1d1d5212ab",
+            "title": "PROGRAM DE LUCRU » Instituția Medico-Sanitară Publică Asociația Medicală Teritorială Centru",
+            "url": "https://amt-centru.md/grafic-de-lucru/",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-80bda9d0864095e54b28ed90",
+            "title": "Ordin Nr.OMS596/404/2016 din 21.07.2016 : privind aprobarea Normelor metodologice de aplicare a Programului unic al asigurării obligatorii de asistență medicală",
+            "url": "https://amt-botanica.md/wp-content/uploads/2022/11/Ordin-Nr.OMS596.404.2016din21.07.2016.pdf",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-9b0f43bdd1e22c7ea9657119",
+            "title": "Ordinul Ministerului Sănătății nr. 1015/674A din 29.12.2015 privind aprobarea Normelor metodologice de aplicare în anul 2016 a Programului unic al asigurării obligatorii de asistență medicala",
+            "url": "https://ms.gov.md/sites/default/files/legislatie/ordin_nr._1015_674-a_din_29.12.2015_privind_aprobarea_normelor_metodologice_de_aplicare_in_anul_2016_0.pdf",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "amb-amt-hours-ru",
+      "kind": "ambiguous",
+      "language": "ru",
+      "question": "Какой график работы у Территориальной медицинской ассоциации?",
+      "latencyMs": 240097.4,
+      "passed": false,
+      "error": "TimeoutError: timed out",
+      "failures": [
+        "request failed: TimeoutError: timed out"
+      ],
+      "checks": {},
+      "counts": {},
+      "response": null
+    },
+    {
+      "id": "amb-minifootball-tournament-ro",
+      "kind": "ambiguous",
+      "language": "ro",
+      "question": "Când are loc turneul de mini-fotbal pentru copii?",
+      "latencyMs": 9051.4,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-5f65c7bb52dfba76625219d5",
+            "label": "Dispoziție nr. 47 din 2026-04-23 — Cu privire la organizarea și desfășurarea Turneului la mini-fotbal pentru copii „Cupa Preturii sectorului Botanica” ediția a III- a 2026"
+          },
+          {
+            "documentId": "municipal-065b4202ac9ad2b309aebb53",
+            "label": "Dispoziție nr. 01-05/20 din 2024-03-04 — Cu privire la organizarea și desfășurarea turneului la minifotbal între copii „Cupa Preturii sectorului Botanica”, ediția I-2024"
+          },
+          {
+            "documentId": "municipal-0b965d8e41a21a5d8ad12f4e",
+            "label": "Dispoziție nr. 01-05/43 din 2025-03-28 — Cu privire la organizarea și desfășurarea turneului la mini-fotbal pentru copii „Cupa Preturii sectorului Botanica” ediția a II - a 2025"
+          }
+        ]
+      }
+    },
+    {
+      "id": "amb-minifootball-tournament-en",
+      "kind": "ambiguous",
+      "language": "en",
+      "question": "When does the mini-football tournament for children take place?",
+      "latencyMs": 12382.4,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-5f65c7bb52dfba76625219d5",
+            "label": "Dispoziție nr. 47 din 2026-04-23 — Cu privire la organizarea și desfășurarea Turneului la mini-fotbal pentru copii „Cupa Preturii sectorului Botanica” ediția a III- a 2026"
+          },
+          {
+            "documentId": "municipal-065b4202ac9ad2b309aebb53",
+            "label": "Dispoziție nr. 01-05/20 din 2024-03-04 — Cu privire la organizarea și desfășurarea turneului la minifotbal între copii „Cupa Preturii sectorului Botanica”, ediția I-2024"
+          },
+          {
+            "documentId": "municipal-0b965d8e41a21a5d8ad12f4e",
+            "label": "Dispoziție nr. 01-05/43 din 2025-03-28 — Cu privire la organizarea și desfășurarea turneului la mini-fotbal pentru copii „Cupa Preturii sectorului Botanica” ediția a II - a 2025"
+          }
+        ]
+      }
+    },
+    {
+      "id": "amb-school-football-pitch-ro",
+      "kind": "ambiguous",
+      "language": "ro",
+      "question": "Ce lucrări s-au făcut la terenul de fotbal al liceului?",
+      "latencyMs": 6878.5,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-a44f2305a28eb57dc15801a0",
+            "label": "Teren de fotbal la Liceul \"G. Călinescu\""
+          },
+          {
+            "documentId": "municipal-1ae69b5d3aa977a333efe35a",
+            "label": "Teren de fotbal la Liceul \"Liviu Deleanu\""
+          },
+          {
+            "documentId": "municipal-d5db4b5f8e4bfc344d93ef0f",
+            "label": "Teren de fotbal la Liceul \"Gaudeamus\""
+          }
+        ]
+      }
+    },
+    {
+      "id": "amb-grade1-applications-count-ro",
+      "kind": "ambiguous",
+      "language": "ro",
+      "question": "Câte cereri au fost depuse pentru înscrierea copiilor în clasa I?",
+      "latencyMs": 10163.6,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-ec38f83f590df7c79970442b",
+            "label": "Peste 7 mii de cereri pentru înscrierea copiilor în clasa I în școlile din Capitală și suburbii - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-cacda8c75b0777644a25cc67",
+            "label": "Înscriere clasa I – Etapa II anul de studii 2025-2026"
+          },
+          {
+            "documentId": "municipal-98e326cc712ba63481eabae7",
+            "label": "AU MAI RĂMAS 2 ZILE PENTRU ÎNSCRIEREA ÎN CLASA I – ETAPA I"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dup-kindergarten-online-ro",
+      "kind": "duplicate_heavy",
+      "language": "ro",
+      "question": "Cum se face înscrierea copiilor la grădinițele din Chișinău?",
+      "latencyMs": 6373.8,
+      "passed": false,
+      "failures": [
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6d1b853f8a38dde35e81e1b1",
+            "label": "📢 ÎNSCRIEREA COPIILOR LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE! 🌱👧👦"
+          },
+          {
+            "documentId": "municipal-1d7fad9862ea9253d7573ba5",
+            "label": "📢 ÎNSCRIEREA COPIILOR LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE! 🌱👧👦"
+          },
+          {
+            "documentId": "municipal-e591d466121afa3745bd2ca1",
+            "label": "ÎNSCRIEREA LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dup-kindergarten-online-ru",
+      "kind": "duplicate_heavy",
+      "language": "ru",
+      "question": "Как записать ребёнка в детский сад в Кишинёве?",
+      "latencyMs": 9352.4,
+      "passed": false,
+      "failures": [
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "Какой проект вы имеете в виду?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-6d1b853f8a38dde35e81e1b1",
+            "label": "📢 ÎNSCRIEREA COPIILOR LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE! 🌱👧👦"
+          },
+          {
+            "documentId": "municipal-1d7fad9862ea9253d7573ba5",
+            "label": "📢 ÎNSCRIEREA COPIILOR LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE! 🌱👧👦"
+          },
+          {
+            "documentId": "municipal-fdfd260111c3af5fc5590dc5",
+            "label": "ÎNSCRIEREA LA GRĂDINIȚELE DIN CHIȘINĂU SE FACE EXCLUSIV ONLINE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dup-queue-number-certificate-ro",
+      "kind": "duplicate_heavy",
+      "language": "ro",
+      "question": "Cum obțin certificatul cu privire la numărul de rând la locuință?",
+      "latencyMs": 6545.7,
+      "passed": false,
+      "failures": [
+        "choiceRelevance: unrelated choices: municipal-8e09db1f65ba2b114209426e (Raport)",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-8e09db1f65ba2b114209426e",
+            "label": "Raport"
+          },
+          {
+            "documentId": "municipal-f54a45658e09eb720d551f1c",
+            "label": "Eliberarea certificatului cu privire la numărul de rând"
+          },
+          {
+            "documentId": "municipal-d4ba8232ea6ec23cb64ebf26",
+            "label": "Eliberarea certificatului cu privire la numărul de rând"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dup-medical-tariff-catalogue-ro",
+      "kind": "duplicate_heavy",
+      "language": "ro",
+      "question": "Unde găsesc catalogul tarifelor unice pentru serviciile medico-sanitare prestate contra plată?",
+      "latencyMs": 11811.8,
+      "passed": false,
+      "failures": [
+        "choiceRelevance: unrelated choices: municipal-f673cb46249c23bbc637a726 (Versiune tipar)",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-f673cb46249c23bbc637a726",
+            "label": "Versiune tipar"
+          },
+          {
+            "documentId": "municipal-3148b12cdb0d1acef120976b",
+            "label": "Catalogul tarifelor unice pentru serviciile medico-sanitare prestate contra plată de către instituțiile medico-sanitare publice"
+          },
+          {
+            "documentId": "municipal-ed7faa125d9d426f0a312035",
+            "label": "CATALOGUL TARIFELOR UNICE pentru serviciile medico-sanitare prestate contra plată de către instituțiile medico-sanitare publice, precum și pentru serviciile acoperite din fondurile asigurării obligatorii de asistență medicală, prestate de instituțiile medico-sanitare publice și cele private"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dup-eminescu-square-ro",
+      "kind": "duplicate_heavy",
+      "language": "ro",
+      "question": "Ce lucrări au fost făcute la reabilitarea scuarului „Mihai Eminescu” și când au început?",
+      "latencyMs": 165808.7,
+      "passed": true,
+      "failures": [],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "pass",
+        "choiceRelevance": "n/a",
+        "clarificationChoices": "n/a",
+        "noDuplicateChoices": "n/a",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "pass",
+        "noDanglingMarkers": "pass",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 7,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 0,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": true,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 21,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "SUPPORTED",
+        "answer": "Lucrările de reabilitare a scuarului Mihai Eminescu au început în 2020. [S1]\nÎn prima fază a reabilitării scuarului Mihai Eminescu au fost curățați copacii, înlăturați asfaltul vechi și demontate bordurile. [S1]\nÎn cadrul reabilitării scuarului Mihai Eminescu a fost înlocuit mobilierul urban cu unul nou și modern. [S1]\nProiectul de reabilitare a scuarului Mihai Eminescu prevede remodelarea căilor de acces și a zonelor verzi. [S1]\nÎn cadrul reabilitării scuarului Mihai Eminescu a fost instalat sistemul automatizat de irigare. [S1]\nÎn cadrul reabilitării scuarului Mihai Eminescu au fost instalate bănci, coșuri de gunoi și vaze cu arbori și arbuști. [S1]\nÎn scuarul Mihai Eminescu au fost plantați copaci noi, inclusiv molizi argintii și tuia pitică. [S3]\nÎn scuarul Mihai Eminescu au fost plantați și specii decorative precum sorbul și ienupărul. [S3]\nÎn scuarul Mihai Eminescu au fost instalate mese de șah. [S3]\nÎn scuarul Mihai Eminescu a fost amenajată o bibliotecă mobilă pentru lectură în aer liber. [S3]\nScuarul Mihai Eminescu are o zonă de joacă pentru copii. [S3]\nÎn scuarul Mihai Eminescu au fost montați stâlpi de iluminat ornamentali. [S6]\nÎn scuarul Mihai Eminescu au fost instalate boxe pentru difuzarea programelor radiofonice teatralizate. [S6]\nÎn scuarul Mihai Eminescu a fost instalat un sistem de monitorizare video pentru securizarea zonei. [S6]\nCompania Maiscons Grup SRL este responsabilă cu instalarea pavajului în scuarul Mihai Eminescu. [S4]\nCompania BGTon SRL este responsabilă cu instalarea sistemului de irigare în scuarul Mihai Eminescu. [S4]\nLa momentul actual, lucrările de reabilitare a scuarului Mihai Eminescu sunt finalizate în proporție de 85%. [S2]\nPe șantierul scuarului Mihai Eminescu sunt efectuate lucrări de instalare a pernuțelor pentru stâlpii de iluminat. [S2]\nÎn următoarea fază a lucrărilor de reabilitare a scuarului Mihai Eminescu urmează să fie instalat mobilierul urban, inclusiv bănci, urne și ghiveciuri. [S2]\nLucrările de reabilitare a scuarului Mihai Eminescu se desfășoară conform graficului aprobat. [S5]\nActivitățile social-culturale în scuarul Mihai Eminescu au fost suspendate temporar pe perioada executării lucrărilor de restabilire a pilonilor de iluminat. [S7]",
+        "citations": [
+          {
+            "id": null,
+            "documentId": "municipal-9a0028babd7356b68bb2f7ad",
+            "title": "Reabilitarea scuarului \"Mihai Eminescu\"",
+            "url": "https://proiecte.chisinau.md/ro/pv-1093-reabilitarea-scuarului-mihai-eminescu/?lng=",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-ff81342bea558b6faa1eab95",
+            "title": "Reabilitarea Scuarului Mihai Eminescu",
+            "url": "https://chisinaucentru.md/reabilitarea-scuarului-mihai-eminescu/",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-9a0028babd7356b68bb2f7ad",
+            "title": "Reabilitarea scuarului \"Mihai Eminescu\"",
+            "url": "https://proiecte.chisinau.md/ro/pv-1093-reabilitarea-scuarului-mihai-eminescu/?lng=",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-ff81342bea558b6faa1eab95",
+            "title": "Reabilitarea Scuarului Mihai Eminescu",
+            "url": "https://chisinaucentru.md/reabilitarea-scuarului-mihai-eminescu/",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-ff81342bea558b6faa1eab95",
+            "title": "Reabilitarea Scuarului Mihai Eminescu",
+            "url": "https://chisinaucentru.md/reabilitarea-scuarului-mihai-eminescu/",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-9a0028babd7356b68bb2f7ad",
+            "title": "Reabilitarea scuarului \"Mihai Eminescu\"",
+            "url": "https://proiecte.chisinau.md/ro/pv-1093-reabilitarea-scuarului-mihai-eminescu/?lng=",
+            "publishedDate": null,
+            "outdated": null
+          },
+          {
+            "id": null,
+            "documentId": "municipal-7fef3496e6759704c24babb9",
+            "title": "Dispoziție nr. 63-d din 2024-08-13 — Cu privire la sistarea temporară a activităților social-culturale în scuarul Mihai Eminescu din mun. Chișinău",
+            "url": "https://actelocale.gov.md/ral/act/downloadAct/3785784/1685513",
+            "publishedDate": null,
+            "outdated": null
+          }
+        ],
+        "clarificationChoices": null
+      }
+    },
+    {
+      "id": "dup-buiucani-kindergarten-repairs-ro",
+      "kind": "duplicate_heavy",
+      "language": "ro",
+      "question": "Ce grădinițe au fost reparate în sectorul Buiucani și cât au costat investițiile?",
+      "latencyMs": 9969.3,
+      "passed": false,
+      "failures": [
+        "choiceRelevance: unrelated choices: municipal-406bac2fa4bd6d0201ceb65d (Grădinițele din suburbii – instituții moderne și atractive. )",
+        "noDuplicateChoices: 1 duplicate choice(s)"
+      ],
+      "checks": {
+        "status": "pass",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "fail",
+        "requiredDocuments": "n/a",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 1,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-eb708fe940b2f14019f8c4e5",
+            "label": "Reparația grădinițelor din sectorul Buiucani"
+          },
+          {
+            "documentId": "municipal-26d51aa398fbc8bb3b04d3b5",
+            "label": "Reparația grădinițelor din sectorul Buiucani"
+          },
+          {
+            "documentId": "municipal-406bac2fa4bd6d0201ceb65d",
+            "label": "Grădinițele din suburbii – instituții moderne și atractive. Investițiile din bugetul municipal în dezvoltarea acestora depășesc 87 de mln de lei - Suburbii.Chisinau.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-ro",
+      "kind": "yearly_topic",
+      "language": "ro",
+      "question": "Când începe înscrierea copiilor în clasa I pentru anul de studii 2026-2027?",
+      "latencyMs": 16599.6,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "requiredDocuments: missing ['municipal-6391b1ed92a78864ebb8fef5']"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "fail",
+        "noOutdatedSources": "pass",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-c12f83842470ed130f1f8d7d",
+            "label": "A început Etapa a II-a de înscriere în clasa I pentru anul de studii 2026–2027"
+          },
+          {
+            "documentId": "municipal-b0ac8c1ae83fd9b770d03abe",
+            "label": "Școala Primară „Spiridon Vangheli” anunță înscrierea copiilor în clasa I pentru anul de studii 2026-2027"
+          },
+          {
+            "documentId": "municipal-2897e24bd4186bdba8f816ac",
+            "label": "Înscrierea copiilor în clasa 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-ru",
+      "kind": "yearly_topic",
+      "language": "ru",
+      "question": "Когда начинается запись детей в первый класс на 2026-2027 учебный год в Кишинёве?",
+      "latencyMs": 14385.2,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "requiredDocuments: missing ['municipal-6391b1ed92a78864ebb8fef5']"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "fail",
+        "noOutdatedSources": "pass",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "Какой проект вы имеете в виду?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-0ee9b5ce7ddb2210f1a94b3c",
+            "label": "Util pentru părinții din suburbii: DGETS a început procedura de înscriere a copiilor în clasa I - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-6391b1ed92a78864ebb8fef5",
+            "label": "Ordin nr. 01/1-7/345 din 17.03.2026 Cu privire la organizarea înscrierii copiilor în clasa I în anul de studii 2026-2027"
+          },
+          {
+            "documentId": "municipal-c12f83842470ed130f1f8d7d",
+            "label": "A început Etapa a II-a de înscriere în clasa I pentru anul de studii 2026–2027"
+          }
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-start-en",
+      "kind": "yearly_topic",
+      "language": "en",
+      "question": "When does first-grade school enrolment start in Chișinău for the 2026-2027 school year?",
+      "latencyMs": 9805.4,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "requiredDocuments: missing ['municipal-6391b1ed92a78864ebb8fef5']"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "pass",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "fail",
+        "noOutdatedSources": "pass",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 0,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-0ee9b5ce7ddb2210f1a94b3c",
+            "label": "Util pentru părinții din suburbii: DGETS a început procedura de înscriere a copiilor în clasa I - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-c12f83842470ed130f1f8d7d",
+            "label": "A început Etapa a II-a de înscriere în clasa I pentru anul de studii 2026–2027"
+          },
+          {
+            "documentId": "municipal-6391b1ed92a78864ebb8fef5",
+            "label": "Ordin nr. 01/1-7/345 din 17.03.2026 Cu privire la organizarea înscrierii copiilor în clasa I în anul de studii 2026-2027"
+          }
+        ]
+      }
+    },
+    {
+      "id": "year-grade1-2026-documents-ro",
+      "kind": "yearly_topic",
+      "language": "ro",
+      "question": "Ce acte sunt necesare pentru înscrierea copilului în clasa I în 2026?",
+      "latencyMs": 7270.5,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-536eead8703247009ee80922 (Ordinul Ministerului, precum și alte detalii le găsiți AICI )",
+        "requiredDocuments: missing ['municipal-6391b1ed92a78864ebb8fef5']",
+        "noOutdatedSources: cited or offered outdated ['municipal-b4eb14afd314dae14eb19c09']"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "fail",
+        "noOutdatedSources": "fail",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 1,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 1,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-b4eb14afd314dae14eb19c09",
+            "label": "Etapa a III-a de înscriere în clasa I – anul de studii 2025–2026 - Suburbii.Chisinau.md"
+          },
+          {
+            "documentId": "municipal-6391b1ed92a78864ebb8fef5",
+            "label": "Ordin nr. 01/1-7/345 din 17.03.2026 Cu privire la organizarea înscrierii copiilor în clasa I în anul de studii 2026-2027"
+          },
+          {
+            "documentId": "municipal-536eead8703247009ee80922",
+            "label": "Ordinul Ministerului, precum și alte detalii le găsiți AICI ."
+          }
+        ]
+      }
+    },
+    {
+      "id": "year-grade5-2026-ro",
+      "kind": "yearly_topic",
+      "language": "ro",
+      "question": "Cum se organizează înscrierea elevilor în clasa a V-a cu profil arte și sport pentru anul de studii 2026-2027?",
+      "latencyMs": 7708.5,
+      "passed": false,
+      "failures": [
+        "status: got NEEDS_CLARIFICATION, expected one of ['SUPPORTED', 'PARTIAL']",
+        "choiceRelevance: unrelated choices: municipal-2c6c09b05171b5f387b9da97 (Anexă - Ordin MEC 512.pdf PDF\n• 1.8 MB), municipal-aec9bbd5b667213669d8461d (Ordin nr. 01/1-7/380 din 24.03.2026 Cu privire la punerea în)",
+        "requiredDocuments: missing ['municipal-a1d2e63f3289e41e8c74df15']"
+      ],
+      "checks": {
+        "status": "fail",
+        "reason": "n/a",
+        "notFoundWithoutCitations": "n/a",
+        "citationCount": "n/a",
+        "citationRelevance": "n/a",
+        "choiceRelevance": "fail",
+        "clarificationChoices": "pass",
+        "noDuplicateChoices": "pass",
+        "requiredDocuments": "fail",
+        "noOutdatedSources": "n/a",
+        "answerCited": "n/a",
+        "noDanglingMarkers": "n/a",
+        "valuePresentWhenAnswered": "n/a",
+        "answerContent": "n/a"
+      },
+      "counts": {
+        "citations": 0,
+        "relevanceScored": true,
+        "unrelatedCitations": 0,
+        "choices": 3,
+        "choicesScored": true,
+        "unrelatedChoices": 2,
+        "duplicateChoices": 0,
+        "outdatedDocuments": 0,
+        "answerBearing": false,
+        "uncitedAnswer": false,
+        "uncitedSentences": 0,
+        "sentences": 0,
+        "reasonReported": false,
+        "flagsReported": false
+      },
+      "response": {
+        "mode": "rag",
+        "status": "NEEDS_CLARIFICATION",
+        "answer": "La care proiect vă referiți?",
+        "citations": [],
+        "clarificationChoices": [
+          {
+            "documentId": "municipal-a1d2e63f3289e41e8c74df15",
+            "label": "Ordin nr. 01/1-7/416 din 27.03.2026 Cu privire la înscrierea elevilor în clasa a V-a, pentru anul de studii 2026-2027, în clasele cu profil arte și sport, clasele bilingve, precum și în instituțiile de învățământ care nu au în structură învățământ primar, dar numărul de cereri depășește num"
+          },
+          {
+            "documentId": "municipal-2c6c09b05171b5f387b9da97",
+            "label": "Anexă - Ordin MEC 512.pdf PDF\n• 1.8 MB"
+          },
+          {
+            "documentId": "municipal-aec9bbd5b667213669d8461d",
+            "label": "Ordin nr. 01/1-7/380 din 24.03.2026 Cu privire la punerea în aplicare a Deciziei Consiliului de administrație nr. 2/1 din 20.03.2026"
+          }
+        ]
+      }
+    }
+  ]
+}

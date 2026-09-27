@@ -1,6 +1,6 @@
 {
   "schemaVersion": "3.0",
-  "promptVersion": "municipal-claims-v3.1",
+  "promptVersion": "municipal-hybrid-planner-v4.0",
   "models": {
     "embedding": "qwen/qwen3-embedding-8b",
     "reranker": "voyageai/rerank-2.5",
@@ -18,13 +18,21 @@
     "sparseCandidates": 40,
     "rrfK": 60,
     "maxPerDocument": 3,
-    "rerankCandidates": 30,
-    "finalEvidence": 10
+    "rerankCandidates": 40,
+    "finalEvidence": 16
   },
   "thresholds": {
     "minimumRerankScore": 0.22,
     "ambiguityScoreRatio": 0.88,
+    "clarificationMinimumScore": 0.6,
     "supportedConfidence": 0.78
+  },
+  "guardrails": {
+    "screenPassages": 16,
+    "screenQuoteChars": 700,
+    "categoryPenalty": 0.85,
+    "recencyDays": 365,
+    "historyTurns": 3
   },
   "chunking": {
     "targetMinTokens": 180,
