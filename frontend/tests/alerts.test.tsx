@@ -480,7 +480,7 @@ describe("Sidebar trackers", () => {
       onCreateTracker={project => created.push(project.id)}
       isOpen onClose={noop} />);
 
-    fireEvent.click(screen.getByRole("button", { name: en.trackers.open }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${en.trackers.open}`) }));
     expect(opened).toEqual(["trackers"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Education" }));

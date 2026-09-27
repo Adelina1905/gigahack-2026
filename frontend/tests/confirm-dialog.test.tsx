@@ -50,7 +50,7 @@ describe("sidebar delete confirmation", () => {
 
   it("deletes a chat only after it is confirmed, and returns focus when cancelled", () => {
     const deleted: string[] = [];
-    render(<ul><ChatItem chat={chat} isActive projects={[]} onSelect={noop} onRename={noop}
+    render(<ul><ChatItem chat={chat} isActive projects={[]} onSelect={noop}
       onDelete={id => deleted.push(id)} onMove={noop} /></ul>);
     const trigger = screen.getByRole("button", { name: en.sidebar.remove("Schools") });
 
@@ -71,7 +71,7 @@ describe("sidebar delete confirmation", () => {
     const deleted: string[] = [];
     render(<ul><ProjectItem project={project} chats={[]} projects={[project]} activeChatId={null}
       isDraftTarget={false} isExpanded={false} onToggle={noop} onNewChat={noop} onRename={noop}
-      onDelete={id => deleted.push(id)} onSelectChat={noop} onRenameChat={noop} onDeleteChat={noop}
+      onDelete={id => deleted.push(id)} onSelectChat={noop} onDeleteChat={noop}
       onMoveChat={noop} /></ul>);
 
     fireEvent.click(screen.getByRole("button", { name: en.projects.remove("Education") }));
