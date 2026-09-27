@@ -19,7 +19,6 @@ import { useTrackers } from "../hooks/useTrackers";
 import { usePlanNotifications } from "../hooks/usePlanNotifications";
 import { useDemoNotificationShortcut } from "../hooks/useDemoNotificationShortcut";
 import { useI18n } from "../i18n/context";
-import { draftPlanFromChat, type PlanDraft } from "../trackers/planDraft";
 import type { Alert, AlertScope } from "../types/alerts";
 import { DEFAULT_CHAT_NAME, type ProjectSummary } from "../types/chat";
 
@@ -36,12 +35,6 @@ function Playground() {
   const [selectedTrackerId, setSelectedTrackerId] = useState<string | null>(null);
   // undefined = overview; null = generic guided setup; project = setup from that project/conversation.
   const [trackerConversationProject, setTrackerConversationProject] = useState<ProjectSummary | null | undefined>(undefined);
-  // Answers guessed from the chat when setup starts from "Continue with this plan".
-  const [trackerDraft, setTrackerDraft] = useState<PlanDraft | null>(null);
-  const setTrackerSetup = useCallback((project: ProjectSummary | null | undefined, draft: PlanDraft | null = null) => {
-    setTrackerConversationProject(project);
-    setTrackerDraft(draft);
-  }, []);
   // The project a chat started from the empty screen will be created in.
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const alerts = useAlerts();
@@ -206,7 +199,7 @@ function Playground() {
     if (!notification) return;
     planNotifications.markRead(notification.id);
     setToastIds((current) => current.filter((id) => id !== notification.id));
-    setTrackerSetup(undefined);
+    setTrackerConversationProject(undefined);
     setSelectedTrackerId(notification.trackerId);
     setWorkspace("trackers");
   };
@@ -275,7 +268,7 @@ function Playground() {
           isTrackersOpen={workspace === "trackers"}
           onOpenTrackers={() => {
             setWorkspace("trackers");
-            setTrackerSetup(undefined);
+            setTrackerConversationProject(undefined);
             setSelectedTrackerId(null);
             setIsSidebarOpen(false);
           }}
@@ -290,15 +283,14 @@ function Playground() {
             projects={projectList.projects}
             isCreating={trackerConversationProject !== undefined}
             creationProject={trackerConversationProject}
-            creationDraft={trackerDraft}
             onSelect={setSelectedTrackerId}
             onBackToList={() => setSelectedTrackerId(null)}
-            onStartCreate={() => setTrackerSetup(null)}
-            onCancelCreate={() => setTrackerSetup(undefined)}
+            onStartCreate={() => setTrackerConversationProject(null)}
+            onCancelCreate={() => setTrackerConversationProject(undefined)}
             onCompleteCreate={(details, project) => {
               const tracker = trackerList.create(project, details);
               setSelectedTrackerId(tracker.id);
-              setTrackerSetup(undefined);
+              setTrackerConversationProject(undefined);
             }}
             onUpdate={trackerList.update}
             onRemove={(trackerId) => {
@@ -329,10 +321,6 @@ function Playground() {
               onSend={chat.send}
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
-              onTrackPlan={chat.messages.length > 0 ? () => {
-                setTrackerSetup(activeProject ?? null, draftPlanFromChat(chat.messages, t.trackers.suggestedTopics));
-                setWorkspace("trackers");
-              } : undefined}
               error={chat.error ?? chatList.error ?? projectList.error}
               onDismissError={() => {
                 chat.dismissError();

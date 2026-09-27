@@ -22,7 +22,6 @@ interface ChatWindowProps {
   onSend: (text: string) => string | null;
   onRetry?: (id: string) => void;
   onRegenerate?: (id: string) => void;
-  onTrackPlan?: () => void;
   error?: ErrorKey | null;
   onDismissError?: () => void;
   // Whether this browser already has chats; null while the list is loading.
@@ -117,7 +116,6 @@ function ChatWindow({
   onSend,
   onRetry,
   onRegenerate,
-  onTrackPlan,
   error,
   onDismissError,
   hasChats = false,
@@ -223,20 +221,6 @@ function ChatWindow({
         )}
         {noticeFor && noticeFor !== dismissedNoticeId && (
           <SupportNotice onDismiss={() => setDismissedNoticeId(noticeFor)} />
-        )}
-        {onTrackPlan && lastMessage?.role === "assistant" && !isTyping && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onTrackPlan}
-              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] px-3 text-sm font-semibold text-primary transition-colors duration-200 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" />
-              </svg>
-              {t.trackers.continueWithPlan}
-            </button>
-          </div>
         )}
         {alertPrompt}
         <ChatInput onSend={send} disabled={isTyping || isLoading} voice={voice} />

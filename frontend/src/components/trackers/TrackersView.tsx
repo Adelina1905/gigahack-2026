@@ -3,7 +3,6 @@ import { useI18n } from "../../i18n/context";
 import type { ProjectSummary } from "../../types/chat";
 import type { PlanTracker } from "../../types/tracker";
 import type { PlanNotification } from "../../types/planNotification";
-import { truncateWords, type PlanDraft } from "../../trackers/planDraft";
 import { CityGatesArt, TriumphalArchArt } from "../brand/Landmarks";
 import TitleRule from "../brand/TitleRule";
 import ConfirmDialog from "../ConfirmDialog";
@@ -17,8 +16,6 @@ interface TrackersViewProps {
   projects: ProjectSummary[];
   isCreating: boolean;
   creationProject?: ProjectSummary | null;
-  // Answers guessed from a chat ("Continue with this plan"); absent for "New plan".
-  creationDraft?: PlanDraft | null;
   onSelect: (trackerId: string) => void;
   onBackToList: () => void;
   onStartCreate: () => void;
@@ -66,23 +63,23 @@ function TagEditor({ items, onChange }: { items: string[]; onChange: (items: str
   );
 }
 
-// A prefilled wizard opens on the first unanswered step, or on the review when
-// everything is answered; Back still reaches every step.
-function firstStep(initial?: PlanDraft | null) {
-  if (!initial) return { step: 1, reviewing: false };
-  if (!initial.plan.trim()) return { step: 1, reviewing: false };
-  if (!initial.location.trim()) return { step: 2, reviewing: false };
-  if (initial.topics.length === 0) return { step: 3, reviewing: false };
-  return { step: 3, reviewing: true };
+// Caps text on a word boundary, adding an ellipsis when it was cut.
+function truncateWords(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  const head = lastSpace > max / 2 ? cut.slice(0, lastSpace) : cut;
+  return `${head.replace(/[\s,.;:!?-]+$/, "")}…`;
 }
 
-function TrackerConversation({ project, initial, onCancel, onComplete }: { project?: ProjectSummary | null; initial?: PlanDraft | null; onCancel: () => void; onComplete: (details: Partial<PlanTracker>, project?: ProjectSummary) => void }) {
+function TrackerConversation({ project, onCancel, onComplete }: { project?: ProjectSummary | null; onCancel: () => void; onComplete: (details: Partial<PlanTracker>, project?: ProjectSummary) => void }) {
   const { t } = useI18n();
-  const [step, setStep] = useState(() => firstStep(initial).step);
-  const [reviewing, setReviewing] = useState(() => firstStep(initial).reviewing);
-  const [plan, setPlan] = useState(initial?.plan || project?.name || "");
-  const [location, setLocation] = useState(initial?.location ?? "");
-  const [topics, setTopics] = useState<string[]>(initial?.topics ?? []);
+  const [step, setStep] = useState(1);
+  const [reviewing, setReviewing] = useState(false);
+  const [plan, setPlan] = useState(project?.name ?? "");
+  const [location, setLocation] = useState("");
+  const [topics, setTopics] = useState<string[]>([]);
   const trackerName = project?.name || truncateWords(plan, 80) || t.trackers.newTracker;
   const canContinue = step === 1 ? Boolean(plan.trim()) : step === 2 ? Boolean(location.trim()) : topics.length > 0;
   const toggleTopic = (topic: string) => setTopics((current) => current.includes(topic) ? current.filter((item) => item !== topic) : [...current, topic]);
@@ -182,14 +179,14 @@ function TrackerDetail({ tracker, project, notifications, onBack, onUpdate, onRe
   );
 }
 
-export default function TrackersView({ trackers, selectedId, projects, isCreating, creationProject, creationDraft, onSelect, onBackToList, onStartCreate, onCancelCreate, onCompleteCreate, onUpdate, onRemove, notifications = [], onOpenNotification = () => {} }: TrackersViewProps) {
+export default function TrackersView({ trackers, selectedId, projects, isCreating, creationProject, onSelect, onBackToList, onStartCreate, onCancelCreate, onCompleteCreate, onUpdate, onRemove, notifications = [], onOpenNotification = () => {} }: TrackersViewProps) {
   const { t } = useI18n();
   const selected = trackers.find((tracker) => tracker.id === selectedId);
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-canvas">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 hidden items-end justify-between px-6 text-primary opacity-[0.055] xl:flex"><TriumphalArchArt className="h-44" /><CityGatesArt className="h-56" /></div>
       <header className="relative border-b border-border/80 bg-background/95 px-4 py-5 sm:px-8"><div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-semibold text-primary">{t.trackers.eyebrow}</p><h1 className="mt-1 font-serif text-2xl text-primary sm:text-3xl">{t.trackers.title}</h1><p className="mt-1 max-w-2xl text-sm leading-relaxed text-text-muted">{t.trackers.description}</p></div>{!isCreating && <button type="button" onClick={onStartCreate} className="inline-flex min-h-11 items-center gap-2 rounded-[5px] bg-primary px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none"><svg {...iconProps} className="h-4 w-4"><path d="M12 5v14M5 12h14" /></svg>{t.trackers.newTracker}</button>}</div></header>
-      <div className="relative min-h-0 flex-1 overflow-y-auto">{isCreating ? <TrackerConversation project={creationProject} initial={creationDraft} onCancel={onCancelCreate} onComplete={onCompleteCreate} /> : selected ? <TrackerDetail tracker={selected} project={projects.find((project) => project.id === selected.projectId)} notifications={notifications.filter((item) => item.trackerId === selected.id)} onBack={onBackToList} onUpdate={onUpdate} onRemove={() => onRemove(selected.id)} onOpenNotification={onOpenNotification} /> : <TrackerList trackers={trackers} onSelect={onSelect} onCreate={onStartCreate} />}</div>
+      <div className="relative min-h-0 flex-1 overflow-y-auto">{isCreating ? <TrackerConversation project={creationProject} onCancel={onCancelCreate} onComplete={onCompleteCreate} /> : selected ? <TrackerDetail tracker={selected} project={projects.find((project) => project.id === selected.projectId)} notifications={notifications.filter((item) => item.trackerId === selected.id)} onBack={onBackToList} onUpdate={onUpdate} onRemove={() => onRemove(selected.id)} onOpenNotification={onOpenNotification} /> : <TrackerList trackers={trackers} onSelect={onSelect} onCreate={onStartCreate} />}</div>
     </div>
   );
 }
