@@ -60,13 +60,13 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
   };
 
   return (
-    <div className="group flex items-start gap-3">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-primary text-text-inverted">
+    <div className="group flex items-start gap-3.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] bg-primary-50 text-primary">
         <CityEmblem className="h-6 w-6" />
       </div>
 
-      <div className="flex min-w-0 max-w-[85%] flex-col gap-1">
-        <div className="break-words rounded-sm border border-border bg-background px-4 py-3 text-[0.9375rem] leading-relaxed text-text shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+      <div className="flex min-w-0 max-w-[calc(100%-2.875rem)] flex-col gap-1.5 sm:max-w-[92%]">
+        <div className="break-words rounded-[6px] border border-border/60 bg-background px-4 py-3.5 text-[0.9375rem] leading-7 text-text shadow-[0_1px_2px_rgba(0,58,141,0.025)] sm:px-5">
           {isTyping || !message ? (
             <TypingDots />
           ) : (
@@ -142,7 +142,7 @@ function AssistantMessage({ message, isTyping = false, onCopy, onRegenerate,
         </div>
 
         {message && message.content && !isTyping && !pending && (
-          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <div className="flex gap-1 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 motion-reduce:transition-none">
             <button
               type="button"
               onClick={handleCopy}

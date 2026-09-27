@@ -12,7 +12,7 @@ function SupportNotice({ onDismiss }: SupportNoticeProps) {
   return (
     <div
       role="status"
-      className="flex items-center gap-2.5 rounded-2xl border border-primary-200/60 bg-primary-50/70 py-2 pr-2 pl-3 text-sm text-primary-700 backdrop-blur-sm"
+      className="flex items-center gap-2.5 rounded-[6px] bg-primary-50/70 py-2.5 pr-2 pl-3 text-sm text-primary-700"
     >
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9" />
