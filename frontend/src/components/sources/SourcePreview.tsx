@@ -92,10 +92,15 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
   const [failed, setFailed] = useState(false);
   const [imageZoom, setImageZoom] = useState(100);
   const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
+  const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
+  const [iframeFailed, setIframeFailed] = useState(false);
   const source = sources[activeIndex];
   const previewForSource = preview?.documentId === source?.documentId ? preview : null;
   const link = safeHttpUrl(source?.link ?? previewForSource?.sourceUrl);
-  const previewImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
+  const storedImageUrl = safePreviewImagePath(previewForSource?.previewImageUrl);
+  const generatedImageUrl = iframeFailed ? safePreviewImagePath(previewForSource?.screenshotUrl) : undefined;
+  const previewImageUrl = [storedImageUrl, generatedImageUrl]
+    .find(value => value && !failedImageUrls.includes(value));
   const hostname = link ? getHostname(link) : "";
   const addedDate = source ? formatDate(source.added_date || source.publishedDate || previewForSource?.publishedDate || "", t.meta.intl) : "";
   const cacheKey = source?.documentId ? `${source.documentId}:${source.versionId ?? "current"}` : "";
@@ -142,6 +147,8 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
     const cached = cacheKey ? previewCache.get(cacheKey) ?? null : null;
     setImageZoom(100);
     setImageNaturalWidth(0);
+    setFailedImageUrls([]);
+    setIframeFailed(false);
     setPreview(cached);
     setFailed(false);
     const controller = new AbortController();
@@ -264,10 +271,17 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
           {link && <section className="mb-5 overflow-hidden rounded-sm border border-border bg-background-secondary">
             <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
               <h3 className="text-xs font-semibold text-text-muted">{t.message.websitePreview}</h3>
-              <a href={link} target="_blank" rel="noopener noreferrer"
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                {t.message.openSource}<span aria-hidden="true">↗</span>
-              </a>
+              <div className="flex items-center gap-3">
+                {previewForSource?.screenshotUrl && !previewImageUrl && <button type="button"
+                  onClick={() => setIframeFailed(true)}
+                  className="cursor-pointer text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  {t.message.showScreenshot}
+                </button>}
+                <a href={link} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-primary hover:text-primary-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  {t.message.openSource}<span aria-hidden="true">↗</span>
+                </a>
+              </div>
             </div>
             {previewImageUrl ? <>
               <div className="relative h-[55dvh] min-h-96 bg-white lg:h-[65dvh] lg:min-h-[32rem]">
@@ -287,17 +301,22 @@ function SourcePreview({ id, sources, activeIndex, trigger, onSelect, onClose }:
                     alt={`${t.message.websitePreview}: ${source.title}`}
                     loading="lazy"
                     onLoad={event => setImageNaturalWidth(event.currentTarget.naturalWidth)}
+                    onError={() => setFailedImageUrls(current => current.includes(previewImageUrl)
+                      ? current : [...current, previewImageUrl])}
                     style={imageNaturalWidth ? { width: `${Math.round(imageNaturalWidth * imageZoom / 100)}px` } : undefined}
                     className="block h-auto max-w-none"
                   />
                 </div>
               </div>
-            </> : <iframe
+            </> : iframeFailed ? <div className="flex min-h-96 items-center justify-center px-6 text-center text-sm text-text-muted">
+              {t.message.previewUnavailable}
+            </div> : <iframe
               src={link}
               title={`${t.message.websitePreview}: ${source.title}`}
               loading="lazy"
               referrerPolicy="no-referrer"
               sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+              onError={() => setIframeFailed(true)}
               className="h-[55dvh] min-h-96 w-full border-0 bg-white lg:h-[65dvh] lg:min-h-[32rem]"
             />}
             <p className="border-t border-border px-3 py-2 text-xs leading-relaxed text-text-subtle">

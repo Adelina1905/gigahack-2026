@@ -134,6 +134,7 @@ describe("source preview", () => {
       sourceKind: "web",
       publishedDate: "2026-09-27",
       previewImageUrl: "/source-previews/document-1.png",
+      screenshotUrl: "/api/sources/document-captured/screenshot?versionId=version-1",
       totalSections: 0,
       start: 0,
       focusIndex: null,
@@ -165,6 +166,16 @@ describe("source preview", () => {
     fireEvent.click(screen.getByRole("button", { name: en.message.resetZoom }));
     expect(screen.getByRole("button", { name: en.message.resetZoom }).textContent).toBe("100%");
     expect(screen.queryByTitle(`${en.message.websitePreview}: A very detailed municipal PDF`)).toBeNull();
+
+    fireEvent.error(image);
+    await waitFor(() => expect(screen.getByTitle(
+      `${en.message.websitePreview}: A very detailed municipal PDF`,
+    ).getAttribute("src")).toBe("https://example.com/report.pdf?download=1#page=4"));
+
+    fireEvent.click(screen.getByRole("button", { name: en.message.showScreenshot }));
+    await waitFor(() => expect(screen.getByRole("img", {
+      name: `${en.message.websitePreview}: A very detailed municipal PDF`,
+    }).getAttribute("src")).toBe("/api/sources/document-captured/screenshot?versionId=version-1"));
   });
 
   it("navigates in order and never links an unsafe or unavailable URL", () => {

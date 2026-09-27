@@ -103,6 +103,10 @@ Qdrant. Build the index offline, never while the service is serving users:
 ## 4. Java gateway
 
 Requires JDK 25 (`sudo apt install openjdk-25-jdk-headless` on Debian).
+Chrome or Chromium is used to capture a current screenshot when a cited HTML website
+cannot be displayed in the embedded source preview. PDFs up to 25 MB are rendered
+directly to a first-page PNG fallback. Common browser executable locations are
+detected automatically; set `SCREENSHOT_BROWSER_PATH` in the root `.env` for another location.
 
 ```bash
 cd backend
