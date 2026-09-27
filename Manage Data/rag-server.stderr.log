@@ -1,0 +1,56 @@
+2026-09-27 08:15:11,760 INFO municipal_rag.server: Chat service starting: llmConfigured=True qdrant=http://localhost:6333
+INFO:     Started server process [26812]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-09-27 08:15:14,013 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:15:21,200 INFO httpx: HTTP Request: GET http://localhost:6333/aliases "HTTP/1.1 200 OK"
+2026-09-27 08:15:23,297 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_evidence_current/points/count "HTTP/1.1 200 OK"
+2026-09-27 08:15:32,605 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:15:33,638 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:16:23,283 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:16:25,297 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:16:52,352 INFO httpx: HTTP Request: GET http://localhost:6333/aliases "HTTP/1.1 200 OK"
+2026-09-27 08:16:54,453 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_evidence_current/points/count "HTTP/1.1 200 OK"
+2026-09-27 08:17:02,686 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:17:04,792 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:18:08,928 INFO httpx: HTTP Request: GET http://localhost:6333/aliases "HTTP/1.1 200 OK"
+2026-09-27 08:18:11,036 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_evidence_current/points/count "HTTP/1.1 200 OK"
+2026-09-27 08:18:35,852 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:18:37,764 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:19:37,523 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:19:40,806 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+2026-09-27 08:19:41,464 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:19:42,142 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:19:42,650 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+2026-09-27 08:19:43,896 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+2026-09-27 08:19:44,451 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:19:48,037 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_source_previews/points/scroll "HTTP/1.1 404 Not Found"
+WARNING:  Unsupported upgrade request.
+WARNING:  No supported WebSocket library detected. Please use "pip install 'uvicorn[standard]'", or install 'websockets' or 'wsproto' manually.
+2026-09-27 08:27:23,511 INFO httpx: HTTP Request: GET http://localhost:6333/aliases "HTTP/1.1 200 OK"
+2026-09-27 08:27:25,844 INFO httpx: HTTP Request: POST http://localhost:6333/collections/municipal_evidence_current/points/count "HTTP/1.1 200 OK"
+2026-09-27 08:27:30,569 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2026-09-27 08:27:33,964 INFO httpx: HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"

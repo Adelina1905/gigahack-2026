@@ -1,0 +1,14 @@
+INFO:     127.0.0.1:61633 - "POST /v1/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49796 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53476 - "POST /v1/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59434 - "POST /v1/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51637 - "POST /v1/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53918 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-5ef4d729828ea3f2&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53918 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-3656cf881d593b18&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50969 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-4c9691237e62e8a9&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:61672 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-dc8b8f50ca896211&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:57571 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-e9762781ff743dfe&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:53918 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-d26dee4e33a47f02&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:50969 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-e1beecb3274bc2f3&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:61672 - "GET /v1/sources/municipal-100d36dea07d376ea5105c25/preview?versionId=1a7a71ad39b483cb8ad6107e149c4e4005469f5dd332eb19f3a4b1dcb5ec64e0&focusEvidenceId=evidence-dc8b8f50ca896211&limit=40 HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:51614 - "POST /v1/chat HTTP/1.1" 200 OK
