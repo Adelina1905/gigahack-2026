@@ -177,6 +177,108 @@ def group_documents(items: list[dict[str, Any]], maximum: int) -> list[dict[str,
     return selected
 
 
+def _passage_position(point: Any) -> tuple[int, int, int, str]:
+    payload = point.payload or {}
+    locator = payload.get("sourceLocator") or {}
+
+    def number(value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 10**9
+
+    return (
+        number(locator.get("page", locator.get("pageNumber"))),
+        number(locator.get("startLine")),
+        number(locator.get("blockIndex")),
+        str(payload.get("evidenceId") or point.id),
+    )
+
+
+def _introduces_following_context(payload: dict[str, Any]) -> bool:
+    quote = str(payload.get("citationText") or "").strip()
+    normalized = quote.casefold()
+    return (
+        str(payload.get("evidenceKind") or "").casefold() == "headline"
+        or quote.endswith(":")
+        or bool(re.search(r"\b(?:pa(?:ș|s)ii|etapele|lista|documentele necesare)\b", normalized))
+    )
+
+
+def add_following_context(candidates: list[dict[str, Any]], document_points: dict[tuple[str, str], list[Any]],
+                          maximum_per_anchor: int = 6, maximum_added: int = 12) -> list[dict[str, Any]]:
+    """Add list items immediately following a retrieved heading before reranking.
+
+    Municipal web pages often store a heading and every numbered step as separate passages. The heading can win hybrid
+    retrieval while the actual steps are excluded by per-document diversity. Context candidates are still reranked, so
+    adjacent but irrelevant passages do not automatically reach answer generation.
+    """
+    output = list(candidates)
+    seen = {str(item["point"].id) for item in output}
+    added = 0
+    for anchor in candidates:
+        payload = anchor["point"].payload or {}
+        if not _introduces_following_context(payload):
+            continue
+        key = (str(payload.get("documentId") or ""), str(payload.get("versionId") or ""))
+        points = sorted(document_points.get(key) or [], key=_passage_position)
+        anchor_index = next((index for index, point in enumerate(points) if str(point.id) == str(anchor["point"].id)), None)
+        if anchor_index is None:
+            continue
+        for distance, point in enumerate(points[anchor_index + 1:anchor_index + 1 + maximum_per_anchor], start=1):
+            point_id = str(point.id)
+            if point_id in seen:
+                continue
+            context = dict(anchor)
+            context["point"] = point
+            context["score"] = float(anchor.get("score") or 0.0) / (distance + 1)
+            context["ranks"] = {"contextAfter": distance}
+            context["contextAnchorId"] = str(anchor["point"].id)
+            output.append(context)
+            seen.add(point_id)
+            added += 1
+            if added >= maximum_added:
+                return output
+    return output
+
+
+def load_candidate_documents(client: QdrantClient, collection: str,
+                             candidates: list[dict[str, Any]]) -> dict[tuple[str, str], list[Any]]:
+    keys = {
+        (str(payload.get("documentId") or ""), str(payload.get("versionId") or ""))
+        for item in candidates
+        if _introduces_following_context(payload := (item["point"].payload or {}))
+        and payload.get("documentId") and payload.get("versionId")
+    }
+    result: dict[tuple[str, str], list[Any]] = {}
+    for document_id, version_id in keys:
+        points, offset = [], None
+        while True:
+            page, offset = client.scroll(
+                collection_name=collection,
+                scroll_filter=models.Filter(must=[
+                    models.FieldCondition(key="documentId", match=models.MatchValue(value=document_id)),
+                    models.FieldCondition(key="versionId", match=models.MatchValue(value=version_id)),
+                ]),
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            points.extend(page)
+            if offset is None:
+                break
+        result[(document_id, version_id)] = points
+    return result
+
+
+def eligible_with_context(ranked: list[dict[str, Any]], minimum: float) -> list[dict[str, Any]]:
+    """Keep adjacent list items when their retrieved heading passed the reranker threshold."""
+    eligible_ids = {str(item["point"].id) for item in ranked if float(item.get("rerankScore") or 0.0) >= minimum}
+    return [item for item in ranked if float(item.get("rerankScore") or 0.0) >= minimum
+            or str(item.get("contextAnchorId") or "") in eligible_ids]
+
+
 def rerank(query: str, candidates: list[dict[str, Any]], config: RagConfig, api_key: str) -> list[dict[str, Any]]:
     documents = [str((item["point"].payload or {}).get("retrievalText") or (item["point"].payload or {}).get("text") or "") for item in candidates]
     if not documents:
@@ -241,13 +343,18 @@ def retrieve(question: str, interpreted: dict[str, Any], config: RagConfig, api_
     fused.sort(key=lambda item: (-item["score"], str(item["point"].id)))
     grouped = prioritize_channels(fused, requirement_channels, int(limits["rerankCandidates"]),
                                   int(limits["maxPerDocument"]))
+    context_client = client_for(path, url)
+    try:
+        grouped = add_following_context(grouped, load_candidate_documents(context_client, config.evidence_alias, grouped))
+    finally:
+        context_client.close()
     rerank_query = query
     if len(requirements) > 1:
         rerank_query += "\nCerințe: " + " | ".join(str(item.get("normalizedRomanianQuery") or "") for item in requirements)
     ranked = rerank(rerank_query, grouped, config, api_key)
     minimum = float(config.raw["thresholds"]["minimumRerankScore"])
     output = []
-    eligible = [value for value in ranked if value["rerankScore"] >= minimum]
+    eligible = eligible_with_context(ranked, minimum)
     selected = prioritize_channels(eligible, requirement_channels, int(limits["finalEvidence"]))
     for item in selected:
         matches = [requirement["id"] for requirement, channel in zip(requirements, requirement_channels)
