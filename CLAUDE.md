@@ -21,9 +21,11 @@ React UI (:5173) ──► Java gateway (:8081) ──► Python LLM/RAG service
 
 ### Databases (repo root)
 ```
-docker compose up -d        # postgres:5433 + qdrant:6333 (localhost only)
-docker compose down -v      # wipe volumes
+docker compose up -d postgres qdrant   # postgres:5433 + qdrant:6333 (localhost only)
+docker compose up -d --build           # + llm (:8000), backend (:SERVER_PORT) and frontend (nginx on :FRONTEND_PORT)
+docker compose down -v                 # wipes volumes, including the Qdrant RAG index
 ```
+- App images: `Manage Data/Dockerfile` (server code + `config/` only), `backend/Dockerfile` (Debian runtime with Chromium for website screenshots), `frontend/Dockerfile` (Vite build served by nginx, `/api` proxied via `frontend/docker/nginx.conf.template`). Compose wires them by service name (`postgres`, `qdrant`, `llm`, `backend`).
 
 ### Python LLM/RAG service + data pipeline (`Manage Data/`)
 ```
