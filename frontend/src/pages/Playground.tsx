@@ -17,7 +17,7 @@ import { useDemoNotificationShortcut } from "../hooks/useDemoNotificationShortcu
 import { useI18n } from "../i18n/context";
 import { draftPlanFromChat, type PlanDraft } from "../trackers/planDraft";
 import type { Alert } from "../types/alerts";
-import { DEFAULT_CHAT_NAME, type ProjectSummary } from "../types/chat";
+import type { ProjectSummary } from "../types/chat";
 
 function Playground() {
   const { t } = useI18n();
@@ -141,9 +141,8 @@ function Playground() {
     send(pending.text);
   }, [askNonce, activeChatId, draftProjectId, send]);
 
-  const activeName = activeChat?.name;
-  const breadcrumbProjectId = activeChatId ? activeChat?.projectId : draftProjectId;
-  const breadcrumbProject = projectList.projects.find((project) => project.id === breadcrumbProjectId);
+  const activeProjectId = activeChatId ? activeChat?.projectId : draftProjectId;
+  const activeProject = projectList.projects.find((project) => project.id === activeProjectId);
 
   const openPlanNotification = (notificationId: string) => {
     const notification = planNotifications.notifications.find((item) => item.id === notificationId);
@@ -255,24 +254,6 @@ function Playground() {
             <CityGatesArt className="h-48 2xl:h-64" />
           </div>
 
-          <nav aria-label={t.breadcrumb} className="relative border-b border-border bg-background/70 px-4 py-2.5">
-            <ol className="mx-auto flex max-w-3xl items-center gap-2 px-4 text-sm">
-              <li className="shrink-0 text-primary">{t.sidebar.title}</li>
-              <li aria-hidden="true" className="text-text-subtle">/</li>
-              {breadcrumbProject && (
-                <>
-                  <li className="min-w-0 max-w-[40%] shrink truncate text-primary" title={breadcrumbProject.name}>
-                    {breadcrumbProject.name}
-                  </li>
-                  <li aria-hidden="true" className="text-text-subtle">/</li>
-                </>
-              )}
-              <li aria-current="page" className="truncate text-text-muted">
-                {!activeName || activeName === DEFAULT_CHAT_NAME ? t.sidebar.newChat : activeName}
-              </li>
-            </ol>
-          </nav>
-
           <div className="relative mx-auto min-h-0 w-full max-w-3xl flex-1">
             <ChatWindow
               chatId={activeChatId}
@@ -284,7 +265,7 @@ function Playground() {
               onRetry={chat.retry}
               onRegenerate={chat.regenerate}
               onTrackPlan={chat.messages.length > 0 ? () => {
-                setTrackerSetup(breadcrumbProject ?? null, draftPlanFromChat(chat.messages, t.trackers.suggestedTopics));
+                setTrackerSetup(activeProject ?? null, draftPlanFromChat(chat.messages, t.trackers.suggestedTopics));
                 setWorkspace("trackers");
               } : undefined}
               error={chat.error ?? chatList.error ?? projectList.error}

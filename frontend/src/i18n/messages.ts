@@ -22,7 +22,6 @@ const ro = {
   sidebar: {
     label: "Istoricul conversațiilor",
     workspace: "Spațiul dvs.",
-    title: "Conversații",
     newChat: "Conversație nouă",
     close: "Închide panoul",
     empty: "Nicio conversație încă.",
@@ -200,7 +199,6 @@ const ro = {
       close: "Închide",
     },
   },
-  breadcrumb: "Navigare",
   welcome: {
     eyebrow: "Asistentul municipal al Chișinăului",
     title: "Cu ce vă pot ajuta astăzi?",
@@ -346,7 +344,6 @@ const ru: Messages = {
   sidebar: {
     label: "История чатов",
     workspace: "Ваше пространство",
-    title: "Чаты",
     newChat: "Новый чат",
     close: "Закрыть панель",
     empty: "Чатов пока нет.",
@@ -520,7 +517,6 @@ const ru: Messages = {
       close: "Закрыть",
     },
   },
-  breadcrumb: "Навигация",
   welcome: {
     eyebrow: "Муниципальный ассистент Кишинэу",
     title: "Чем я могу вам помочь?",
@@ -661,7 +657,6 @@ const en: Messages = {
   sidebar: {
     label: "Chat history",
     workspace: "Your workspace",
-    title: "Conversations",
     newChat: "New chat",
     close: "Close sidebar",
     empty: "No chats yet.",
@@ -835,7 +830,6 @@ const en: Messages = {
       close: "Close",
     },
   },
-  breadcrumb: "Breadcrumb",
   welcome: {
     eyebrow: "Chișinău municipal assistant",
     title: "How can I help you today?",
