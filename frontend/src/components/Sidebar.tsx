@@ -27,7 +27,6 @@ interface SidebarProps {
   onNewChatInProject: (projectId: string) => void;
   trackerCount: number;
   isTrackersOpen: boolean;
-  onOpenConversations?: () => void;
   onOpenTrackers: () => void;
   onCreateTracker: (project: ProjectSummary) => void;
   // Mobile drawer state; on md+ the sidebar is always visible.
@@ -97,7 +96,6 @@ function Sidebar({
   onNewChatInProject,
   trackerCount,
   isTrackersOpen,
-  onOpenConversations,
   onOpenTrackers,
   onCreateTracker,
   isOpen,
@@ -184,33 +182,7 @@ function Sidebar({
           </button>
         </div>
 
-        <div className="relative px-4 pt-5 pb-3">
-          <div className="mb-3 space-y-1" aria-label={t.sidebar.workspace}>
-            <button
-              type="button"
-              onClick={onOpenConversations}
-              aria-current={!isTrackersOpen ? "page" : undefined}
-              className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] px-3 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
-                !isTrackersOpen ? "bg-primary-50 text-primary-700" : "text-text-muted hover:bg-background-secondary hover:text-text"
-              }`}
-            >
-              <svg {...iconProps} className="h-4 w-4 shrink-0" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
-              <span className="flex-1">{t.sidebar.title}</span>
-            </button>
-            <button
-              type="button"
-              onClick={onOpenTrackers}
-              aria-label={t.trackers.open}
-              aria-current={isTrackersOpen ? "page" : undefined}
-              className={`flex min-h-11 w-full items-center gap-3 rounded-[5px] px-3 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
-                isTrackersOpen ? "bg-primary-50 text-primary-700" : "text-text-muted hover:bg-background-secondary hover:text-text"
-              }`}
-            >
-              <svg {...iconProps} className="h-4 w-4 shrink-0" aria-hidden="true"><path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" /></svg>
-              <span className="min-w-0 flex-1 truncate">{t.trackers.title}</span>
-              <span className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] ${isTrackersOpen ? "bg-primary text-white" : "bg-background-secondary text-text-subtle"}`}>{trackerCount}</span>
-            </button>
-          </div>
+        <div className="relative space-y-2 px-4 pt-5 pb-3">
           <button
             type="button"
             onClick={onNewChat}
@@ -220,6 +192,43 @@ function Sidebar({
               <path d="M12 5v14M5 12h14" />
             </svg>
             {t.sidebar.newChat}
+          </button>
+
+          {/* The one other workspace besides chat; the yellow bar marks it open, like the title rule. */}
+          <button
+            type="button"
+            onClick={onOpenTrackers}
+            aria-label={`${t.trackers.open} (${trackerCount})`}
+            aria-current={isTrackersOpen ? "page" : undefined}
+            className={`group relative flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-[5px] border px-2 py-1.5 text-left text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none ${
+              isTrackersOpen
+                ? "border-primary/20 bg-primary-50 text-primary-700"
+                : "border-border bg-background text-text hover:border-primary/25 hover:bg-background-secondary"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-2 left-0 w-[3px] rounded-r-sm bg-accent transition-opacity duration-200 motion-reduce:transition-none ${
+                isTrackersOpen ? "opacity-100" : "opacity-0"
+              }`}
+            />
+            <span
+              aria-hidden="true"
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-sm transition-colors duration-200 motion-reduce:transition-none ${
+                isTrackersOpen ? "bg-primary text-text-inverted" : "bg-primary-50 text-primary group-hover:bg-primary-100"
+              }`}
+            >
+              <svg {...iconProps} className="h-4 w-4"><path d="M4 19V8l8-5 8 5v11M8 21v-7h8v7M3 21h18" /></svg>
+            </span>
+            <span className="min-w-0 flex-1 truncate">{t.trackers.title}</span>
+            <span
+              aria-hidden="true"
+              className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums ${
+                isTrackersOpen ? "bg-accent text-primary-700" : "bg-background-secondary text-text-subtle"
+              }`}
+            >
+              {trackerCount}
+            </span>
           </button>
         </div>
 

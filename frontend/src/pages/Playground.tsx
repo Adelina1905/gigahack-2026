@@ -203,10 +203,6 @@ function Playground() {
           onNewChatInProject={startNewChatInProject}
           trackerCount={trackerList.trackers.length}
           isTrackersOpen={workspace === "trackers"}
-          onOpenConversations={() => {
-            setWorkspace("chat");
-            setIsSidebarOpen(false);
-          }}
           onOpenTrackers={() => {
             setWorkspace("trackers");
             setTrackerConversationProject(undefined);
