@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1] / "Manage Data"
 sys.path.insert(0, str(ROOT))
 
 from municipal_rag.evidence import build_evidence, split_exact
-from municipal_rag.retrieval import group_documents, rrf
+from municipal_rag.retrieval import atomic_queries, group_documents, neighboring_payloads, prioritize_atomic, requested_fact_slots, rrf
 from municipal_rag.verification import deterministic_issues
 
 
@@ -41,6 +41,39 @@ class RagV3Tests(unittest.TestCase):
         b = SimpleNamespace(id="b", payload={"documentId": "d1"})
         c = SimpleNamespace(id="c", payload={"documentId": "d2"})
         self.assertEqual(len(group_documents(rrf([a, b, c], [c, a]), 1)), 2)
+
+    def test_atomic_queries_cover_every_location_and_requested_fact(self):
+        interpreted = {
+            "normalizedRomanianQuery": "Compară suma, durata, numărul acceselor și stadiul lucrărilor",
+            "constraints": {"locations": ["Botanica", "Buiucani", "Ciocana"],
+                            "factTypes": ["financiar", "durată", "număr", "stadiu"]},
+        }
+        self.assertEqual(requested_fact_slots(interpreted["normalizedRomanianQuery"], interpreted["constraints"]),
+                         ["amount", "duration", "count", "status"])
+        queries = atomic_queries(interpreted)
+        self.assertEqual(len(queries), 12)
+        self.assertEqual({item["scope"] for item in queries}, {"Botanica", "Buiucani", "Ciocana"})
+
+    def test_neighbor_expansion_uses_source_order(self):
+        selected = [{"documentId": "d1", "evidenceId": "p2", "sourceLocator": {"charStart": 20}}]
+        payloads = {"d1": [
+            {"documentId": "d1", "evidenceId": "p3", "sourceLocator": {"charStart": 30}},
+            {"documentId": "d1", "evidenceId": "p1", "sourceLocator": {"charStart": 10}},
+            selected[0],
+        ]}
+        expanded = neighboring_payloads(selected, payloads, 3)
+        self.assertEqual([item["evidenceId"] for item in expanded], ["p2", "p1", "p3"])
+        self.assertEqual(expanded[1]["retrieval"]["neighborOf"], "p2")
+
+    def test_atomic_candidate_reservation_prevents_global_rank_starvation(self):
+        global_best = SimpleNamespace(id="global", payload={"documentId": "d1"})
+        cell_only = SimpleNamespace(id="cell", payload={"documentId": "d2"})
+        items = [
+            {"point": global_best, "score": 1.0, "ranks": {"dense": 1}},
+            {"point": cell_only, "score": .1, "ranks": {"atomic:0": 1}},
+        ]
+        selected = prioritize_atomic(items, 1, 2)
+        self.assertEqual([item["point"].id for item in selected], ["cell", "global"])
 
     def test_hard_split_preserves_substrings(self):
         text = " ".join([f"Propoziția {index}." for index in range(100)])

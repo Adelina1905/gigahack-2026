@@ -33,6 +33,13 @@ claim generation, deterministic number/date/currency checks, and an independent
 managed entailment check. Learned-service failures return `UNAVAILABLE` without an
 unverified answer. Final evidence is renumbered contiguously as S1…Sn.
 
+Complex comparison questions are decomposed into a bounded `location × fact type`
+matrix. Each matrix cell gets its own local sparse query while the request still uses
+one dense embedding and one managed rerank. Immediate source neighbors are included
+for paragraph continuity. The answer is rendered as a table and each unsupported cell
+is marked independently; a missing amount can no longer erase a verified work status.
+Simple questions keep the normal fast path.
+
 Configuration is versioned in `config/rag.v3.json`. The 100-case 60/40 Romanian/Russian
 candidate benchmark is `evaluation/questions.v1.jsonl`. Its labels intentionally use
 `reviewStatus=PENDING`; `municipal_rag.evaluation` refuses to score it until humans

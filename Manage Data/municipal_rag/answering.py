@@ -12,7 +12,7 @@ from typing import Any
 
 from .api import begin_interactive_request, chat_json, end_interactive_request
 from .config import load_config, load_dotenv
-from .retrieval import interpret_query, retrieve
+from .retrieval import interpret_query, requested_fact_slots, retrieve
 from .verification import verify_claims
 from .tracing import write_trace
 
@@ -22,7 +22,7 @@ CLAIMS_SCHEMA = {
         "status": {"type": "string", "enum": ["SUPPORTED", "PARTIAL", "NOT_FOUND", "CONTRADICTION"]},
         "claims": {
             "type": "array",
-            "maxItems": 5,
+            "maxItems": 16,
             "items": {
                 "type": "object",
                 "properties": {
@@ -46,7 +46,7 @@ OBSERVATIONS_SCHEMA = {
     "properties": {
         "observations": {
             "type": "array",
-            "maxItems": 5,
+            "maxItems": 16,
             "items": {
                 "type": "object",
                 "properties": {
@@ -79,6 +79,7 @@ def expose_evidence(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "exactQuote": item.get("citationText"), "title": meta.get("title"), "url": meta.get("sourceUrl"),
             "sourceFile": meta.get("sourceFile"),
             "locator": item.get("sourceLocator") or ((item.get("citations") or [{}])[0].get("locator")),
+            "facts": item.get("facts") or {},
             "retrieval": item.get("retrieval")})
     return result
 
@@ -360,6 +361,94 @@ def coverage_ledger(scopes: list[str], claims: list[dict[str, Any]],
     return result
 
 
+FACT_LABELS = {
+    "ro": {"amount": "Sumă", "duration": "Durată", "count": "Număr", "status": "Stadiu", "date": "Dată"},
+    "ru": {"amount": "Сумма", "duration": "Срок", "count": "Количество", "status": "Статус", "date": "Дата"},
+}
+
+
+def requested_atomic_cells(interpreted: dict[str, Any]) -> list[dict[str, str]]:
+    scopes = requested_scopes(interpreted)
+    facts = requested_fact_slots(str(interpreted.get("normalizedRomanianQuery") or ""),
+                                 interpreted.get("constraints") or {})
+    if len(scopes) < 2 or len(facts) < 2:
+        return []
+    return [{"scope": scope, "factType": fact} for scope in scopes for fact in facts]
+
+
+def _fact_in_text(fact_type: str, text: str) -> bool:
+    value = normalized_text(text)
+    if fact_type == "amount":
+        return bool(AMOUNT_RE.search(text) or re.search(r"\b(?:buget|contract|valoare|alocat)\w*\b", value))
+    if fact_type == "duration":
+        return bool(re.search(r"\b(?:durat|perioad|termen)\w*\b", value)
+                    or re.search(r"\b\d+\s+(?:de\s+)?(?:luni|luna|zile|ore|saptamani|ani)\b", value))
+    if fact_type == "count":
+        return bool(re.search(r"\b\d+\s+(?:de\s+)?(?:accese|proiecte|strazi|obiecte|institutii|lucrari)\b", value)
+                    or re.search(r"\b(?:numar|cate)\b", value))
+    if fact_type == "status":
+        return bool(re.search(r"\b(?:stadiu|statut|planificat|preconizat|licitat|achizit|desfasur|demarat|inceput|finalizat|reabilitat|executat)\w*\b", value))
+    if fact_type == "date":
+        return bool(YEAR_RE.search(text) or re.search(r"\b(?:data|ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\b", value))
+    return False
+
+
+def atomic_coverage_ledger(cells: list[dict[str, str]], claims: list[dict[str, Any]],
+                           evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    indexed = {str(item.get("id")): item for item in evidence}
+    result: list[dict[str, Any]] = []
+    for cell in cells:
+        scope, fact_type = cell["scope"], cell["factType"]
+        matching_claims = [claim for claim in claims
+                           if _scope_in_text(scope, str(claim.get("text") or ""))
+                           and _fact_in_text(fact_type, str(claim.get("text") or ""))]
+        candidates = [item for item in evidence
+                      if _scope_in_text(scope, " ".join(str(value or "") for value in
+                          (item.get("title"), item.get("exactQuote"))))
+                      and (_fact_in_text(fact_type, str(item.get("exactQuote") or ""))
+                           or bool((item.get("facts") or {}).get({
+                               "amount": "amounts", "duration": "durations", "count": "counts",
+                               "date": "dates", "status": "statuses",
+                           }.get(fact_type, ""))))]
+        cited = sorted({identifier for claim in matching_claims for identifier in claim.get("evidenceIds") or []
+                        if identifier in indexed})
+        result.append({"scope": scope, "factType": fact_type,
+                       "status": "CONFIRMED" if matching_claims else "UNCONFIRMED",
+                       "claimCount": len(matching_claims), "evidenceIds": cited,
+                       "candidateEvidenceCount": len(candidates)})
+    return result
+
+
+def format_atomic_answer(claims: list[dict[str, Any]], ledger: list[dict[str, Any]],
+                         language: str) -> str:
+    if not ledger:
+        return ""
+    fact_types = list(dict.fromkeys(str(item["factType"]) for item in ledger))
+    scopes = list(dict.fromkeys(str(item["scope"]) for item in ledger))
+    labels = FACT_LABELS.get(language, FACT_LABELS["ro"])
+    first_header = "Сектор" if language == "ru" else "Sector"
+    missing = "Не подтверждено" if language == "ru" else "Neconfirmat"
+    header = f"| {first_header} | " + " | ".join(labels.get(fact, fact) for fact in fact_types) + " |"
+    separator = "|---" * (len(fact_types) + 1) + "|"
+    rows = [header, separator]
+    for scope in scopes:
+        cells: list[str] = []
+        for fact_type in fact_types:
+            matches = [claim for claim in claims
+                       if _scope_in_text(scope, str(claim.get("text") or ""))
+                       and _fact_in_text(fact_type, str(claim.get("text") or ""))]
+            if not matches:
+                cells.append(missing)
+                continue
+            rendered = []
+            for claim in matches:
+                references = " ".join(f"[{value}]" for value in claim.get("evidenceIds") or [])
+                rendered.append(f"{claim['text']} {references}".strip().replace("|", "\\|"))
+            cells.append("<br>".join(rendered))
+        rows.append(f"| {scope} | " + " | ".join(cells) + " |")
+    return "\n".join(rows)
+
+
 def format_scoped_answer(claims: list[dict[str, Any]], ledger: list[dict[str, Any]], language: str,
                          partial: bool) -> str:
     lines: list[str] = []
@@ -394,14 +483,16 @@ def format_scoped_answer(claims: list[dict[str, Any]], ledger: list[dict[str, An
 
 def contextual_observations(question: str, interpreted: dict[str, Any], evidence: list[dict[str, Any]],
                             prompt_evidence: list[dict[str, Any]], config: Any,
-                            api_key: str, target_scopes: list[str] | None = None
+                            api_key: str, target_scopes: list[str] | None = None,
+                            target_cells: list[dict[str, str]] | None = None
                             ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     targets = target_scopes or requested_scopes(interpreted)
     generated = chat_json(
         config.generator_model,
-        "The requested answer could not be fully verified. Extract useful partial observations in the question language from the exact evidence only. Return {observations:[{text,evidenceIds}]}. Cover each target scope separately when evidence supports it and explicitly name that scope in its observation. Each observation must be independently useful, declarative, and limited to one project/place/work stage. Prefer explaining verified status such as planned, tendering, ongoing, or completed. Do not invent missing values, do not assert that the entire corpus lacks a fact, and do not attach a number, date, amount or duration to a place unless the exact quotation explicitly links them. Omit an unsupported target instead of guessing. Use only supplied S identifiers.",
+        "The requested answer could not be fully verified. Extract useful partial observations in the question language from the exact evidence only. Return {observations:[{text,evidenceIds}]}. Cover each target scope separately when evidence supports it and explicitly name that scope. When targetCells is non-empty, each observation must cover exactly one scope and one requested factType. Each observation must be independently useful, declarative, and limited to one project/place/fact. Prefer precise status such as planned, tendering, ongoing, or completed. Do not invent missing values, do not assert that the entire corpus lacks a fact, and do not attach a number, date, amount or duration to a place unless the exact quotation explicitly links them. Omit an unsupported target instead of guessing. Use only supplied S identifiers.",
         json.dumps({"question": question, "constraints": interpreted.get("constraints") or {},
-                    "targetScopes": targets, "evidence": prompt_evidence}, ensure_ascii=False),
+                    "targetScopes": targets, "targetCells": target_cells or [],
+                    "evidence": prompt_evidence}, ensure_ascii=False),
         api_key,
         OBSERVATIONS_SCHEMA,
     )
@@ -457,21 +548,26 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
                 result["diagnostics"] = {"retrieval": found["diagnostics"], "ambiguity": ambiguity_diagnostics,
                     "answerability": "headline-only"}
             return result
-        prompt_evidence = [{key: item.get(key) for key in ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator")} for item in evidence]
+        prompt_evidence = [{key: item.get(key) for key in
+            ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator", "facts")}
+            for item in evidence]
         scopes = requested_scopes(interpreted)
+        atomic_cells = requested_atomic_cells(interpreted)
         generated = chat_json(config.generator_model,
-            "Answer only the fact type requested by the question, in the question language, using only exact evidence. Return JSON claims [{text,evidenceIds}]. Treat requestedScopes as a coverage checklist: produce a separate claim for every scope that the evidence supports, explicitly name that scope in its claim, and omit unsupported scopes instead of guessing. If the evidence does not contain the requested amount/date/name/count, return an empty claims list instead of answering a different fact. Every text must be a declarative answer, never repeat or paraphrase the question, and must include the requested value when the evidence contains it. Separate projects. Never merge numeric values across documents. A headline alone cannot support a claim.",
-            json.dumps({"question": question, "requestedScopes": scopes, "evidence": prompt_evidence}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
+            "Answer only the fact types requested by the question, in the question language, using only exact evidence. Return JSON claims [{text,evidenceIds}]. Treat requestedScopes and requestedCells as a coverage checklist. When requestedCells is non-empty, each claim must answer exactly one scope and one factType; explicitly name the scope, and never combine values for different places or fact types. Produce claims only for supported cells and omit unsupported cells instead of guessing. If the evidence does not contain the requested amount/date/name/count/status, do not substitute a different fact. Every text must be declarative, never repeat the question, and must include the requested value when the quotation contains it. Planned, tendering, ongoing and completed are different statuses. Never merge numeric values across documents. A headline alone cannot support a claim.",
+            json.dumps({"question": question, "requestedScopes": scopes, "requestedCells": atomic_cells,
+                        "evidence": prompt_evidence}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
         claims = generated.get("claims") if isinstance(generated.get("claims"), list) else []
         claims = claims[:config.max_claims]
         verified, decisions = verify_claims(
             claims, evidence, config.verifier_model, api_key, question, interpreted.get("constraints")
         )
-        pre_correction_ledger = coverage_ledger(scopes, verified, evidence)
+        pre_correction_ledger = (atomic_coverage_ledger(atomic_cells, verified, evidence)
+                                 if atomic_cells else coverage_ledger(scopes, verified, evidence))
         needs_correction = not verified or any(item["status"] != "CONFIRMED"
                                                for item in pre_correction_ledger)
-        if claims and len(verified) != len(claims) and needs_correction:
-            corrected = chat_json(config.generator_model, "Correct once: answer the question directly with declarative claims [{text,evidenceIds}], using only the S identifiers in evidence. Keep one project and location scope per claim. Never attach an amount, duration, date or count to a place mentioned only in a later planned/tender/procurement clause. Planned work is not completed work. Never repeat the question. Include the requested number/date/name only when the exact quotation supports it and remove unsupported claims.", json.dumps({"question": question, "constraints": interpreted.get("constraints"), "evidence": prompt_evidence, "claims": claims, "verifier": decisions}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
+        if claims and len(verified) != len(claims) and needs_correction and not atomic_cells:
+            corrected = chat_json(config.generator_model, "Correct once: answer the question directly with declarative claims [{text,evidenceIds}], using only the S identifiers in evidence. Keep one project, location scope and requested fact type per claim. Never attach an amount, duration, date or count to a place mentioned only in a later planned/tender/procurement clause. Planned work is not completed work. Never repeat the question. Include a requested value only when the exact quotation supports it and remove unsupported claims.", json.dumps({"question": question, "constraints": interpreted.get("constraints"), "requestedCells": atomic_cells, "evidence": prompt_evidence, "claims": claims, "verifier": decisions}, ensure_ascii=False), api_key, CLAIMS_SCHEMA)
             claims = corrected.get("claims") if isinstance(corrected.get("claims"), list) else []
             claims = claims[:config.max_claims]
             verified, decisions = verify_claims(
@@ -480,16 +576,20 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
         contextual_generations: list[dict[str, Any]] = []
         contextual_decisions: list[dict[str, Any]] = []
         partial_prefix: str | None = None
-        initial_ledger = coverage_ledger(scopes, verified, evidence)
-        missing_scopes = [str(item["scope"]) for item in initial_ledger if item["status"] != "CONFIRMED"]
+        initial_ledger = (atomic_coverage_ledger(atomic_cells, verified, evidence)
+                          if atomic_cells else coverage_ledger(scopes, verified, evidence))
+        missing_scopes = list(dict.fromkeys(str(item["scope"]) for item in initial_ledger
+                                            if item["status"] != "CONFIRMED"))
         attempted_scoped_recovery = False
-        for scope in missing_scopes:
+        # Multi-cell questions already receive targeted sparse retrieval and one batched
+        # generation. Avoid a sequential AI call for every missing table cell.
+        for scope in ([] if atomic_cells else missing_scopes):
             scope_evidence = evidence_for_scopes(evidence, [scope])
             if not scope_evidence:
                 continue
             attempted_scoped_recovery = True
             recovery_prompt = [{key: item.get(key) for key in
-                ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator")}
+                ("id", "documentId", "evidenceKind", "exactQuote", "title", "url", "locator", "facts")}
                 for item in scope_evidence]
             recovered, scope_decisions, scope_generation = contextual_observations(
                 question, interpreted, scope_evidence, recovery_prompt, config, api_key, [scope]
@@ -501,9 +601,9 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
                             if (str(item.get("text") or ""), tuple(item.get("evidenceIds") or [])) not in existing)
             decisions.extend({"contextObservation": True, "targetScope": scope, **item}
                              for item in scope_decisions)
-        if not verified and evidence and not attempted_scoped_recovery:
+        if not verified and evidence and not attempted_scoped_recovery and not atomic_cells:
             verified, contextual_decisions, contextual_generation = contextual_observations(
-                question, interpreted, evidence, prompt_evidence, config, api_key, scopes
+                question, interpreted, evidence, prompt_evidence, config, api_key, scopes, atomic_cells
             )
             contextual_generations.append(contextual_generation)
             decisions.extend({"contextObservation": True, **item} for item in contextual_decisions)
@@ -515,7 +615,8 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
             item["id"] = mapping[item["id"]]
         for claim in verified:
             claim["evidenceIds"] = [mapping[item] for item in claim.get("evidenceIds", []) if item in mapping]
-        ledger = coverage_ledger(scopes, verified, citations)
+        ledger = (atomic_coverage_ledger(atomic_cells, verified, citations)
+                  if atomic_cells else coverage_ledger(scopes, verified, citations))
         incomplete_coverage = bool(ledger) and any(item["status"] != "CONFIRMED" for item in ledger)
         if not claims and verified:
             partial_prefix = partial_intro(interpreted)
@@ -524,11 +625,13 @@ def answer(question: str, config_path: Path | None = None, qdrant_path: Path | N
                   "SUPPORTED" if verified and len(verified) == len(claims) else
                   "PARTIAL" if verified else "NOT_FOUND")
         claim_text = "\n".join(f"{claim['text']} {' '.join(f'[{value}]' for value in claim['evidenceIds'])}" for claim in verified)
-        text = (format_scoped_answer(verified, ledger, interpreted["language"], incomplete_coverage)
+        text = (format_atomic_answer(verified, ledger, interpreted["language"])
+                if atomic_cells else
+                format_scoped_answer(verified, ledger, interpreted["language"], incomplete_coverage)
                 if ledger else f"{partial_prefix}\n{claim_text}" if partial_prefix else claim_text)
         result = {**common, "status": status, "answer": text or ("Informația nu a putut fi confirmată." if interpreted["language"] == "ro" else "Информацию не удалось подтвердить."), "claims": verified, "citations": citations,
             "coverage": ledger,
-            "confidence": {"score": .9 if status == "SUPPORTED" else .55 if status == "PARTIAL" else .2, "reasons": ["Independent claim verification completed", f"{len(verified)}/{len(claims)} claims retained", f"{sum(item['status'] == 'CONFIRMED' for item in ledger)}/{len(ledger)} requested scopes confirmed" if ledger else "No explicit multi-scope checklist"]}, "readyForUse": True}
+            "confidence": {"score": .9 if status == "SUPPORTED" else .55 if status == "PARTIAL" else .2, "reasons": ["Independent claim verification completed", f"{len(verified)}/{len(claims)} claims retained", f"{sum(item['status'] == 'CONFIRMED' for item in ledger)}/{len(ledger)} requested {'cells' if atomic_cells else 'scopes'} confirmed" if ledger else "No explicit multi-scope checklist"]}, "readyForUse": True}
         result["_trace"] = {"generation": generated.get("_managedResponse"), "verifierDecisions": decisions,
             "contextGeneration": [item.get("_managedResponse") for item in contextual_generations] or None}
         if explain:

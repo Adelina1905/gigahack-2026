@@ -35,6 +35,12 @@ COMPLETED_RE = re.compile(r"\b(?:reparat\w*|realizat\w*|executat\w*|finalizat\w*
 FUTURE_RE = re.compile(
     r"\b(?:urmeaza|vor fi|va fi|preconizat\w*|planificat\w*|licitati\w*|achiziti\w*|se va|предстоит|планиру\w*)\b"
 )
+STAGE_PATTERNS = {
+    "tender_evaluation": re.compile(r"\b(?:evaluar\w*\s+(?:a\s+)?licit\w*|licit\w*\s+(?:este\s+)?in\s+evaluar\w*)\b"),
+    "procurement_not_started": re.compile(r"\b(?:urmeaza\w*\s+(?:a\s+fi\s+)?demarat\w*.*achizit\w*|procedur\w*\s+de\s+achizit\w*\s+urmeaza\w*)\b"),
+    "ongoing": re.compile(r"\b(?:in\s+curs|in\s+plin\s+proces|desfasoar\w*\s+lucrar\w*|lucrar\w*\s+au\s+demarat\w*)\b"),
+    "completed": COMPLETED_RE,
+}
 CONTENT_STOPWORDS = {
     "a", "al", "ale", "au", "catre", "care", "cu", "de", "din", "este", "fi", "fost",
     "in", "la", "o", "pe", "pentru", "prin", "se", "si", "sunt", "un", "unei", "urmeaza",
@@ -106,6 +112,23 @@ def _sentences(text: str) -> list[str]:
     return [value.strip() for value in re.split(r"(?<=[.!?])\s+|[\r\n]+", _normalize(text)) if value.strip()]
 
 
+def _stage_categories(text: str) -> set[str]:
+    normalized = _normalize(text)
+    result = {name for name, pattern in STAGE_PATTERNS.items() if pattern.search(normalized)}
+    if re.search(r"\bevaluar\w*\b", normalized) and re.search(r"\blicit\w*\b", normalized):
+        result.add("tender_evaluation")
+    return result
+
+
+def _location_stage_context(text: str, location: str) -> str:
+    clauses = [value.strip() for value in re.split(
+        r"(?<=[.!?;])\s+|,\s*(?=(?:iar|dar|la\s+moment|pentru\s+(?:sec|sector)))",
+        _normalize(text), flags=re.I,
+    ) if value.strip()]
+    local = [value for value in clauses if _contains_location(value, location)]
+    return " ".join(local)
+
+
 def _content_tokens(text: str) -> list[str]:
     return [token for token in re.findall(r"[^\W_]+|\d+", _normalize(text), re.UNICODE)
             if len(token) > 2 and token not in CONTENT_STOPWORDS]
@@ -174,6 +197,13 @@ def _scope_issues(text: str, question: str, cited: list[dict[str, Any]],
                                 if _contains_location(sentence, location))
             if relevant and FUTURE_RE.search(relevant) and not COMPLETED_RE.search(relevant):
                 issues.append(f"PROJECT_STAGE_MISMATCH:{location}")
+    claim_stages = _stage_categories(text)
+    if claim_stages:
+        for location in claim_locations:
+            local_context = " ".join(_location_stage_context(quote, location) for quote in quotes)
+            evidence_stages = _stage_categories(local_context)
+            if evidence_stages and claim_stages.isdisjoint(evidence_stages):
+                issues.append(f"PROJECT_STAGE_MISMATCH:{location}")
     return issues
 
 
@@ -229,6 +259,9 @@ def deterministic_issues(claim: dict[str, Any], evidence: dict[str, dict[str, An
     available_currencies = {value.casefold() for item in identifiers for value in re.findall(r"\b(?:lei|mdl|eur|euro)\b", str(evidence[item].get("exactQuote", "")), re.I)}
     if currencies - available_currencies:
         issues.append("UNSUPPORTED_CURRENCY")
+    normalized_quotes = _normalize(" ".join(str(evidence[item].get("exactQuote", "")) for item in identifiers))
+    if currencies and re.search(r"\bcontract\w*\b", _normalize(text)) and not re.search(r"\bcontract\w*\b", normalized_quotes):
+        issues.append("AMOUNT_ROLE_MISMATCH:contract")
     amount_question = bool(re.search(
         r"\b(?:ce sum[aă]|care (?:este )?suma|c[aâ]te milioane|buget|alocat\w*)\b",
         _normalize(question), re.I,

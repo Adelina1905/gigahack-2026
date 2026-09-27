@@ -1,12 +1,15 @@
 import unittest
 
 from municipal_rag.answering import (
+    atomic_coverage_ledger,
     candidate_profile,
     coverage_ledger,
     evidence_for_scopes,
+    format_atomic_answer,
     format_scoped_answer,
     headline_only_amount,
     partial_intro,
+    requested_atomic_cells,
     requested_scopes,
     resolve_ambiguity,
 )
@@ -24,6 +27,44 @@ def evidence(document_id: str, title: str, quote: str, score: float) -> dict:
 
 
 class AmbiguityResolutionTests(unittest.TestCase):
+    def test_complex_question_builds_location_fact_matrix(self) -> None:
+        interpreted = {
+            "normalizedRomanianQuery": "Compară suma, durata, numărul acceselor și stadiul pentru Botanica și Buiucani",
+            "constraints": {"locations": ["Botanica", "Buiucani"],
+                            "factTypes": ["financiar", "durată", "număr", "stadiu"]},
+        }
+        cells = requested_atomic_cells(interpreted)
+        self.assertEqual(len(cells), 8)
+        self.assertEqual(cells[0], {"scope": "Botanica", "factType": "amount"})
+
+    def test_simple_question_does_not_use_atomic_matrix(self) -> None:
+        interpreted = {"normalizedRomanianQuery": "Care este stadiul în Botanica?",
+                       "constraints": {"locations": ["Botanica"], "factTypes": ["stadiu"]}}
+        self.assertEqual(requested_atomic_cells(interpreted), [])
+
+    def test_atomic_ledger_and_table_preserve_each_missing_cell(self) -> None:
+        cells = [
+            {"scope": "Botanica", "factType": "count"},
+            {"scope": "Botanica", "factType": "status"},
+            {"scope": "Buiucani", "factType": "count"},
+            {"scope": "Buiucani", "factType": "status"},
+        ]
+        claims = [
+            {"text": "În Botanica sunt menționate 73 de accese.", "evidenceIds": ["S1"]},
+            {"text": "În Buiucani este planificată procedura de achiziție.", "evidenceIds": ["S2"]},
+        ]
+        sources = [
+            {"id": "S1", "title": "Botanica", "exactQuote": "În Botanica sunt menționate 73 de accese."},
+            {"id": "S2", "title": "Buiucani", "exactQuote": "În Buiucani este planificată procedura de achiziție."},
+        ]
+        ledger = atomic_coverage_ledger(cells, claims, sources)
+        self.assertEqual([item["status"] for item in ledger],
+                         ["CONFIRMED", "UNCONFIRMED", "UNCONFIRMED", "CONFIRMED"])
+        answer = format_atomic_answer(claims, ledger, "ro")
+        self.assertIn("| Sector | Număr | Stadiu |", answer)
+        self.assertIn("73 de accese. [S1]", answer)
+        self.assertIn("Neconfirmat", answer)
+
     def test_requested_scopes_are_deduplicated_without_hardcoded_districts(self) -> None:
         interpreted = {"constraints": {"locations": ["Botanica", "botanica", "Durlești"]}}
         self.assertEqual(requested_scopes(interpreted), ["Botanica", "Durlești"])
@@ -201,6 +242,26 @@ class AmbiguityResolutionTests(unittest.TestCase):
         issues = deterministic_issues(claim, sources, "Ce lucrări au fost executate în Buiucani?",
                                       {"locations": ["Buiucani"]})
         self.assertIn("PROJECT_STAGE_MISMATCH:buiucani", issues)
+
+    def test_rejects_tender_evaluation_for_procurement_not_started(self) -> None:
+        sources = {"S1": {
+            "documentId": "d1", "evidenceKind": "body", "title": "Accese",
+            "exactQuote": ("La moment este în faza de evaluare licitația pentru sec. Ciocana, "
+                           "iar pentru sec. Buiucani urmează a fi demarată procedura de achiziție publică."),
+        }}
+        claim = {"text": "În Buiucani, licitația este în faza de evaluare.", "evidenceIds": ["S1"]}
+        issues = deterministic_issues(claim, sources, "Care este stadiul în Buiucani?",
+                                      {"locations": ["Buiucani"]})
+        self.assertIn("PROJECT_STAGE_MISMATCH:buiucani", issues)
+
+    def test_rejects_allocation_relabelled_as_contract_amount(self) -> None:
+        sources = {"S1": {"documentId": "d1", "evidenceKind": "body", "title": "Buget Botanica",
+                           "exactQuote": "Pentru Botanica au fost alocate 60 milioane lei."}}
+        claim = {"text": "Suma contractului pentru Botanica este de 60 milioane lei.",
+                 "evidenceIds": ["S1"]}
+        issues = deterministic_issues(claim, sources, "Care este suma contractului pentru Botanica?",
+                                      {"locations": ["Botanica"]})
+        self.assertIn("AMOUNT_ROLE_MISMATCH:contract", issues)
 
 
 if __name__ == "__main__":
