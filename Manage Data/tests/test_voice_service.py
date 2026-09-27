@@ -18,7 +18,7 @@ class VoiceServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.service = OpenRouterVoiceService(
             "secret-key",
-            "openai/whisper-large-v3-turbo",
+            "openai/whisper-large-v3",
             "microsoft/mai-voice-2-flash",
             "en-US-Harper:MAI-Voice-2",
         )
@@ -35,7 +35,7 @@ class VoiceServiceTests(unittest.TestCase):
         self.assertEqual(endpoint, "audio/transcriptions")
         self.assertEqual(key, "secret-key")
         self.assertEqual(payload, {
-            "model": "openai/whisper-large-v3-turbo",
+            "model": "openai/whisper-large-v3",
             "input_audio": {"data": encoded, "format": "webm"},
         })
         self.assertNotIn("language", payload)
